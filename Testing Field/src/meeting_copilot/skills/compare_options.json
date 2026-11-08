@@ -1,0 +1,1 @@
+{"name":"compare_options","trigger":["compare","versus","options"],"retrieval":"same snapshot keyword evidence for both options; include approved project files","output_fields":["option_evidence","tradeoff_evidence"],"citation":"Cite each supported tradeoff separately with exact source version","abstention":"If one option lacks evidence, label that comparison incomplete"}

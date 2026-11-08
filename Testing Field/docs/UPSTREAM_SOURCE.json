@@ -1,0 +1,102 @@
+{
+  "repository": "https://github.com/estebanstifli/Meet2Notes",
+  "commit": "b75077e588f5623d48d9c9bac05aa428b4257c52",
+  "files": [
+    {
+      "path": "src/local_meeting_ai/domain/entities.py",
+      "upstream_path": "src/local_meeting_ai/domain/entities.py",
+      "upstream_sha256": "90f714a8799b93464d6143de498b8f64e31f0245932f13c44ee2914ac36675ec"
+    },
+    {
+      "path": "src/local_meeting_ai/domain/enums.py",
+      "upstream_path": "src/local_meeting_ai/domain/enums.py",
+      "upstream_sha256": "59eecd2daa133d469a8631395d5b177d1b1cfa4db8a0f3f0280db492cd6634d6"
+    },
+    {
+      "path": "src/local_meeting_ai/domain/errors.py",
+      "upstream_path": "src/local_meeting_ai/domain/errors.py",
+      "upstream_sha256": "cf352b8a583c7762c625ba1d29049c423de59278e36af0c74ca2bf20024cd054"
+    },
+    {
+      "path": "src/local_meeting_ai/domain/protocols.py",
+      "upstream_path": "src/local_meeting_ai/domain/protocols.py",
+      "upstream_sha256": "56debf91fdfcdef0b1a543d020744144392fed8ec5ed2b6e5460bc929c7c9751"
+    },
+    {
+      "path": "src/local_meeting_ai/domain/meeting_text.py",
+      "upstream_path": "src/local_meeting_ai/domain/meeting_text.py",
+      "upstream_sha256": "9a4c9f162ca3a235add0685584fcebd63a744a8fe69df795f915a71b94a54b00"
+    },
+    {
+      "path": "src/local_meeting_ai/adapters/litellm_compat.py",
+      "upstream_path": "src/local_meeting_ai/adapters/litellm_compat.py",
+      "upstream_sha256": "ee318d2e75579a87151d4f248f58431290ad9426f4eac97c4ca436675c1e22ed"
+    },
+    {
+      "path": "src/local_meeting_ai/adapters/model_files.py",
+      "upstream_path": "src/local_meeting_ai/adapters/model_files.py",
+      "upstream_sha256": "cf62664a12a771162517993f71d7170958d12bcc44560c97281720a8f42d3185"
+    },
+    {
+      "path": "src/local_meeting_ai/adapters/transcription/faster_whisper.py",
+      "upstream_path": "src/local_meeting_ai/adapters/transcription/faster_whisper.py",
+      "upstream_sha256": "24e8c583ba4c195215b825725f5a15bc55364fe7225fdb48e20f1834f9b21790"
+    },
+    {
+      "path": "src/local_meeting_ai/application/transcription_config.py",
+      "upstream_path": "src/local_meeting_ai/application/transcription_config.py",
+      "upstream_sha256": "9fe0102cf4156318d223247c8e69aa8382891ac00737ecbea816263168a6e849"
+    },
+    {
+      "path": "src/local_meeting_ai/infrastructure/storage.py",
+      "upstream_path": "src/local_meeting_ai/infrastructure/storage.py",
+      "upstream_sha256": "5a10fbad893f24e2740e879dabff36c32f43ec769616aa7efaeadc0784cd293f"
+    },
+    {
+      "path": "src/local_meeting_ai/adapters/audio_capture/__init__.py",
+      "upstream_path": "src/local_meeting_ai/adapters/audio_capture/__init__.py",
+      "upstream_sha256": "52c16adf31d235d4313dfe59b5dbc7dac63d67b24bb7b6c043b02a59aed41130"
+    },
+    {
+      "path": "src/local_meeting_ai/adapters/audio_capture/combined.py",
+      "upstream_path": "src/local_meeting_ai/adapters/audio_capture/combined.py",
+      "upstream_sha256": "cbdbf4b43055c97fe9468fb2e5612839d570f4f500b1bc17908a297d1bcd20f1"
+    },
+    {
+      "path": "src/local_meeting_ai/adapters/audio_capture/factory.py",
+      "upstream_path": "src/local_meeting_ai/adapters/audio_capture/factory.py",
+      "upstream_sha256": "e437ab49fd26ad8fca008aada55c92e6131d074dad294af9b6235273407429b2"
+    },
+    {
+      "path": "src/local_meeting_ai/adapters/audio_capture/mixer.py",
+      "upstream_path": "src/local_meeting_ai/adapters/audio_capture/mixer.py",
+      "upstream_sha256": "f0168c6e96e7a5c6bc2474093f93f0ef3dd424c1447aab0bd771783d116cc494"
+    },
+    {
+      "path": "src/local_meeting_ai/adapters/audio_capture/portaudio.py",
+      "upstream_path": "src/local_meeting_ai/adapters/audio_capture/portaudio.py",
+      "upstream_sha256": "68f38066055484a78cf9841738ef40240369bb755d065d3b66c0c4bed158940c"
+    },
+    {
+      "path": "src/local_meeting_ai/adapters/audio_capture/unavailable.py",
+      "upstream_path": "src/local_meeting_ai/adapters/audio_capture/unavailable.py",
+      "upstream_sha256": "e8b01c6564c4b7792fdafb70b89b7ecc68c73a3192058f314e458cbb5e501775"
+    },
+    {
+      "path": "src/local_meeting_ai/adapters/audio_capture/windows_wasapi.py",
+      "upstream_path": "src/local_meeting_ai/adapters/audio_capture/windows_wasapi.py",
+      "upstream_sha256": "960ba2c0f9b366d36c85ad3de755bf57f11a244b5fd69a1527e1bc3c43174d3e"
+    },
+    {
+      "path": "src/meeting_copilot/mcp_server.py",
+      "upstream_path": "src/local_meeting_ai/mcp/server.py",
+      "upstream_sha256": "ae4fd6a7feaccf7ce2987a9a4f3734e772147cca47f5a46f337c6585d75d975c",
+      "adaptation": "Host-bound service replaces desktop REST gateway, native read-only ToolAnnotations and historical tool registration pattern retained; new project/live tools. No native duplicate generator."
+    }
+  ],
+  "adaptations": {
+    "paths.py": "Minimal explicit AppPaths implements upstream media path contract; no home discovery.",
+    "infrastructure/linux_cuda.py": "CPU-only shim; removes CUDA probing/install management.",
+    "other_vendored_files": "Copied byte-for-byte; empty package __init__ files generated."
+  }
+}

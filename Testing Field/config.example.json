@@ -1,0 +1,11 @@
+{
+  "principal": "local-host",
+  "data_dir": "data",
+  "provider": "demo",
+  "model": "simulated-extractive",
+  "api_key_env": "MEETING_COPILOT_API_KEY",
+  "send_evidence": false,
+  "timeout_seconds": 20,
+  "max_tokens": 800,
+  "asr_model": "tiny.en"
+}
