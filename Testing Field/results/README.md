@@ -18,3 +18,5 @@ Current handoff: [../handoff.md](../handoff.md). Current feature status: [requir
 | report.json, initial-eval.json, install-smoke.json, asr-smoke.json, local-report.json | Historical initial v0.1 evaluation/install/ASR records; synthetic expected-term scores and accelerated logical time are not live quality or 20-minute wall time. |
 
 macOS, real microphone/unplug/20-minute technical discussion, paid-provider/native A/B quality and human ASR annotations remain unvalidated. Successful bounded functional cases do not guarantee zero drops at arbitrary rates; deliberate overload tests retain honest accounting. Original JSON/JUnit measurements are preserved. Release tags are historical; the coordinator will record the final docs head and append a cleanup receipt only after observed server cleanup.
+
+Final delivery: [index](final-delivery.json) · [observed server cleanup](server-cleanup.json).

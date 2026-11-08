@@ -7,7 +7,7 @@
   "runtime_version": "0.2.0",
   "audited_runtime_commit": "58319129f85795d4e7b2619bf08ac61a345119a1",
   "windows_tested_source_and_tests_commit": "c763c1489c66b826251cf0ae93712a42a0edfa81",
-  "docs_head_policy": "No self-referential hash. Coordinator records exact final docs head from git/collected build-root FINALIZE.json. Original DELIVERY.json head is historical, not the final docs head.",
+  "docs_head_policy": "Resolve refs/tags/v0.2.0-handoff for final exact commit; docs_base_commit identifies the pre-cleanup documentation snapshot.",
   "release_tags": {
     "v0.1.0-prototype": {
       "commit": "cb8405a8843f10218b5b7f7aa8b75fdedc28324d",
@@ -380,15 +380,22 @@
   ],
   "current_requirements": "requirements-current.json",
   "cleanup": {
-    "build_root_state": "retained for coordinator collection; not deleted",
-    "receipt": "pending actual coordinator observation, then local copy and final git commit",
-    "sequence": [
-      "collect docs/results and build-root FINALIZE.json",
-      "verify source hashes, Windows evidence and local application copy",
-      "coordinator cleans dedicated build root",
-      "observe removal, append cleanup receipt locally and in final git commit",
-      "coordinator creates final verified-handoff tag"
-    ],
-    "finalization_owned_app_test_processes": []
-  }
+    "server": "altra-01.ece.cornell.edu",
+    "removed_root": "/home/jy2283/meeting-copilot-dev-20261108-eHu73X5Y",
+    "verified_docs_head": "69d3dbafae34794927daa39a39e22a5efc994970",
+    "ownership_marker_verified": true,
+    "active_task_processes_before_cleanup": [],
+    "scope": "exact task-owned development root only",
+    "global_packages_or_config_changed_by_workflow": false,
+    "codex_usage_resets_invoked_by_coordinator": 0,
+    "cleanup_at_utc": "2026-11-08T08:36:39.798277+00:00",
+    "removed": true,
+    "absence_verified": true,
+    "independent_ssh_absence_check": true,
+    "build_root_state": "deleted and independently absence-verified",
+    "receipt": "server-cleanup.json"
+  },
+  "handoff_tag": "v0.2.0-handoff",
+  "handoff_tag_url": "https://github.com/cyudaddy/5405/tree/v0.2.0-handoff",
+  "docs_base_commit": "69d3dbafae34794927daa39a39e22a5efc994970"
 }

@@ -2,7 +2,7 @@
 >
 > **Current measured platforms:** actual Windows repair3: 84 passed, one symlink-permission skip (85 cases), separate concurrency pass, CLI/three-device enumeration and public tiny.en ASR successful, native junction verified; no microphone recording or paid API. [Windows results](../results/windows-validation.json), [ASR](../results/windows-prepared.json), [junction](../results/windows-junction.json). Latest Linux source: 85/85; historical v0.2 wheel/README audit: 73 each. Final completed Linux prerecorded-ASR stability run: [1,200.336 seconds](../results/audit-soak-final.json). macOS and real microphone remain pending. Streaming, synthesis and private continuity are now implemented; the old owner list below is historical.
 >
-> Server cleanup is **pending collection and verification**, not already done. Coordinator collects and verifies first, removes the dedicated root, observes removal, then appends the receipt locally and in the final Git commit and creates the verified-handoff tag. Existing release tags remain unchanged.
+> Final delivery: collection and Windows verification completed; the exact dedicated server root was removed and independently checked absent. See [cleanup receipt](../results/server-cleanup.json) and [final delivery](../results/final-delivery.json). Existing tags are preserved; the final handoff tag identifies the complete delivery.
 
 # Server build and validation report
 

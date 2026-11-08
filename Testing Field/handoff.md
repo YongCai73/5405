@@ -1,5 +1,7 @@
 # Meeting Copilot 交接（B / G / C / T / D / R）
 
+最终交付标签：[v0.2.0-handoff](https://github.com/cyudaddy/5405/tree/v0.2.0-handoff)。服务器专用开发目录已删除，并经独立 SSH 检查确认不存在；[清理回执](results/server-cleanup.json)和[最终交付索引](results/final-delivery.json)已保存。
+
 ## B — 结论与交付物
 
 交付的是 **Meeting Copilot CLI 原型 0.2.0**：本地会议/项目证据库、提问时快照、带引用的私有问答、三种任务技能、后台共享摘要、只读 MCP、可复现评测。Python 建议 **3.12**；实际 Windows 使用 **3.12.14**，Linux 使用 **3.12.3 / aarch64**。默认 `demo` 无密钥、无录音、无 API，输出明确标为模拟；真实 API 模式已实现，尚未用付费端点验证。
@@ -348,4 +350,6 @@ macOS 实机、真实麦克风/拔插/20 分钟会议、付费端点、人工术
 
 剩余项来自硬件、凭据、标注或产品生命周期需求，不是因为已撤回的一小时时限而搁置。当前 streaming、模型 synthesis、跨快照 private continuity 均已实现，不应重复列为缺失功能。
 
-**收集与清理顺序：**协调者先收集分支源码/文档/结果及根目录 `FINALIZE.json`，核验提交、54 runtime 哈希、Windows 结果和本地独立副本；保留本地 `.venv`/config/demo/模型，不把它们提交 Git。随后由协调者清理专用服务器 build root，**观察确实删除后**把 cleanup receipt 追加到本地及最终 Git commit，再创建最终 verified-handoff tag。当前根目录仍保留等待收集，尚无“已删除”回执；已有 release tags 不移动。文档整理过程不启动长期 app 服务，不停止预先存在的协调者/Codex launcher。
+**收集与清理已完成：**已收集并核验最终源码、文档、结果和 `FINALIZE.json`；本地 64 个源码/测试文件与实际 Windows 被测提交一致。服务器专用目录在确认无遗留任务进程、Git 工作树干净后删除，随后另开 SSH 验证目录及同名链接均不存在。未修改服务器全局包或配置；本地 `.venv`、配置、演示、公开音频和模型缓存保留可用。见[实际清理回执](results/server-cleanup.json)。本轮未调用 usage reset。
+
+最终分支和旧标签保留，包含本地验证及清理回执的交付版本以 [v0.2.0-handoff](https://github.com/cyudaddy/5405/tree/v0.2.0-handoff) 为准；该标签可解析最终精确 Git commit。本地 `dist/` 另有原审查 wheel 和最终源码 ZIP；源代码 clone 按 T 节重新建环境，勿分发机器相关的 `.venv`。

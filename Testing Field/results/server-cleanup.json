@@ -1,0 +1,14 @@
+{
+  "server": "altra-01.ece.cornell.edu",
+  "removed_root": "/home/jy2283/meeting-copilot-dev-20261108-eHu73X5Y",
+  "verified_docs_head": "69d3dbafae34794927daa39a39e22a5efc994970",
+  "ownership_marker_verified": true,
+  "active_task_processes_before_cleanup": [],
+  "scope": "exact task-owned development root only",
+  "global_packages_or_config_changed_by_workflow": false,
+  "codex_usage_resets_invoked_by_coordinator": 0,
+  "cleanup_at_utc": "2026-11-08T08:36:39.798277+00:00",
+  "removed": true,
+  "absence_verified": true,
+  "independent_ssh_absence_check": true
+}
