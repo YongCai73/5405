@@ -50,5 +50,11 @@
       ".venv/bin/python -m pytest --basetemp data/test-temp -q"
     ],
     "note": "exact Linux README sequence; Windows/macOS commands were not executed"
-  }
+  },
+  "record_type": "HISTORICAL v0.1 32-case source/wheel/README validation; platform claims are as of that run",
+  "current_results": [
+    "windows-validation.json",
+    "windows-repair3-validation.json",
+    "audit-validation.json"
+  ]
 }

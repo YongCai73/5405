@@ -244,5 +244,7 @@
   "runtime_databases_in_repository": false,
   "main_branch_modified": false,
   "upstream_pin": "b75077e588f5623d48d9c9bac05aa428b4257c52",
-  "version": "0.2.0"
+  "version": "0.2.0",
+  "record_type": "HISTORICAL v0.2 audit before Windows test repairs; preserve then-pending platform status",
+  "superseded_by": "requirements-current.json"
 }

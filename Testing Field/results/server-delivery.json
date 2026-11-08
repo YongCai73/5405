@@ -1,0 +1,394 @@
+{
+  "record_type": "portable docs-only handoff summary; original audit and repairs retain their measured scopes",
+  "created_at_utc": "2026-11-08T08:24:30.944569+00:00",
+  "repository": "https://github.com/cyudaddy/5405",
+  "branch": "meeting-copilot/prototype-20261108",
+  "branch_url": "https://github.com/cyudaddy/5405/tree/meeting-copilot/prototype-20261108",
+  "runtime_version": "0.2.0",
+  "audited_runtime_commit": "58319129f85795d4e7b2619bf08ac61a345119a1",
+  "windows_tested_source_and_tests_commit": "c763c1489c66b826251cf0ae93712a42a0edfa81",
+  "docs_head_policy": "No self-referential hash. Coordinator records exact final docs head from git/collected build-root FINALIZE.json. Original DELIVERY.json head is historical, not the final docs head.",
+  "release_tags": {
+    "v0.1.0-prototype": {
+      "commit": "cb8405a8843f10218b5b7f7aa8b75fdedc28324d",
+      "preserved": true
+    },
+    "v0.2.0-prototype": {
+      "commit": "58319129f85795d4e7b2619bf08ac61a345119a1",
+      "preserved": true,
+      "scope": "historical audited runtime; precedes all three test repairs"
+    }
+  },
+  "frozen_source": {
+    "runtime_files": 54,
+    "runtime_sha256_unchanged": true,
+    "windows_manifest": "windows-source-manifest.json",
+    "manifest_entries": 64,
+    "test_files": 10,
+    "manifest_matches_local_source_and_tests": true,
+    "runtime_tests_packaging_dependencies_vendored_modified_by_finalization": false
+  },
+  "upstream": {
+    "repository": "git@github.com:estebanstifli/Meet2Notes.git",
+    "commit": "b75077e588f5623d48d9c9bac05aa428b4257c52",
+    "license": "MIT",
+    "copied_implementation_files_verified_unchanged": 24,
+    "adaptations": "MCP guarded historical registration, explicit AppPaths/CPU seam and common native-service transport bridge; original upstream checkout unchanged"
+  },
+  "historical_audit": {
+    "commit": "58319129f85795d4e7b2619bf08ac61a345119a1",
+    "validation": "audit-validation.json",
+    "suites": {
+      "source": {
+        "tests": 73,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "seconds": 57.306,
+        "artifact": "results/tests-audit.xml"
+      },
+      "independent_wheel_without_audio": {
+        "tests": 73,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "seconds": 57.816,
+        "artifact": "results/tests-audit-wheel.xml"
+      },
+      "readme_linux": {
+        "tests": 73,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "seconds": 52.789,
+        "artifact": "results/tests-audit-readme.xml"
+      }
+    },
+    "clean_install_commands": 22,
+    "wire_contract_tests": 24,
+    "wheel_sha256": "a399f1c798cce5aff5aa32f719bed02e621c1bf81cd295d02e372ca374651dc1",
+    "note": "73-case wheel/README/source audits are historical; latest source suite has 85 cases, wheel was not rebuilt/retested after test-only repairs."
+  },
+  "repairs": [
+    {
+      "repair": 1,
+      "commit": "097fec38dfefee4aed526a0e1c44c94d88db5844",
+      "runtime_files_unchanged": 54,
+      "runtime_version": "0.2.0",
+      "report": "windows-repair-validation.json",
+      "linux_full": {
+        "tests": 76,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "seconds": 56.475
+      },
+      "change": "Exact LF/CRLF fixtures and bounded separate-process startup handshakes; runtime unchanged.",
+      "historical_windows_observed_before_this_repair": {
+        "source_commit": "58319129f85795d4e7b2619bf08ac61a345119a1",
+        "cases": 73,
+        "passed": 68,
+        "failed": 4,
+        "skipped": 1
+      }
+    },
+    {
+      "repair": 2,
+      "commit": "188fcb685894b6e49928298f920d6f3fe195f1d4",
+      "runtime_files_unchanged": 54,
+      "runtime_version": "0.2.0",
+      "report": "windows-repair2-validation.json",
+      "linux_full": {
+        "tests": 85,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "seconds": 60.468
+      },
+      "change": "Faithful venv redirector PID/PPID ancestry and fresh nonce; bounded cold-start contracts; expected cancellation ConnectionError handling; Windows initialization budgets.",
+      "identity_contract": {
+        "direct": "pid == launcher_pid and ppid == test_parent_pid",
+        "redirected": "pid != launcher_pid and ppid == launcher_pid",
+        "nonce": "fresh parent-generated 32-byte token echoed by capture",
+        "progress_and_cutoff_assertions_retained": true,
+        "final_child_identity_checked": true,
+        "windows_tree_cleanup_fallback_executed_on_native_windows": false
+      },
+      "timeout_contract": {
+        "successful_fake_wire_and_cli_seconds": 120,
+        "runtime_default_seconds_unchanged": 20,
+        "explicit_nonstream_timeout_seconds": 0.1,
+        "explicit_stream_timeout_seconds": 0.15,
+        "pre_http_startup_cancellation_regressions": [
+          "chat",
+          "complete"
+        ],
+        "synchronous_import_caveat": "asyncio deadlines cannot preempt blocking synchronous imports; native cold-start distribution not profiled",
+        "native_unawaited_coroutine_warning": "Observed after old Windows first-call timeout; dependency internals unchanged, new native outcome pending"
+      },
+      "linux_experiments": {
+        "redirector": {
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "seconds": 10.759,
+          "exit_code": 0,
+          "junit": "results/tests-windows-repair2-linux-redirector.xml",
+          "stdout": "results/tests-windows-repair2-linux-redirector.stdout.log"
+        },
+        "cold-start": {
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "seconds": 42.05,
+          "exit_code": 0,
+          "junit": "results/tests-windows-repair2-linux-cold-start.xml",
+          "stdout": "results/tests-windows-repair2-linux-cold-start.stdout.log"
+        },
+        "provider-cold-start": {
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "seconds": 25.358,
+          "exit_code": 0,
+          "junit": "results/tests-windows-repair2-linux-provider-cold-start.xml",
+          "stdout": "results/tests-windows-repair2-linux-provider-cold-start.stdout.log"
+        }
+      },
+      "historical_windows_observed_before_this_repair": {
+        "source_commit": "097fec38dfefee4aed526a0e1c44c94d88db5844",
+        "cases": 76,
+        "passed": 73,
+        "failed": 2,
+        "skipped": 1
+      }
+    },
+    {
+      "repair": 3,
+      "commit": "c763c1489c66b826251cf0ae93712a42a0edfa81",
+      "runtime_files_unchanged": 54,
+      "runtime_version": "0.2.0",
+      "report": "windows-repair3-validation.json",
+      "linux_full": {
+        "tests": 85,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0,
+        "passed": 85,
+        "seconds": 62.597
+      },
+      "change": "Representative normal-load functional fixture; no runtime change.",
+      "functional_load": {
+        "max_events_per_second": 2,
+        "max_summaries_per_second": 1,
+        "progress_cutoff_zero_gap_drop_error_and_cleanup_assertions_retained": true
+      },
+      "historical_overload": {
+        "commit": "188fcb685894b6e49928298f920d6f3fe195f1d4",
+        "tests": 85,
+        "passed": 83,
+        "failed": 1,
+        "errors": 0,
+        "skipped": 1,
+        "processed": 782,
+        "ingestion_errors": 0,
+        "dropped_segments": 184,
+        "synthetic_event_interval_seconds": 0.05,
+        "synthetic_summary_interval_seconds": 0.1,
+        "cited_answer_and_gated_ingestion_and_summary_progress_and_snapshot_cutoffs_passed": true
+      },
+      "dedicated_deliberate_overload": {
+        "test": "tests/test_workers.py::test_pipeline_bounded_drop_accounting",
+        "source_unchanged_from_base": true,
+        "passed_in": "targeted and full Linux runs",
+        "queue_capacity": 2,
+        "post_block_submissions": 20,
+        "accepted": 2,
+        "asserted_reported_drops": 18,
+        "asserted_queue_depth": 2,
+        "processed_after_drain": 3,
+        "worker_pending_bound_test_unchanged_and_passed": true
+      },
+      "interpretation": "Workload-specific Windows synthetic queue saturation, not a real mic/ASR failure; final normal-load pass does not promise zero drops under arbitrary load.",
+      "historical_windows_observed_before_this_repair": {
+        "source_commit": "188fcb685894b6e49928298f920d6f3fe195f1d4",
+        "cases": 85,
+        "passed": 83,
+        "failed": 1,
+        "skipped": 1
+      }
+    }
+  ],
+  "latest_linux_source": {
+    "targeted": {
+      "tests": 14,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "passed": 14,
+      "seconds": 17.245,
+      "junit": "results/tests-windows-repair3-linux-targeted.xml"
+    },
+    "full": {
+      "tests": 85,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "passed": 85,
+      "seconds": 62.597,
+      "junit": "results/tests-windows-repair3-linux-full.xml"
+    },
+    "cold-start": {
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "passed": 1,
+      "seconds": 50.583,
+      "junit": "results/tests-windows-repair3-linux-cold-start.xml"
+    }
+  },
+  "windows": {
+    "report": "windows-validation.json",
+    "source_commit": "c763c1489c66b826251cf0ae93712a42a0edfa81",
+    "platform": "Windows-11-10.0.26200-SP0",
+    "python": "3.12.14",
+    "cases": 85,
+    "passed": 84,
+    "failures": 0,
+    "errors": 0,
+    "skipped": [
+      "test_excluded_paths_and_source_unchanged"
+    ],
+    "skip_reason": "Native symlink permission unavailable; separate NTFS junction check supplied.",
+    "full_junit": "tests-windows.xml",
+    "separate_concurrency_junit": "tests-windows-concurrency.xml",
+    "separate_concurrency_passed": 1,
+    "cli_commands": [
+      {
+        "name": "tests",
+        "exit_code": 0,
+        "seconds": 434.89,
+        "summary": [
+          "84 passed, 1 skipped, 15 warnings in 411.50s (0:06:51)"
+        ]
+      },
+      {
+        "name": "init",
+        "exit_code": 0,
+        "seconds": 4.578
+      },
+      {
+        "name": "demo",
+        "exit_code": 0,
+        "seconds": 15.11
+      },
+      {
+        "name": "evaluate",
+        "exit_code": 0,
+        "seconds": 19.906
+      },
+      {
+        "name": "mic-list",
+        "exit_code": 0,
+        "seconds": 16.469,
+        "enumerated_sources": 3,
+        "recorded_audio": false
+      }
+    ],
+    "asr": "windows-prepared.json",
+    "asr_actual": true,
+    "asr_model": "tiny.en",
+    "asr_public_recording_segments": 2,
+    "enumerated_sources": 3,
+    "junction": "windows-junction.json",
+    "recorded_microphone": false,
+    "paid_api_called": false
+  },
+  "final_completed_linux_stability": {
+    "mode": "ACTUAL LOCAL ASR / wall-clock prerecorded repeated audio; SIMULATED 5-second provider QA and summaries",
+    "started_at_utc": "2026-11-08T06:58:03Z",
+    "completed": true,
+    "requested_wall_seconds": 1200,
+    "actual_wall_seconds": 1200.3360312180594,
+    "audio_fixture_sha256": "63a4b1e4c1dc655ac70961ffbf518acd249df237e5a0152faae9a4a836949715",
+    "fixture_audio_seconds": 11.0,
+    "chunks_submitted": 399,
+    "chunk_audio_seconds": 3,
+    "replayed_audio_seconds": 1197,
+    "asr": {
+      "model": "tiny.en",
+      "device": "cpu",
+      "compute_type": "int8",
+      "cpu_threads": 2,
+      "vad_filter": false
+    },
+    "pipeline": {
+      "processed": 399,
+      "dropped_segments": 0,
+      "errors": 0,
+      "last_error_type": null,
+      "audio_queue_depth": 0,
+      "segment_queue_depth": 0,
+      "peak_audio_queue": 1,
+      "peak_segment_queue": 1,
+      "audio_queue_capacity": 4,
+      "segment_queue_capacity": 32,
+      "ingestion_lag_p95_seconds": 1.1148379826918244,
+      "ingestion_lag_max_seconds": 1.4447038490325212,
+      "wall_seconds": 1200.0471181478351,
+      "lag_definition": "chunk submission to committed segment; last 10000 segments; excludes chunk accumulation"
+    },
+    "summary_completed": 79,
+    "summary_failures": 0,
+    "summary_last_error": null,
+    "qa_submitted": 119,
+    "qa_completed": 119,
+    "qa_errors": [],
+    "qa_future_evidence_violations": 0,
+    "qa_p95_seconds": 5.128309777006507,
+    "peak_rss_bytes": 319311872,
+    "platform": "Linux-6.8.0-138-generic-aarch64-with-glibc2.39",
+    "limitations": "Repeated public JFK recording, not microphone or technical discussion; no WER/technical-term or live LLM quality measurement; lag measured from chunk submission, excludes 3-second capture accumulation."
+  },
+  "synthetic_evaluation": {
+    "report": "audit-report.json",
+    "questions": 22,
+    "skills_expected_terms_correct": 22,
+    "defined_security_cases_passed": 10,
+    "observed_unauthorized_disclosures": 0,
+    "human_semantic_quality_measured": false,
+    "native_service_runner_questions": 22,
+    "opt_in_api_evaluator_requests": 88,
+    "live_paid_api_validated": false
+  },
+  "prepared_local_configuration": {
+    "provider": "demo",
+    "timeout_seconds": 120,
+    "seeded_demo_and_cached_model": "tiny.en",
+    "note": "Coordinator-prepared Windows config; shipped runtime/example default remains 20. First Windows API use: 120 seconds; 60 only after measured startup. Codex login/quota is separate from app API credentials."
+  },
+  "unvalidated": [
+    "macOS execution",
+    "real microphone/device unplug/20-minute technical meeting",
+    "live paid provider quality/cost/native A-B",
+    "technical-term and multilingual ASR accuracy",
+    "forced Windows taskkill fallback"
+  ],
+  "current_requirements": "requirements-current.json",
+  "cleanup": {
+    "build_root_state": "retained for coordinator collection; not deleted",
+    "receipt": "pending actual coordinator observation, then local copy and final git commit",
+    "sequence": [
+      "collect docs/results and build-root FINALIZE.json",
+      "verify source hashes, Windows evidence and local application copy",
+      "coordinator cleans dedicated build root",
+      "observe removal, append cleanup receipt locally and in final git commit",
+      "coordinator creates final verified-handoff tag"
+    ],
+    "finalization_owned_app_test_processes": []
+  }
+}

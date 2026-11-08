@@ -1,0 +1,19 @@
+{
+  "runtime_files_verified": 54,
+  "windows_source_and_test_hashes_verified": 64,
+  "protected_non_docs_files_unchanged": 75,
+  "json_files_valid": 9,
+  "embedded_json_valid": 1,
+  "bash_blocks_syntax_valid": 17,
+  "embedded_python_blocks_valid": 1,
+  "cli_examples_argparse_valid": 80,
+  "relative_links_valid": 109,
+  "powershell_blocks_static_delimiter_quote_review": 12,
+  "powershell_native_execution": false,
+  "runtime_suite_rerun": false,
+  "api_calls": 0,
+  "record_type": "Docs-only static finalization checks",
+  "checked_at_utc": "2026-11-08T08:28:53.260554+00:00",
+  "scope": "Markdown links, fenced examples, CLI argparse factory only, JSON and frozen hashes. No runtime suite, paid endpoint or native PowerShell execution. PowerShell syntax received static delimiter/quote and manual command review.",
+  "processes_started": "Short-lived local checks only; no persistent app/test service."
+}

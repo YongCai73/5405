@@ -1,0 +1,10 @@
+{
+  "junction_scan_escape_blocked": true,
+  "junction_root_rejected": true,
+  "indexed_paths": [
+    "readme.md"
+  ],
+  "source_commit": "c763c1489c66b826251cf0ae93712a42a0edfa81",
+  "junction_removed_nonrecursively": true,
+  "outside_target_unchanged": true
+}

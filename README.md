@@ -4,7 +4,9 @@
 
 A privacy-conscious meeting assistant that combines continuous transcription with private, evidence-grounded Q&A, meeting memory, controlled tools, and reproducible evaluation.
 
-> **Status:** Proposal / research stage. No working transcription or agent pipeline is claimed yet.
+> **Prototype entry (this branch):** [Meeting Copilot 0.2.0 application](Testing%20Field/README.md) · [Chinese B/G/C/T/D/R handoff](Testing%20Field/handoff.md) · [Current proposal/status mapping](Testing%20Field/results/requirements-current.json). Windows source/CLI/public-recording ASR and Linux stability have measured results; real microphones, macOS and paid endpoints still need validation. Use [meeting-copilot/prototype-20261108](https://github.com/cyudaddy/5405/tree/meeting-copilot/prototype-20261108); existing tags are historical milestones.
+>
+> **Historical planning status:** Proposal / research stage. The planning content below is retained; “no working pipeline” described the repository before the prototype was added.
 
 ## Product scenario
 
@@ -31,7 +33,7 @@ During a small in-person technical meeting, a user can privately ask questions s
 | Security & Guardrails | Authorization, private/shared separation, prompt-injection defense, approval policy | Deterministic execution checks; research Invariant/AgentDojo |
 | Evaluation & Observability | Replayable tests, trace IDs, baseline comparison, metrics | Langfuse, custom scorers, optional DeepEval |
 
-This is a **five-workstream plan**, not a claim of confirmed individual assignments.
+This original **five-workstream plan** is preserved. The current proposal assignments and developer TODO owners are recorded in the prototype handoff.
 
 ## Architecture (proposed)
 
@@ -67,7 +69,7 @@ The `src/` directory is intentionally a lightweight placeholder. Add a prototype
 
 ## Open-source provenance
 
-We are evaluating [Meet2Notes](https://github.com/estebanstifli/Meet2Notes) as a reference or potential base. **This repository does not include copied Meet2Notes code.** If the team later forks or imports upstream code, preserve the relevant license, notices and attribution, document changes, and distinguish upstream features from original contributions.
+We are evaluating [Meet2Notes](https://github.com/estebanstifli/Meet2Notes) as a reference or potential base. The original planning repository did not include copied Meet2Notes code. This branch now includes attributed prototype reuse under `Testing Field/`; see its [upstream provenance](Testing%20Field/docs/UPSTREAM_SOURCE.json) and [MIT notice](Testing%20Field/docs/UPSTREAM_LICENSE.txt). Preserve license, notices and attribution, document changes, and distinguish upstream features from original contributions.
 
 ## Research/evaluation principles
 

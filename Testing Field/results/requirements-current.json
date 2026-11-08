@@ -1,0 +1,262 @@
+{
+  "record_type": "CURRENT proposal-feature/status mapping after repair3 and actual Windows verification",
+  "version": "0.2.0",
+  "proposal": "Meeting Copilot for Technical Discussions, Nov 7 2026, read completely including tables",
+  "source_commit": "c763c1489c66b826251cf0ae93712a42a0edfa81",
+  "runtime_frozen_files": 54,
+  "windows_report": "windows-validation.json",
+  "linux_report": "windows-repair3-validation.json",
+  "historical_pre_repair_checklist": "requirements-checklist.json",
+  "requirements": [
+    {
+      "id": 1,
+      "status": "implemented_protocol_validation_partial_live",
+      "delivered": [
+        "single config Python CLI",
+        "isolated venv/wheel",
+        "labelled no-key extractive demo",
+        "LiteLLM OpenAI+Anthropic",
+        "normalized usage/errors/timeouts/cancellation",
+        "bounded SSE text/tool-call normalization",
+        "two optional host-bound read-only tool rounds"
+      ],
+      "evidence": [
+        "results/install-smoke.json",
+        "tests/test_protocols.py",
+        "results/audit-install-smoke.json",
+        "results/tests-audit-wheel.xml",
+        "results/windows-validation.json",
+        "results/windows-repair3-validation.json"
+      ],
+      "pending": [
+        "live paid endpoint validation for each protocol",
+        "macOS execution"
+      ],
+      "owner": "Zimo Li"
+    },
+    {
+      "id": 2,
+      "status": "partial_hardware",
+      "delivered": [
+        "actual upstream mic backends and media storage",
+        "selection/consent",
+        "bounded independent queues",
+        "upstream local ASR",
+        "replay/import/manual revisions",
+        "periodic separate-worker summaries during listen",
+        "continuous listen until Ctrl+C",
+        "partial-chunk flush on stop",
+        "periodic queue/error status",
+        "separate-process live ask and live-status",
+        "actual 20-minute wall-clock prerecorded ASR soak with concurrent slow simulated QA",
+        "Windows enumeration of 3 sources and actual public prerecorded tiny.en CPU ASR (2 segments)",
+        "Windows separate-process functional capture/ask/summary test at bounded representative synthetic load"
+      ],
+      "evidence": [
+        "results/asr-smoke.json",
+        "tests/test_workers.py",
+        "tests/test_cli_storage.py",
+        "tests/test_live_processes.py",
+        "results/audit-soak-final.json",
+        "results/windows-prepared.json",
+        "results/tests-windows-concurrency.xml"
+      ],
+      "pending": [
+        "real Windows/macOS mic and device-unplug checks",
+        "representative technical discussion ASR accuracy"
+      ],
+      "owner": "Zimo Li"
+    },
+    {
+      "id": 3,
+      "status": "implemented_initial",
+      "delivered": [
+        "SQLite/FTS5",
+        "trusted host ACL",
+        "observed watermark",
+        "idempotency and gaps",
+        "provisional/final revisions",
+        "exact snapshot refs",
+        "retained files",
+        "export/scoped logical cleanup",
+        "FTS ranking before limit",
+        "long-source bounded excerpts with exact original offsets",
+        "cited evidence retained in bounded export",
+        "transcript pagination",
+        "additive v0.1 private-history migration",
+        "CLI corrections preserve speech timestamps and require increasing revision"
+      ],
+      "evidence": [
+        "tests/test_evidence.py",
+        "tests/test_project.py",
+        "tests/test_cli_storage.py",
+        "results/audit-scale.json"
+      ],
+      "pending": [
+        "long-term retention/disk quotas",
+        "secure erasure is not promised"
+      ],
+      "owner": "Xiaolong Lin"
+    },
+    {
+      "id": 4,
+      "status": "implemented_host_trust_model",
+      "delivered": [
+        "meeting/user/conversation/snapshot private isolation",
+        "opted-in authorized history",
+        "explicit user supplement promotion",
+        "metadata/list/get/search/raw/summary/cache/checkpoint policy checks",
+        "revocation after provider returns",
+        "meeting-scoped conversation continuity across snapshots",
+        "pinned conversation turn watermark immune to clock rollback",
+        "fresh prior-turn ACL and opted-in scope checks",
+        "trace-export snapshot ACL filtering",
+        "coherent WAL authorization/data read transactions across independent processes"
+      ],
+      "evidence": [
+        "tests/test_evidence.py",
+        "tests/test_workers.py",
+        "tests/test_mcp.py",
+        "tests/test_audit_regressions.py"
+      ],
+      "pending": [
+        "external multiuser login/session integration",
+        "mid-node durable checkpoint resume"
+      ],
+      "owner": "Cai Yong / Xiaolong Lin"
+    },
+    {
+      "id": 5,
+      "status": "implemented_native_windows_junction_verified",
+      "delivered": [
+        "explicit read-only roots",
+        "canonical traversal/symlink/reparse checks",
+        "bounded text/source manifest",
+        "secret/binary/oversize exclusions",
+        "retained refresh/hash/line citations",
+        "source hash unchanged",
+        "revocation",
+        "actual runtime root ancestor/descendant exclusion",
+        "legacy unsafe approvals fail closed on old reads",
+        "131-file and line-241 identifier retrieval regression",
+        "300-file scale check with exact target provenance at line 3001",
+        "actual native NTFS junction scan escape blocked and root rejected at c763c14; outside target unchanged"
+      ],
+      "evidence": [
+        "tests/test_project.py",
+        "results/install-smoke.json",
+        "results/audit-scale.json",
+        "results/windows-junction.json",
+        "results/windows-source-manifest.json"
+      ],
+      "pending": [
+        "broader Windows case/UNC/reparse behavior",
+        "native symlink capability skipped without permission; junction is separate evidence"
+      ],
+      "owner": "Jiaxuan Yan / Cai Yong"
+    },
+    {
+      "id": 6,
+      "status": "implemented_model_synthesis_quality_unvalidated",
+      "delivered": [
+        "LangGraph QA and shared-summary graphs",
+        "separate bounded workers",
+        "three packaged executable skill contracts",
+        "verbatim citations/abstention",
+        "recent bounded catch-up",
+        "model synthesis with separately labeled exact quotes/inferences",
+        "task-directed decision rationale and comparison prompts",
+        "shared model summaries without private context"
+      ],
+      "evidence": [
+        "src/meeting_copilot/skills",
+        "tests/test_evidence.py",
+        "tests/test_workers.py"
+      ],
+      "pending": [
+        "human semantic assessment; exact quote checks do not prove entailment",
+        "mid-node crash recovery is not implemented"
+      ],
+      "owner": "Jiaxuan Yan / Zimo Li"
+    },
+    {
+      "id": 7,
+      "status": "implemented_actual_stdio",
+      "delivered": [
+        "actual MCP SDK transport",
+        "adapted upstream native historical read registration",
+        "10 guarded tools",
+        "host-only identity/snapshot",
+        "no shell or writes",
+        "model-driven read-only tool round trips",
+        "paginated historical transcript reads"
+      ],
+      "evidence": [
+        "tests/test_mcp.py",
+        "results/mcp-compatibility.json"
+      ],
+      "pending": [
+        "full native desktop/hybrid-RAG baseline quality"
+      ],
+      "owner": "Jiaxuan Yan"
+    },
+    {
+      "id": 8,
+      "status": "local_implemented_optional_remote_deferred",
+      "delivered": [
+        "redacted structured local metadata traces",
+        "snapshot/source/policy/latency/drops/tokens",
+        "nullable configured estimated cost",
+        "allowlisted local export",
+        "automatic LangSmith disabled",
+        "shared summary API usage traces",
+        "current-ACL filtering of trace export"
+      ],
+      "evidence": [
+        "src/meeting_copilot/trace.py",
+        "src/meeting_copilot/provider.py"
+      ],
+      "pending": [
+        "optional Langfuse upload/hosting",
+        "real provider cost calibration"
+      ],
+      "owner": "Qiyan Zhai"
+    },
+    {
+      "id": 9,
+      "status": "synthetic_runner_implemented_quality_partial",
+      "delivered": [
+        "22 frozen synthetic timestamped questions with expected-term labels; no human semantic labels",
+        "10 defined isolation attacks",
+        "same-evidence skills/direct",
+        "snapshot/folder ablations",
+        "executed evaluator-only synthetic policy bypass",
+        "answer-node p50/p95 plus total graph latency",
+        "API usage",
+        "400-chunk logical 20-minute accelerated queue test",
+        "targeted tokenization fix and rerun",
+        "native upstream service 22-question runner with documented common transport bridge",
+        "explicit 88-call API evaluation option",
+        "three executed isolated policy ablation attacks",
+        "20-minute wall-clock actual ASR replay with RSS/lag and concurrent QA"
+      ],
+      "evidence": [
+        "results/report.json",
+        "results/initial-eval.json",
+        "tests/test_evaluation.py",
+        "tests/test_protocols.py",
+        "results/audit-soak-final.json",
+        "results/audit-report.json",
+        "results/windows-validation.json"
+      ],
+      "pending": [
+        "real paid/native model quality comparison",
+        "representative real microphone 20-minute evaluation",
+        "human semantic quality/WER/technical terms",
+        "macOS smoke; actual Windows results recorded separately"
+      ],
+      "owner": "Qiyan Zhai"
+    }
+  ],
+  "completion_boundary": "Implementation and measured scope distinguished below; macOS, real mic, paid endpoint and human quality remain pending. Streaming, synthesis and cross-snapshot private continuity are implemented."
+}

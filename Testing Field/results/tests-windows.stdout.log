@@ -1,0 +1,35 @@
+....................................................s................... [ 84%]
+.............                                                            [100%]
+============================== warnings summary ===============================
+tests/test_protocols.py::test_stream_text_usage_and_synthesis[openai]
+  D:\Yan\Cornell\Semester 1\ENMGT 5405 Applied AI for Teams\Final Project\Testing Field\.venv\Lib\site-packages\pydantic\_internal\_generate_schema.py:1574: UserWarning: Item 'index' on TypedDict class 'ChatCompletionThinkingBlock' is using the `ReadOnly` qualifier. Pydantic will not protect items from any mutation on dictionary instances.
+    warnings.warn(
+
+tests/test_protocols.py::test_stream_text_usage_and_synthesis[openai]
+  D:\Yan\Cornell\Semester 1\ENMGT 5405 Applied AI for Teams\Final Project\Testing Field\.venv\Lib\site-packages\pydantic\_internal\_generate_schema.py:1574: UserWarning: Item 'index' on TypedDict class 'ChatCompletionRedactedThinkingBlock' is using the `ReadOnly` qualifier. Pydantic will not protect items from any mutation on dictionary instances.
+    warnings.warn(
+
+tests/test_protocols.py::test_stream_text_usage_and_synthesis[openai]
+  D:\Yan\Cornell\Semester 1\ENMGT 5405 Applied AI for Teams\Final Project\Testing Field\.venv\Lib\site-packages\pydantic\_internal\_generate_schema.py:1574: UserWarning: Item 'summary' on TypedDict class 'ChatCompletionReasoningItem' is using the `ReadOnly` qualifier. Pydantic will not protect items from any mutation on dictionary instances.
+    warnings.warn(
+
+tests/test_protocols.py::test_stream_text_usage_and_synthesis[openai]
+tests/test_protocols.py::test_stream_text_usage_and_synthesis[openai]
+tests/test_protocols.py::test_tool_round_normalization_host_scope_and_usage[True-openai]
+tests/test_protocols.py::test_tool_round_normalization_host_scope_and_usage[True-openai]
+tests/test_protocols.py::test_tool_round_normalization_host_scope_and_usage[True-openai]
+tests/test_protocols.py::test_tool_round_normalization_host_scope_and_usage[True-openai]
+  D:\Yan\Cornell\Semester 1\ENMGT 5405 Applied AI for Teams\Final Project\Testing Field\.venv\Lib\site-packages\litellm\litellm_core_utils\model_response_utils.py:18: PydanticDeprecatedSince211: Accessing the 'model_computed_fields' attribute on the instance is deprecated. Instead, you should access this attribute from the model class. Deprecated in Pydantic V2.11 to be removed in V3.0.
+    attribute: Final[_AttributeView] = {"value": getattr(source, name)}
+
+tests/test_protocols.py::test_stream_text_usage_and_synthesis[openai]
+tests/test_protocols.py::test_stream_text_usage_and_synthesis[openai]
+tests/test_protocols.py::test_tool_round_normalization_host_scope_and_usage[True-openai]
+tests/test_protocols.py::test_tool_round_normalization_host_scope_and_usage[True-openai]
+tests/test_protocols.py::test_tool_round_normalization_host_scope_and_usage[True-openai]
+tests/test_protocols.py::test_tool_round_normalization_host_scope_and_usage[True-openai]
+  D:\Yan\Cornell\Semester 1\ENMGT 5405 Applied AI for Teams\Final Project\Testing Field\.venv\Lib\site-packages\litellm\litellm_core_utils\model_response_utils.py:18: PydanticDeprecatedSince211: Accessing the 'model_fields' attribute on the instance is deprecated. Instead, you should access this attribute from the model class. Deprecated in Pydantic V2.11 to be removed in V3.0.
+    attribute: Final[_AttributeView] = {"value": getattr(source, name)}
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+84 passed, 1 skipped, 15 warnings in 411.50s (0:06:51)
