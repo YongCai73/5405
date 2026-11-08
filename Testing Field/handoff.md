@@ -1,62 +1,55 @@
-# Meeting Copilot 交接（B / G / C / T / D / R）
+# Meeting Copilot 使用与交接
 
-最终交付标签：[v0.2.0-handoff](https://github.com/cyudaddy/5405/tree/v0.2.0-handoff)。服务器专用开发目录已删除，并经独立 SSH 检查确认不存在；[清理回执](results/server-cleanup.json)和[最终交付索引](results/final-delivery.json)已保存。
+## B｜交付
 
-## B — 结论与交付物
+本地应用位于 `D:\Yan\Cornell\Semester 1\ENMGT 5405 Applied AI for Teams\Final Project\Testing Field`，运行时版本 **0.2.0**。这份指南使用 **DeepSeek V4.1-Flash-1017**，启动步骤按平台完整分开：
 
-交付的是 **Meeting Copilot CLI 原型 0.2.0**：本地会议/项目证据库、提问时快照、带引用的私有问答、三种任务技能、后台共享摘要、只读 MCP、可复现评测。Python 建议 **3.12**；实际 Windows 使用 **3.12.14**，Linux 使用 **3.12.3 / aarch64**。默认 `demo` 无密钥、无录音、无 API，输出明确标为模拟；真实 API 模式已实现，尚未用付费端点验证。
+- [Windows：从这里开始](#windows)
+- [macOS：从这里开始](#macos)
 
-Windows 本地应用副本已经准备 `.venv`（dev+audio）、默认 demo 配置（`timeout_seconds=120`）、演示数据和缓存 `tiny.en`。**直接在 PowerShell 运行，无需激活环境：**
+## G｜跑通什么
+
+先用样例完成“会议转录 → 项目检索 → DeepSeek 回答 → 引用与导出”，再用两个终端运行真实录音和会中私问。已有本机环境可直接进入对应平台的 **1A**；第一次 clone 从 **1B** 开始。
+
+## C｜已检查的 DeepSeek 配置
+
+你给出的 JSON 需要调整以下四项，其余主要字段保留：
+
+| 字段 | 指南采用值 | 原因 |
+|---|---|---|
+| `provider` | `openai` | 当前程序通过 OpenAI-compatible 接口连接 DeepSeek；不接受 `deepseek` 作为配置值 |
+| `model` | `deepseek-flash` | 官方当前将此 API 名称路由到 V4.1-Flash-1017 |
+| `timeout_seconds` | `120` | 当前程序允许的最大值为 120，不接受 240 |
+| `tool_rounds` | `0` | 程序上限为 2；DeepSeek 默认 thinking 的工具续接还需回传 `reasoning_content`，现有适配器尚未处理，先使用无额外工具轮次的路径 |
+
+`tool_rounds=0` **仍会检索会议与批准的项目资料，并执行三种技能、生成引用**；只关闭模型在回答中追加的工具调用。`base.en`、4096 输出上限、流式响应和 `API_KEY` 环境变量均可保留。
+
+模型名称核对自 [DeepSeek 官方模型说明](https://api-docs.deepseek.com/quick_start/pricing/)；`/v1/chat/completions` 用法见[官方接入示例](https://api-docs.deepseek.com/quick_start/agent_integrations/workbuddy/)。当前模型别名对应 1017，日后官方可能更新其路由。工具续接要求见[官方 thinking 文档](https://api-docs.deepseek.com/guides/thinking_mode/)。
+
+下面两个平台都给出完整 JSON。**真实 key 留在终端设置，`api_key_env` 填变量名 `API_KEY`。**
+
+## T｜启动流程
+
+### Windows
+
+#### W1｜选择入口：1A 或 1B，完成后都接 W2
+
+**1A．使用本机已经准备好的版本**
+
+打开 PowerShell，运行：
 
 ```powershell
 Set-Location 'D:\Yan\Cornell\Semester 1\ENMGT 5405 Applied AI for Teams\Final Project\Testing Field'
 $env:PYTHONUTF8 = '1'
-.\.venv\Scripts\python.exe -m meeting_copilot demo
+$appDir = (Get-Location).Path
 $py = (Resolve-Path '.\.venv\Scripts\python.exe').Path
 ```
 
-预期是包含 `SIMULATED`、`folder_id`、`result.snapshot_id` 的 JSON，导出位置为 `data/demo-export.json`。此副本**没有完整 `.git`**；后续开发请使用 T 节的完整仓库 clone，不要在这里执行 `git pull`。准备状态和公开录音 ASR 实测见 [Windows 准备报告](results/windows-prepared.json)。`PYTHONUTF8` 是 Python shell/消费者的 UTF-8 编码设置，避免中文设备名和 JSON 被传统中文代码页误解码，不代表核心 ASR 有缺陷。
+**接 W2，不需要重新安装或执行 `init`。**
 
-源代码已冻结：54 个 runtime 文件与 Windows 被测清单一致，版本仍为 0.2.0。本轮只整理文档/结果，不修改源码、测试、依赖或 vendored 文件。工作分支是 [meeting-copilot/prototype-20261108](https://github.com/cyudaddy/5405/tree/meeting-copilot/prototype-20261108)；Windows 被测源码/测试提交是 [c763c1489c66b826251cf0ae93712a42a0edfa81](https://github.com/cyudaddy/5405/commit/c763c1489c66b826251cf0ae93712a42a0edfa81)。历史标签 [v0.1.0-prototype](https://github.com/cyudaddy/5405/tree/v0.1.0-prototype) 和 [v0.2.0-prototype](https://github.com/cyudaddy/5405/tree/v0.2.0-prototype) 保留；后者早于三轮测试修复，不能代替当前分支测试集。可随应用带走的交付摘要见 [server-delivery.json](results/server-delivery.json)；构建根 `DELIVERY.json` 的旧 head 不是最终文档 head，最终精确文档提交由协调者另记。
+**1B．第一次 clean clone**
 
-## G — 对照提案的范围
-
-当前逐项状态以 [requirements-current.json](results/requirements-current.json) 为准；[旧 checklist](results/requirements-checklist.json) 是修复前审查快照，不再用作当前平台状态。
-
-| 提案能力 | 已实现 | 尚需完成/验证 |
-|---|---|---|
-| Windows/macOS CLI、单一配置、API-first | CLI、环境隔离、OpenAI-compatible Chat Completions / Anthropic Messages；Windows 源码/CLI 已实测 | macOS 实机；每类真实付费端点 |
-| 音频持续采集、ASR、并发私有 QA/摘要 | 设备选择/同意门、独立有界队列、停止时尾块、状态报告；Windows 枚举和公开音频本地 ASR | 真麦克风、拔插、真实 20 分钟技术会议 |
-| Memory / snapshots | SQLite/FTS5、修订/事件去重/缺口、观察水位、保留文件版本、长文本检索、精确行号/哈希、导出 | 中间节点崩溃恢复、长期生命周期 |
-| 私有连续会话与安全 | 跨快照 continuity；meeting/principal/conversation 隔离、重新授权检查、撤权、注入不授予权限 | 外部登录/多用户会话集成；更广安全评估 |
-| MCP / skills / synthesis | 10 个只读 MCP 工具、catch_up / trace_decision / compare_options、模型综合+独立引文、最多两轮工具 | 人工语义质量评判 |
-| Streaming / observability | 两种 SSE 协议内部组装、超时/取消/usage；本地脱敏 trace | 非逐 token UI；可选 Langfuse |
-| 评测与原生 A/B | 冻结 22 题、消融/安全用例、88 请求 API evaluator、22 请求原生 service runner | 真实模型质量/成本、人工标注、术语 WER |
-| 提案可选项 | 轻量词法检索和 CLI 已交付 | embeddings/Chroma、diarization/系统音频、GUI、安装包 |
-
-## C — 架构、复用和关键假设
-
-```text
-麦克风/公开录音 → 上游采集与 Faster Whisper → 有界 ingestion → SQLite WAL 证据/修订
-                                                         ├→ 独立共享摘要 worker
-私有问题 → 主机身份/范围/快照 → LangGraph → FTS5 / 只读 MCP → provider → 引用校验 → 私有回答
-```
-
-复用 Meet2Notes 固定提交 [b75077e588f5623d48d9c9bac05aa428b4257c52](https://github.com/estebanstifli/Meet2Notes/tree/b75077e588f5623d48d9c9bac05aa428b4257c52) 的采集后端、ASR、媒体存储及原生 assistant/service/SQL 等；24 个实现/SQL 文件经逐字节核验。MCP guarded wrapper、CPU/path seam、native transport bridge 属于明确记录的适配；并未运行整个上游桌面/native hybrid-RAG。见 [来源](docs/UPSTREAM_SOURCE.json)、[MIT 许可](docs/UPSTREAM_LICENSE.txt)、[复用核验](results/audit-upstream.json)。
-
-主机固定身份、会议、显式选择的历史会议/文件夹、conversation 和 snapshot。快照固定**已观察到的**转录/文件修订和私有历史水位；讲话时间不是唯一截止依据。后到 ASR/refresh 不改变旧答案；快照本身不授予权限，旧快照、缓存、checkpoint、导出和工具读均重查 ACL。共享摘要只用当前会议转录，私有问题和项目文件不会自动成为共享事实。模型工具不能运行 shell、写文件或授予权限。
-
-数据目录相对 `config.json` 解析，默认在应用内的 `data/`。**要批准包含该 data 的祖先项目根，必须先把 `data_dir` 配到目标项目之外**；已有数据不会自动搬迁，先备份并决定迁移或新建库，再使用新配置。若确实不与实际 data 重叠，`examples/project`、`src` 等源文件子目录可以批准。refresh 显式导入版本；不在问答时静默读取新磁盘内容。
-
-可信边界是本机用户/主机配置，不隔离恶意 OS 管理员。API 会发送当前问题、选定片段和符合范围的私有上下文；并非完全离线。引文成员关系/行号/哈希校验不能证明模型推理的语义正确，技术结论仍须人工复核。实现与边界详见 [独立审查](docs/INDEPENDENT_REVIEW.md)。
-
-## T — 从零安装、使用与停止
-
-### 1. 同学安装与后续开发（完整仓库）
-
-已准备的本地副本直接用 B 节；以下命令用于**另选空目录**建立可开发的完整 checkout，不覆盖该副本。需要 Git、网络和 Python 3.12；安装 audio 额外包不等于验证麦克风。
-
-Windows PowerShell：
+在准备存放项目的目录打开 PowerShell，运行：
 
 ```powershell
 git clone --branch meeting-copilot/prototype-20261108 --single-branch https://github.com/cyudaddy/5405.git meeting-copilot-dev
@@ -64,37 +57,17 @@ Set-Location 'meeting-copilot-dev\Testing Field'
 $env:PYTHONUTF8 = '1'
 py -3.12 -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -e '.[dev,audio]'
+$appDir = (Get-Location).Path
 $py = (Resolve-Path '.\.venv\Scripts\python.exe').Path
-# 已有 config.json 则保留；init 不覆盖已有文件。
-if (-not (Test-Path config.json)) { & $py -m meeting_copilot init }
-# 仅调整本地等待预算，不改变 provider/上传同意。
-$cfg = Get-Content -Raw -Encoding UTF8 config.json | ConvertFrom-Json
-$cfg.timeout_seconds = 120
-[System.IO.File]::WriteAllText((Join-Path $PWD 'config.json'), ($cfg | ConvertTo-Json -Depth 10), [System.Text.UTF8Encoding]::new($false))
-& $py -m meeting_copilot demo
+& $py -m meeting_copilot init
 ```
 
-macOS Terminal（说明命令，尚未实机验证）：
+**接 W2。**
 
-```bash
-git clone --branch meeting-copilot/prototype-20261108 --single-branch https://github.com/cyudaddy/5405.git meeting-copilot-dev
-cd 'meeting-copilot-dev/Testing Field'
-export PYTHONUTF8=1
-python3.12 -m venv .venv
-.venv/bin/python -m pip install -e '.[dev,audio]'
-if [ ! -f config.json ]; then .venv/bin/python -m meeting_copilot init; fi
-.venv/bin/python - <<'PYCONFIG'
-import json
-from pathlib import Path
-p = Path('config.json')
-c = json.loads(p.read_text(encoding='utf-8'))
-c['timeout_seconds'] = 120
-p.write_text(json.dumps(c, indent=2), encoding='utf-8')
-PYCONFIG
-.venv/bin/python -m meeting_copilot demo
-```
+<details>
+<summary>备用：没有 py / Python 3.12，但已安装 uv</summary>
 
-若没有 `py` / `python3.12`，可用已经安装的用户级 **uv** 替换上面创建/安装环境的两行（保留相应平台后续步骤，无需 activation）：
+用以下三行替代上面的创建环境和安装命令，然后设置 `$appDir`、`$py` 并执行 `init`：
 
 ```powershell
 uv python install 3.12
@@ -102,254 +75,366 @@ uv venv --python 3.12 .venv
 uv pip install --python .\.venv\Scripts\python.exe -e '.[dev,audio]'
 ```
 
-```bash
-uv python install 3.12
-uv venv --python 3.12 .venv
-uv pip install --python .venv/bin/python -e '.[dev,audio]'
-```
+*如果只有源码、没有本机可用的 `.venv`，先进入现有 `Testing Field`，执行安装部分即可；已有 `config.json` 时跳过 `init`。*
 
-版本核对：Windows `& $py -c "import meeting_copilot; print(meeting_copilot.__version__)"`；macOS `.venv/bin/python -c 'import meeting_copilot; print(meeting_copilot.__version__)'`，均应为 `0.2.0`。只做 replay/demo 可安装 `.[dev]`，无需 ASR 模型。Linux lock 文件仅记录当时服务器环境，不要把它当作跨平台约束强制安装。之后只在完整 clone 的仓库中 `git switch meeting-copilot/prototype-20261108`、`git pull --ff-only`，再建自己的开发分支。
+</details>
 
-### 2. 无密钥项目 QA、真实 ID、历史与导出
+#### W2｜保存 DeepSeek 配置
 
-所有命令从应用目录运行，两个终端使用同一 `config.json`；自选配置写在子命令**前**：`-m meeting_copilot --config path/to/config.json ask ...`。以下使用独立会议 `design`；第一次执行即可，重复演示可换新 meeting ID。
-
-PowerShell 不用手抄占位 ID，直接解析实际 JSON：
-
-```powershell
-& $py -m meeting_copilot create design --title 'Design review'
-& $py -m meeting_copilot replay design examples/replay.jsonl
-$approved = & $py -m meeting_copilot approve-folder design examples/project | Out-String | ConvertFrom-Json
-if ($LASTEXITCODE -ne 0) { throw 'Folder approval failed' }
-$folderId = $approved.folder_id
-if (-not $folderId) { throw 'No folder_id returned' }
-& $py -m meeting_copilot refresh-folder $folderId
-$answer = & $py -m meeting_copilot ask design 'Compare SQLite and Kafka deployment' --folder $folderId --skill compare_options --conversation notes | Out-String | ConvertFrom-Json
-if ($LASTEXITCODE -ne 0) { throw 'Ask failed' }
-$snapshotId = $answer.snapshot_id
-if (-not $snapshotId) { throw 'No snapshot_id returned' }
-$answer | ConvertTo-Json -Depth 30
-& $py -m meeting_copilot ask design 'Why was it chosen?' --folder $folderId --conversation notes
-& $py -m meeting_copilot summary $snapshotId
-& $py -m meeting_copilot history $snapshotId --conversation notes --across-snapshots
-& $py -m meeting_copilot checkpoint $snapshotId --conversation notes
-& $py -m meeting_copilot export $snapshotId data/answer.json --conversation notes
-```
-
-macOS bash 同一流程（自动提取 ID）：
-
-```bash
-.venv/bin/python -m meeting_copilot create design --title 'Design review'
-.venv/bin/python -m meeting_copilot replay design examples/replay.jsonl
-approved=$(.venv/bin/python -m meeting_copilot approve-folder design examples/project)
-folder_id=$(printf '%s' "$approved" | .venv/bin/python -c 'import json,sys; print(json.load(sys.stdin)["folder_id"])')
-.venv/bin/python -m meeting_copilot refresh-folder "$folder_id"
-answer=$(.venv/bin/python -m meeting_copilot ask design 'Compare SQLite and Kafka deployment' --folder "$folder_id" --skill compare_options --conversation notes)
-snapshot_id=$(printf '%s' "$answer" | .venv/bin/python -c 'import json,sys; print(json.load(sys.stdin)["snapshot_id"])')
-printf '%s\n' "$answer"
-.venv/bin/python -m meeting_copilot ask design 'Why was it chosen?' --folder "$folder_id" --conversation notes
-.venv/bin/python -m meeting_copilot summary "$snapshot_id"
-.venv/bin/python -m meeting_copilot history "$snapshot_id" --conversation notes --across-snapshots
-.venv/bin/python -m meeting_copilot checkpoint "$snapshot_id" --conversation notes
-.venv/bin/python -m meeting_copilot export "$snapshot_id" data/answer.json --conversation notes
-```
-
-预期 replay 返回事件数/缺口，refresh 返回索引结果，ask 返回模式、文本、citations、snapshot_id 和 usage，export 返回路径。相同 conversation 的新 ask 会产生新快照并继承仍有权限且在范围内的历史；查询旧 `$snapshotId` 不会看到未来那一轮。`--previous MEETING_ID` 显式选择已授权历史会议；`--snapshot SNAPSHOT_ID` 重读指定旧证据。bash 中 `MEETING_ID` / `SNAPSHOT_ID` / `DEVICE_ID` / `MODEL_ID` 是需要替换的说明占位符，不要原样运行；`"$folder_id"`、`"$snapshot_id"` 是上面已赋值的真实变量。
-
-导出含前 100 项证据及答案/摘要实际引用的其他来源，仍有截断时会标记。需要只读 MCP 客户端时，Windows `& $py -m meeting_copilot mcp $snapshotId`，macOS `.venv/bin/python -m meeting_copilot mcp "$snapshot_id"`；它通过 stdio 等待客户端，不是普通聊天窗口，Ctrl+C 停止。
-
-### 3. 实际 API 模式（自行提供凭据）
-
-停止正在使用配置的进程后编辑 `config.json`。以下是可用字段示例，**先把 `YOUR_PROVIDER_MODEL_ID` 换成供应商实际模型 ID**，不带 LiteLLM provider 前缀；不含任何真实 key：
+打开当前目录的 `config.json`，整份替换为下面的内容并保存为 UTF-8：
 
 ```json
 {
   "principal": "local-host",
   "data_dir": "data",
   "provider": "openai",
-  "model": "YOUR_PROVIDER_MODEL_ID",
-  "base_url": "https://api.openai.com/v1",
-  "api_key_env": "MEETING_COPILOT_API_KEY",
+  "model": "deepseek-flash",
+  "base_url": "https://api.deepseek.com/v1",
+  "api_key_env": "API_KEY",
   "send_evidence": true,
   "timeout_seconds": 120,
-  "max_tokens": 800,
+  "max_tokens": 4096,
   "streaming": true,
-  "tool_rounds": 1,
+  "tool_rounds": 0,
   "input_cost_per_million": null,
   "output_cost_per_million": null,
-  "asr_model": "tiny.en"
+  "asr_model": "base.en"
 }
 ```
 
-Anthropic 则设 `provider: "anthropic"`、实际模型 ID、`base_url: "https://api.anthropic.com"`（适配器追加 `/v1/messages`）。OpenAI-compatible 地址须包含 `/v1`，兼容性不能据本地合同测试推广到所有厂商。只有明确愿意将选定证据发给该端点时才设 `send_evidence: true`。
+*费率留 `null` 即可启动；它只影响估算成本。`base.en` 首次录音时会下载，本机之前缓存的是 `tiny.en`。*
 
-Windows 当前 shell：
+#### W3｜填 key，检查配置
 
-```powershell
-$env:MEETING_COPILOT_API_KEY = '<your-app-api-key>'
-& $py -m meeting_copilot ask design 'Why was SQLite chosen?' --folder $folderId --conversation api-notes
-# 本次使用后清除 shell 环境变量：
-Remove-Item Env:MEETING_COPILOT_API_KEY
-```
-
-macOS 当前 shell：
-
-```bash
-export MEETING_COPILOT_API_KEY='<your-app-api-key>'
-.venv/bin/python -m meeting_copilot ask design 'Why was SQLite chosen?' --folder "$folder_id" --conversation api-notes
-unset MEETING_COPILOT_API_KEY
-```
-
-示例中的 key 占位符必须在本机替换；不要把真实 key 写进源码、报告或截图。**Codex 订阅登录/服务器 Codex quota 与本应用的 API 凭据和计费分开**。有 Codex 登录不等于可以调用应用配置的付费端点。
-
-`streaming=true` 会内部接收并组装 SSE，**完成引用校验后一次显示**，不是 UI 逐 token 打字。`tool_rounds` 为 0–2，工具仅限主机范围内的 search/read。一次 ask 在加载依赖、检索和端点响应期间可能安静等待：Windows 已测 CLI 冷启动约数秒至十几秒，首次 API 初始化可能更久；首次用 120 秒预算，只有测量本机启动后才考虑降到 60。源码默认仍为 20，本地准备配置已设 120。配置预算覆盖 provider 的异步操作（包括其工具轮次），但进程启动、检索/持久化另计，同步 import 也不能强行抢占，所以整条命令不保证在 120 秒内结束；这里没有真实付费延迟保证。需要时 Ctrl+C 取消，普通命令显示 `Stopped.` 并可返回 130。usage 或价格未知时成本为 null；只有填入真实费率才有意义。切回无密钥演示须恢复 `provider=demo`、`model=simulated-extractive`、`send_evidence=false`。
-
-### 4. Live 双终端（实验流程，真实麦克风尚未验证）
-
-先取得参与者同意，再进行目标机器实验；Windows 已枚举设备不等于已经录音。缺少设备/同意时用 replay 或下方公开录音 ASR。两个终端各设置 Python 路径/UTF-8；若选 API，两个终端都需设置自己的环境 key，否则保留 demo，只模拟回答而实际尝试采集/ASR。
-
-Windows 终端 A：
+先在第一行的空引号内填入自己的 DeepSeek key，再执行整个代码块：
 
 ```powershell
-Set-Location 'D:\Yan\Cornell\Semester 1\ENMGT 5405 Applied AI for Teams\Final Project\Testing Field'
-$env:PYTHONUTF8 = '1'
-$py = (Resolve-Path '.\.venv\Scripts\python.exe').Path
+$env:API_KEY = ""
+& $py -c "from meeting_copilot.config import Config; c=Config.load('config.json'); print('Config OK:', c.model)"
+```
+
+预期输出：`Config OK: deepseek-flash`。然后接 W4。
+
+*`api_key_env` 是变量名，不是 key 本身。环境变量只需在每个使用 API 的终端设置一次；新开终端要重新设置。*
+
+#### W4｜先用样例完成一次问答与导出
+
+在同一个 PowerShell 继续运行：
+
+```powershell
+$sampleMeeting = 'sample-' + (Get-Date -Format 'yyyyMMdd-HHmmss')
+& $py -m meeting_copilot create $sampleMeeting --title 'Sample design review'
+& $py -m meeting_copilot replay $sampleMeeting examples/replay.jsonl
+$approved = & $py -m meeting_copilot approve-folder $sampleMeeting examples/project | Out-String | ConvertFrom-Json
+$folderId = $approved.folder_id
+& $py -m meeting_copilot refresh-folder $folderId
+$answer = & $py -m meeting_copilot ask $sampleMeeting 'Compare SQLite and Kafka deployment' --folder $folderId --skill compare_options --conversation notes | Out-String | ConvertFrom-Json
+$answer.text
+& $py -m meeting_copilot export $answer.snapshot_id data/sample-export.json --conversation notes
+```
+
+预期：终端显示 DeepSeek 的回答及 `[E…]` 引用，结果导出到 `data/sample-export.json`。到这里，样例启动流程已完成。
+
+*每次自动生成新会议 ID，重跑时不用先清库。当前流式响应会在收齐并检查引用后显示，等待期间可能暂时没有文字。*
+
+#### W5｜真实会议：终端 A 录音，终端 B 私问
+
+**终端 A：**沿用当前 PowerShell，在取得参与者同意后运行：
+
+```powershell
+$liveMeeting = 'live-' + (Get-Date -Format 'yyyyMMdd-HHmmss')
+& $py -m meeting_copilot create $liveMeeting --title 'Live discussion'
+Write-Host "终端B使用的目录：$appDir"
+Write-Host "终端B使用的会议ID：$liveMeeting"
 & $py -m meeting_copilot mic-list
-$deviceId = Read-Host 'Copy the actual source ID from mic-list'
-& $py -m meeting_copilot create live --title 'Consented live discussion'
-& $py -m meeting_copilot listen live --source $deviceId --seconds 0 --consent --download-model --summary-interval 15
+$deviceId = Read-Host '复制上方实际 source ID 后粘贴到这里'
+& $py -m meeting_copilot listen $liveMeeting --source $deviceId --seconds 0 --consent --download-model --summary-interval 15
 ```
 
-Windows 终端 B（与 A 同目录、配置）：
+预期：A 持续运行，并定期显示队列/摘要状态。
+
+**终端 B：**新开 PowerShell，按提示粘贴 A 显示的目录和会议 ID，并填入 key：
 
 ```powershell
-Set-Location 'D:\Yan\Cornell\Semester 1\ENMGT 5405 Applied AI for Teams\Final Project\Testing Field'
+$appDir = Read-Host '粘贴终端A显示的应用目录'
+Set-Location $appDir
 $env:PYTHONUTF8 = '1'
 $py = (Resolve-Path '.\.venv\Scripts\python.exe').Path
-& $py -m meeting_copilot ask live 'Catch me up' --skill catch_up --conversation mine
-& $py -m meeting_copilot ask live 'Why was it chosen?' --conversation mine
-& $py -m meeting_copilot live-status live
+$env:API_KEY = ""
+$liveMeeting = Read-Host '粘贴终端A显示的会议ID'
+& $py -m meeting_copilot ask $liveMeeting 'Catch me up' --skill catch_up --conversation mine
+& $py -m meeting_copilot live-status $liveMeeting
 ```
 
-macOS 终端 A/B 各自 `cd` 到同一 clone 的 `Testing Field`，按系统提示允许 Terminal/Python 使用麦克风。A：
+之后在 B 继续用 `ask` 提问，A 保持录音。
 
-```bash
-export PYTHONUTF8=1
-.venv/bin/python -m meeting_copilot mic-list
-read -r -p 'Actual source ID: ' device_id
-.venv/bin/python -m meeting_copilot create live --title 'Consented live discussion'
-.venv/bin/python -m meeting_copilot listen live --source "$device_id" --seconds 0 --consent --download-model --summary-interval 15
-```
+*首次下载 `base.en` 需要等待。1A 本机版本已缓存 `tiny.en`，快速试录可改用它；1B clean clone 仍需首次下载所选模型。麦克风流程需在本机实测；若设备列表为空，先检查系统麦克风权限。*
 
-macOS B：
+<details>
+<summary>可选：让这场真实会议也读取自己的项目，并导出回答</summary>
 
-```bash
-.venv/bin/python -m meeting_copilot ask live 'Catch me up' --skill catch_up --conversation mine
-.venv/bin/python -m meeting_copilot ask live 'Why was it chosen?' --conversation mine
-.venv/bin/python -m meeting_copilot live-status live
-```
-
-macOS 默认 shell 常为 zsh；上述交互 `read -r -p` 是 bash 写法，可先输入 `bash`，或直接 `device_id='实际枚举 ID'`。`--seconds 0` 表示持续至 Ctrl+C，改为 1200 可安排 20 分钟实验。首次未缓存模型时 `--download-model` 需要网络；缓存跟随实际 data_dir。每五秒 stderr 显示队列/丢弃/摘要失败，B 可检查共享摘要是否推进；证据不足应弃答，不能据空会话制造结论。A 中 Ctrl+C 后会尝试提交最后不足三秒的块并排空已接受任务，等待摘要/API 结束可能较久，请等命令返回后再清理会议。无需后台 daemon 或全局停止命令。
-
-公开录音本地 ASR 复现（不使用麦克风或付费 API）：
+在终端 B 执行：
 
 ```powershell
-Invoke-WebRequest 'https://raw.githubusercontent.com/SYSTRAN/faster-whisper/master/tests/data/jfk.flac' -OutFile data/jfk.flac
-& $py -m meeting_copilot create asr-smoke
-& $py -m meeting_copilot asr asr-smoke data/jfk.flac --download-model
-& $py -m meeting_copilot cleanup asr-smoke --confirm asr-smoke
+$projectDir = Read-Host '输入项目文件夹完整路径'
+$approved = & $py -m meeting_copilot approve-folder $liveMeeting $projectDir | Out-String | ConvertFrom-Json
+$liveFolderId = $approved.folder_id
+& $py -m meeting_copilot refresh-folder $liveFolderId
+$liveAnswer = & $py -m meeting_copilot ask $liveMeeting 'How does the project implement the current decision?' --folder $liveFolderId --conversation mine | Out-String | ConvertFrom-Json
+$liveAnswer.text
+& $py -m meeting_copilot export $liveAnswer.snapshot_id data/live-export.json --conversation mine
 ```
 
-```bash
-curl -L 'https://raw.githubusercontent.com/SYSTRAN/faster-whisper/master/tests/data/jfk.flac' -o data/jfk.flac
-.venv/bin/python -m meeting_copilot create asr-smoke
-.venv/bin/python -m meeting_copilot asr asr-smoke data/jfk.flac --download-model
-.venv/bin/python -m meeting_copilot cleanup asr-smoke --confirm asr-smoke
-```
+*项目文件夹应与应用的 `data/` 分开；若选的是包含 data 的整个工程根目录，先把配置中的 `data_dir` 移到工程之外。文件改动后，再执行 `refresh-folder` 导入新版本。*
 
-先跑过 demo 会创建 `data/`；Windows 已测该录音用 tiny.en 得到 2 个 segment，文本含 “ask not what your country can do for you”。这是英文公共片段，不代表技术术语、多语言或真实房间的识别质量。
+</details>
 
-### 5. 评测、测试、停止和清理
+#### W6｜结束、测试与可选清理
 
-无付费 API 的本地验收：
+在 **终端 A 按 Ctrl+C**，等命令返回提示符后，录音会话即结束。
+
+<details>
+<summary>可选：运行无付费 API 的评测和完整测试</summary>
 
 ```powershell
 & $py -m meeting_copilot evaluate --output results/local-report.json --stress
 & $py -m pytest --basetemp data/test-temp -q
 ```
 
-```bash
-.venv/bin/python -m meeting_copilot evaluate --output results/local-report.json --stress
-.venv/bin/python -m pytest --basetemp data/test-temp -q
-```
+*现有 Windows 基线为 84 通过、1 项权限跳过；完整测试约七分钟。*
 
-evaluate 默认为模拟冻结题；预期 22 题和安全/消融结果，不是模型质量证明。pytest 当前收集 85 项；实际 Windows 为 84 通过/1 symlink 权限跳过，Linux 为 85 通过，macOS 数量/结果须以实机为准。Windows 完整运行约七分钟，不要因首次依赖加载安静就认定挂死。本轮文档整理不重复运行该套件。
+</details>
 
-仅在自行配置并同意计费后运行（API 字段/环境 key 同上）：
+<details>
+<summary>可选：删除刚创建的测试会议</summary>
 
-```powershell
-& $py -m meeting_copilot evaluate --api --output results/local-api-eval.json
-& $py -m meeting_copilot native-baseline --output results/local-native.json
-```
-
-```bash
-.venv/bin/python -m meeting_copilot evaluate --api --output results/local-api-eval.json
-.venv/bin/python -m meeting_copilot native-baseline --output results/local-native.json
-```
-
-前者 88 请求，后者同一冻结题 22 次原生 `LiveAssistantService.ask`；应保持 provider/model/硬件一致。原生 runner 使用共同传输 bridge/合成父表，不是完整桌面 RAG 基线；没有付费实测分数。安全消融仅在 evaluator 的隔离合成库执行，生产无关闭政策开关。
-
-所有 listen/MCP/ask 停止并返回后，只删除自己创建的测试会议：
+保留的会议可供以后继续查询；只在不再需要时运行对应命令：
 
 ```powershell
-& $py -m meeting_copilot cleanup design --confirm design
-# 如果上面确实创建了 live：
-& $py -m meeting_copilot cleanup live --confirm live
+& $py -m meeting_copilot cleanup $sampleMeeting --confirm $sampleMeeting
+& $py -m meeting_copilot cleanup $liveMeeting --confirm $liveMeeting
 ```
+
+*分别在仍保存对应变量的终端执行。已有导出文件会保留。*
+
+</details>
+
+### macOS
+
+#### M1｜选择入口：1A 或 1B，完成后都接 M2
+
+**1A．这台 Mac 上已经有可用的源码和 `.venv`**
+
+打开 Terminal，把第一行路径改为本机实际目录后运行：
 
 ```bash
-.venv/bin/python -m meeting_copilot cleanup design --confirm design
-# 如果确实创建了 live：
-.venv/bin/python -m meeting_copilot cleanup live --confirm live
+cd "/你的项目路径/Testing Field"
+export PYTHONUTF8=1
+app_dir="$PWD"
+py="$app_dir/.venv/bin/python"
 ```
 
-cleanup 返回 `deleted`，逻辑删除会议/依赖快照/私有状态和应用媒体；**不会删除批准的项目源码**。已有 exports、traces、备份、手动下载录音/缓存另行保留，需按自己的保留政策处理，不提供安全擦除。不要为了重试 demo 清空整个 data 或删除准备好的 `.venv`。
+**接 M2，不需要重新安装或执行 `init`。**
 
-## D — 已测完成度与证据
+**1B．第一次 clean clone**
 
-| 实测环境/工作负载 | 实际结果 | 可带走的证据 |
+在准备存放项目的目录打开 Terminal，运行：
+
+```bash
+git clone --branch meeting-copilot/prototype-20261108 --single-branch https://github.com/cyudaddy/5405.git meeting-copilot-dev
+cd 'meeting-copilot-dev/Testing Field'
+export PYTHONUTF8=1
+python3.12 -m venv .venv
+.venv/bin/python -m pip install -e '.[dev,audio]'
+app_dir="$PWD"
+py="$app_dir/.venv/bin/python"
+"$py" -m meeting_copilot init
+```
+
+**接 M2。**
+
+<details>
+<summary>备用：没有 python3.12，但已安装 uv</summary>
+
+用以下三行替代上面的创建环境和安装命令，然后设置 `app_dir`、`py` 并执行 `init`：
+
+```bash
+uv python install 3.12
+uv venv --python 3.12 .venv
+uv pip install --python .venv/bin/python -e '.[dev,audio]'
+```
+
+*只有源码时，在现有目录执行安装部分；不要沿用从 Windows 复制过来的 `.venv`。已有配置时跳过 `init`。*
+
+</details>
+
+#### M2｜保存 DeepSeek 配置
+
+打开当前目录的 `config.json`，整份替换为下面的内容并保存为 UTF-8：
+
+```json
+{
+  "principal": "local-host",
+  "data_dir": "data",
+  "provider": "openai",
+  "model": "deepseek-flash",
+  "base_url": "https://api.deepseek.com/v1",
+  "api_key_env": "API_KEY",
+  "send_evidence": true,
+  "timeout_seconds": 120,
+  "max_tokens": 4096,
+  "streaming": true,
+  "tool_rounds": 0,
+  "input_cost_per_million": null,
+  "output_cost_per_million": null,
+  "asr_model": "base.en"
+}
+```
+
+*费率可继续留 `null`。`base.en` 会在首次录音时下载。*
+
+#### M3｜填 key，检查配置
+
+先在第一行的空引号内填入自己的 DeepSeek key，再执行：
+
+```bash
+export API_KEY=""
+"$py" -c "from meeting_copilot.config import Config; c=Config.load('config.json'); print('Config OK:', c.model)"
+```
+
+预期输出：`Config OK: deepseek-flash`。然后接 M4。
+
+*`api_key_env` 填 `API_KEY`，不填真实 key。新开终端时，重新执行环境变量设置。*
+
+#### M4｜先用样例完成一次问答与导出
+
+在同一个 Terminal 继续运行：
+
+```bash
+sample_meeting="sample-$(date +%Y%m%d-%H%M%S)"
+"$py" -m meeting_copilot create "$sample_meeting" --title 'Sample design review'
+"$py" -m meeting_copilot replay "$sample_meeting" examples/replay.jsonl
+approved=$("$py" -m meeting_copilot approve-folder "$sample_meeting" examples/project)
+folder_id=$(printf '%s' "$approved" | "$py" -c 'import json,sys; print(json.load(sys.stdin)["folder_id"])')
+"$py" -m meeting_copilot refresh-folder "$folder_id"
+answer=$("$py" -m meeting_copilot ask "$sample_meeting" 'Compare SQLite and Kafka deployment' --folder "$folder_id" --skill compare_options --conversation notes)
+snapshot_id=$(printf '%s' "$answer" | "$py" -c 'import json,sys; print(json.load(sys.stdin)["snapshot_id"])')
+printf '%s' "$answer" | "$py" -c 'import json,sys; print(json.load(sys.stdin)["text"])'
+"$py" -m meeting_copilot export "$snapshot_id" data/sample-export.json --conversation notes
+```
+
+预期：终端显示 DeepSeek 的回答及 `[E…]` 引用，结果导出到 `data/sample-export.json`。到这里，样例启动流程已完成。
+
+*流式响应收齐并检查引用后才显示，不是逐字打印；新会议 ID 自动生成，可重跑。*
+
+#### M5｜真实会议：终端 A 录音，终端 B 私问
+
+**终端 A：**沿用当前 Terminal，在取得参与者同意后运行：
+
+```bash
+live_meeting="live-$(date +%Y%m%d-%H%M%S)"
+"$py" -m meeting_copilot create "$live_meeting" --title 'Live discussion'
+printf '终端B使用的目录：%s\n会议ID：%s\n' "$app_dir" "$live_meeting"
+"$py" -m meeting_copilot mic-list
+printf '复制上方实际 source ID 后粘贴到这里：'
+read -r device_id
+"$py" -m meeting_copilot listen "$live_meeting" --source "$device_id" --seconds 0 --consent --download-model --summary-interval 15
+```
+
+预期：A 持续运行，并定期显示队列/摘要状态。
+
+**终端 B：**新开 Terminal，按提示粘贴 A 显示的目录和会议 ID，并填入 key：
+
+```bash
+printf '粘贴终端A显示的应用目录：'
+read -r app_dir
+cd "$app_dir"
+export PYTHONUTF8=1
+py="$app_dir/.venv/bin/python"
+export API_KEY=""
+printf '粘贴终端A显示的会议ID：'
+read -r live_meeting
+"$py" -m meeting_copilot ask "$live_meeting" 'Catch me up' --skill catch_up --conversation mine
+"$py" -m meeting_copilot live-status "$live_meeting"
+```
+
+之后在 B 继续用 `ask` 提问，A 保持录音。
+
+*按系统提示允许 Terminal/Python 使用麦克风。第一次下载 `base.en` 需要等待；快速试录可把 `asr_model` 改为 `tiny.en`。上面写法可用于 bash/zsh，不需要切换 shell。*
+
+<details>
+<summary>可选：让这场真实会议也读取自己的项目，并导出回答</summary>
+
+在终端 B 执行：
+
+```bash
+printf '输入项目文件夹完整路径：'
+read -r project_dir
+approved=$("$py" -m meeting_copilot approve-folder "$live_meeting" "$project_dir")
+live_folder_id=$(printf '%s' "$approved" | "$py" -c 'import json,sys; print(json.load(sys.stdin)["folder_id"])')
+"$py" -m meeting_copilot refresh-folder "$live_folder_id"
+live_answer=$("$py" -m meeting_copilot ask "$live_meeting" 'How does the project implement the current decision?' --folder "$live_folder_id" --conversation mine)
+live_snapshot_id=$(printf '%s' "$live_answer" | "$py" -c 'import json,sys; print(json.load(sys.stdin)["snapshot_id"])')
+printf '%s' "$live_answer" | "$py" -c 'import json,sys; print(json.load(sys.stdin)["text"])'
+"$py" -m meeting_copilot export "$live_snapshot_id" data/live-export.json --conversation mine
+```
+
+*项目目录与应用实际 `data/` 分开；若要批准包含 data 的整个工程根，先把 `data_dir` 配到工程之外。文件改动后用 `refresh-folder` 导入新版本。*
+
+</details>
+
+#### M6｜结束、测试与可选清理
+
+在 **终端 A 按 Ctrl+C**，等命令返回提示符后，录音会话即结束。
+
+<details>
+<summary>可选：运行无付费 API 的评测和完整测试</summary>
+
+```bash
+"$py" -m meeting_copilot evaluate --output results/local-report.json --stress
+"$py" -m pytest --basetemp data/test-temp -q
+```
+
+*macOS 尚未实机验证，测试结果以本机输出为准。*
+
+</details>
+
+<details>
+<summary>可选：删除刚创建的测试会议</summary>
+
+只在不再需要时，分别在保存对应变量的终端执行：
+
+```bash
+"$py" -m meeting_copilot cleanup "$sample_meeting" --confirm "$sample_meeting"
+"$py" -m meeting_copilot cleanup "$live_meeting" --confirm "$live_meeting"
+```
+
+*已有导出文件会保留。*
+
+</details>
+
+## D｜已有验证与交付记录
+
+| 项目 | 结果 / 记录 |
+|---|---|
+| Windows | 84 通过、1 项 symlink 权限跳过；[完整记录](results/windows-validation.json)；另有[原生 junction 检查](results/windows-junction.json) |
+| Linux | 85 项通过；[验证记录](results/windows-repair3-validation.json) |
+| 本地 ASR | Windows 公开音频使用 `tiny.en` 得到 2 段；[记录](results/windows-prepared.json)。本指南改用的 `base.en` 尚未单独实测 |
+| 20 分钟稳定性 | Linux 预录音频实际 ASR 399 段、79 次摘要、119 次模拟慢问答，零丢弃/错误；[记录](results/audit-soak-final.json) |
+| Meet2Notes 复用 | 固定提交 `b75077e588f5`，24 个实现/SQL 文件逐字节核验；[来源与许可](docs/UPSTREAM_SOURCE.json) |
+| 交付 | [代码分支](https://github.com/cyudaddy/5405/tree/meeting-copilot/prototype-20261108)、[历史交付标签](https://github.com/cyudaddy/5405/tree/v0.2.0-handoff)、[交付索引](results/final-delivery.json)、[服务器已清理回执](results/server-cleanup.json) |
+
+本次更新是指南和配置检查，未使用真实 DeepSeek key 发起付费请求，也未修改当前本地 `config.json`。默认配置、示例语法和命令参数已核对；macOS、真实麦克风和 DeepSeek 付费端点仍需实机验证。
+
+## R｜开发 TODO
+
+| 优先级 | 后续工作 | 建议负责人 |
 |---|---|---|
-| Windows 11 / Python 3.12.14，repair3 源码/测试 | 85 项：84 passed、1 skipped、0 failure/error；symlink 权限不足跳过；独立并发复测 1 passed / 72.25s | [Windows 总结](results/windows-validation.json)、[完整 JUnit](results/tests-windows.xml)、[并发 JUnit](results/tests-windows-concurrency.xml)、[64 文件哈希清单](results/windows-source-manifest.json)（54 runtime + 10 test） |
-| Windows CLI/设备/本地 ASR | init/demo/evaluate/mic-list 成功，枚举 3 个源；公开 JFK 录音 tiny.en CPU ASR 2 段；没有真实录音/付费 API | [准备与 ASR](results/windows-prepared.json)、[环境](results/windows-environment.txt) |
-| Windows 原生 NTFS junction | 扫描逃逸阻止、junction 根拒绝、非递归移除、外部目标未改；本次结果对应 c763c14 | [junction 结果](results/windows-junction.json)；不能把 junction 通过当成 symlink 权限通过 |
-| Linux 最新 repair3 源码套件 | 85/85，62.597s；focused 14/14，17.245s；延迟启动 1/1，50.583s | [repair3 验证](results/windows-repair3-validation.json) |
-| Linux repair2 合同扩展 | 完整 85/85；redirector 1/1、cold-start 1/1、provider cold-start 1/1；真实 ancestry+nonce、短超时/取消断言 | [repair2 验证](results/windows-repair2-validation.json) |
-| 历史 v0.2 审查：source / 独立 wheel 无 audio / README 环境 | 当时各 73/73；22 CLI 操作、24 fake-wire 合同。**不是最新 85 项 wheel 重测** | [audit-validation](results/audit-validation.json) |
-| 最终 Linux 真实墙钟稳定性 | 1,200.336s；实际 tiny.en CPU int8/2 threads，重复公开 11s 录音；399 段、79 摘要、119 次五秒延迟模拟 QA；丢弃/错误/观察到的未来证据违规均 0 | [最终完整 soak](results/audit-soak-final.json)；入库 p95 1.115s、max 1.445s（均不含 3s 采集累积），峰值 RSS 319,311,872 bytes，两个队列峰值均 1 |
-| 合成评测与规模 | 22 题 skills 22/22、定义的安全例 10/10、未授权披露 0；三例 evaluator 政策消融；1,200 段/300 文件/目标行 3,001 | [评测](results/audit-report.json)、[规模](results/audit-scale.json)；不是人工语义质量或真实一小时会议 |
+| P0 | 各平台真实麦克风、拔插、20 分钟技术会议，以及 `base.en` CPU 吞吐/术语识别 | Zimo Li / Qiyan Zhai |
+| P0 | DeepSeek 实际端点与人工答案质量；补 `reasoning_content` 工具回传或可配置的 non-thinking，再启用额外工具轮次 | Zimo Li / Jiaxuan Yan |
+| P1 | 真实模型与 native baseline 的同数据 A/B、延迟、tokens 和成本 | Qiyan Zhai |
+| P1 | graph 中间节点崩溃恢复、重放与幂等 | Xiaolong Lin / Zimo Li |
+| P1 | revisions/录音/导出/trace 的保留期、磁盘配额、隐私生命周期 | Cai Yong / Xiaolong Lin |
+| P2 | 更多路径/权限边界；按评测收益选择 embeddings、Langfuse、diarization、GUI/打包 | Cai Yong / Jiaxuan Yan / 相关模块负责人 |
 
-以上稳定性只采用最终完成的 soak，不用中断/未完成运行。运行时自最终 soak 以来未变，三次修复调整测试与说明，未重跑 ASR 长测。历史 `test-summary.json` 的 32 项属于 v0.1；各报告时间/范围见 [results 索引](results/README.md)。
-
-第三轮修复前，Windows 人工 fixture 每秒 20 事件、10 次摘要导致本机文件系统上的有界队列饱和：处理 782、丢弃 184、错误 0；有引用回答、等待中双重推进及快照检查已通过。repair3 将**普通功能场景**改为最多每秒 2 事件、1 次摘要，保留进度/截止/零缺口/零丢弃/零错误和清理断言；故意过载的专门测试继续验证计数和上限。这些是特定合成工作负载观察，既不说明真麦克风/ASR 失败，也不保证任意负载零丢弃。详见 [Windows 兼容记录](docs/WINDOWS_COMPATIBILITY.md)。
-
-macOS 实机、真实麦克风/拔插/20 分钟会议、付费端点、人工术语/多语言质量均**未验证**。模拟评测的毫秒延迟、关键词正确率和原文引文匹配不能当作真实模型性能提升或语义正确率。
-
-## R — 限制、后续责任与收集清理
-
-建议分工沿用提案，不代表已替队友承诺排期；工作量为粗估，依赖硬件/keys/人类标注的工作不能仅在当前服务器执行。
-
-| 优先级 | 具体任务与验收 | 建议负责人 | 粗估/前提 |
-|---|---|---|---|
-| P0 | Windows/macOS 真麦克风、设备拔插、20 分钟技术会议；记录 lag/drop/RSS、并发 QA/摘要、Ctrl+C 与设备错误 | Zimo Li（orchestration/audio），Qiyan Zhai（evaluation） | 1–2 人日；两平台硬件、参与者同意和代表性会议 |
-| P0 | OpenAI-compatible + Anthropic 各一个实际付费端点；同模型/硬件 native A/B；人工标注技术题/弃答/语义引用、tokens/cost/p50/p95 | Qiyan Zhai，Zimo Li | 2–3 人日；授权 API keys/预算、人类标注，当前不能无凭据执行 |
-| P1 | 比较 tiny.en 与多语言/更大 ASR；技术术语、否定、口音/中英混说 WER 和 CPU 吞吐，确定可接受模型 | Zimo Li，Qiyan Zhai | 1–2 人日；同意录音与人工逐字稿 |
-| P1 | 中间 graph 节点 crash-resume；provider/tool 边界持久化、重放/幂等、故障注入、重复成本处理 | Xiaolong Lin（memory），Zimo Li | 2–4 人日；当前仅最终 guarded checkpoints，不是 durable mid-node resume |
-| P1 | revisions/媒体/exports/traces 的 retention、磁盘 quota、备份/删除/隐私生命周期，撤权后清理策略 | Cai Yong（security），Xiaolong Lin | 2–3 人日；先由团队确定保留政策，逻辑删除非安全擦除 |
-| P2 | 实机 case/UNC/更多 reparse 边界、host session、项目敏感内容审查及 false blocking | Cai Yong，Jiaxuan Yan（MCP/skills） | 1–2 人日；Windows 目标环境；不把现有 junction 结果扩大化 |
-| P2 | 按评测收益选择 embeddings/Chroma、脱敏 Langfuse；可选 diarization/系统音频、GUI/便携包 | Xiaolong Lin / Qiyan Zhai / Zimo Li；Jiaxuan Yan 维护工具技能 | 每项约 1–3 人日，包装约 2–5；需目标平台/资源与隐私决定 |
-
-剩余项来自硬件、凭据、标注或产品生命周期需求，不是因为已撤回的一小时时限而搁置。当前 streaming、模型 synthesis、跨快照 private continuity 均已实现，不应重复列为缺失功能。
-
-**收集与清理已完成：**已收集并核验最终源码、文档、结果和 `FINALIZE.json`；本地 64 个源码/测试文件与实际 Windows 被测提交一致。服务器专用目录在确认无遗留任务进程、Git 工作树干净后删除，随后另开 SSH 验证目录及同名链接均不存在。未修改服务器全局包或配置；本地 `.venv`、配置、演示、公开音频和模型缓存保留可用。见[实际清理回执](results/server-cleanup.json)。本轮未调用 usage reset。
-
-最终分支和旧标签保留，包含本地验证及清理回执的交付版本以 [v0.2.0-handoff](https://github.com/cyudaddy/5405/tree/v0.2.0-handoff) 为准；该标签可解析最终精确 Git commit。本地 `dist/` 另有原审查 wheel 和最终源码 ZIP；源代码 clone 按 T 节重新建环境，勿分发机器相关的 `.venv`。
+技术细节留在[当前需求映射](results/requirements-current.json)、[独立审查](docs/INDEPENDENT_REVIEW.md)和[Windows 兼容记录](docs/WINDOWS_COMPATIBILITY.md)。提问快照/私有隔离已实现；引文匹配不等于语义正确，重要技术结论仍由团队复核。
