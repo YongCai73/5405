@@ -139,6 +139,8 @@ $answer.text
 
 #### W5｜真实会议：终端 A 录音，终端 B 私问
 
+*安装和配置不用每场重做；每场新会议只需新建会议 ID、启动一次录音。同一录音可反复提问或开多个 B 窗口，共用会议 ID。新终端要各自准备目录、Python 路径和 API key。*
+
 **终端 A：**沿用当前 PowerShell，在取得参与者同意后运行：
 
 ```powershell
@@ -160,15 +162,29 @@ $appDir = Read-Host '粘贴终端A显示的应用目录'
 Set-Location $appDir
 $env:PYTHONUTF8 = '1'
 $py = (Resolve-Path '.\.venv\Scripts\python.exe').Path
-$env:API_KEY = ""
+$env:API_KEY = "" # 在空引号中填 key；每个新终端都要单独设置
 $liveMeeting = Read-Host '粘贴终端A显示的会议ID'
-& $py -m meeting_copilot ask $liveMeeting 'Catch me up' --skill catch_up --conversation mine
 & $py -m meeting_copilot live-status $liveMeeting
 ```
 
-之后在 B 继续用 `ask` 提问，A 保持录音。
+*`$env:API_KEY` 只对当前 PowerShell 及其子进程有效，A、B、C 等终端需各自设置。`config.json` 只保留 `"api_key_env": "API_KEY"`，不把真实 key 填进去。*
 
-*首次下载 `base.en` 需要等待。1A 本机版本已缓存 `tiny.en`，快速试录可改用它；1B clean clone 仍需首次下载所选模型。麦克风流程需在本机实测；若设备列表为空，先检查系统麦克风权限。*
+**常用：概括近期讨论，只显示回答正文**
+
+```powershell
+$resultJson = & $py -m meeting_copilot ask $liveMeeting 'Summarize the recent discussion in at most 3 sentences.' --skill catch_up --conversation mine
+if ($LASTEXITCODE -ne 0) { throw 'ask 失败，请先处理上方错误，再继续问答或导出' }
+$result = $resultJson | Out-String | ConvertFrom-Json
+$result.text
+```
+
+*目前不自动选择技能：省略 `--skill` 就固定使用 `trace_decision`，通用总结问题可能检索不到证据，即使全英文也会发生。`catch_up` 读取提交时最近 8 段已入库转写，概括近期内容。*
+
+*先看 `$result.text`；仅看 `$result.inferences.text` 可能是空的。若正文仍为 `Insufficient evidence...`，表示没有形成可用引文，需继续排查转写质量、模型输出或校验，不能只凭它断定原因。若出现 `missing_api_key` 等错误，先在当前终端设置 key、重跑 `ask`，成功后再导出。*
+
+之后在 B 继续用 `ask` 提问，A 保持录音。连续追问保留 `--conversation mine`；独立话题换成其他名称，如 `design`、`tasks`。录音停止后，只要没有清理会议，也可继续按原会议 ID 提问。
+
+*当前 `base.en` 是英语专用模型，代码也固定 `language='en'`；中英混说可能误转。它与技能选择是独立限制，只改模型名还不能解除固定英语参数。首次下载 `base.en` 需要等待；1A 已缓存 `tiny.en`，1B 则需首次下载。设备列表为空时先检查麦克风权限。*
 
 <details>
 <summary>可选：让这场真实会议也读取自己的项目，并导出回答</summary>
@@ -329,6 +345,8 @@ printf '%s' "$answer" | "$py" -c 'import json,sys; print(json.load(sys.stdin)["t
 
 #### M5｜真实会议：终端 A 录音，终端 B 私问
 
+*安装和配置不用每场重做；每场新会议只需新建会议 ID、启动一次录音。同一录音可反复提问或开多个 B 窗口，共用会议 ID。新终端要各自准备目录、Python 路径和 API key。*
+
 **终端 A：**沿用当前 Terminal，在取得参与者同意后运行：
 
 ```bash
@@ -351,16 +369,28 @@ read -r app_dir
 cd "$app_dir"
 export PYTHONUTF8=1
 py="$app_dir/.venv/bin/python"
-export API_KEY=""
+export API_KEY="" # 在空引号中填 key；每个新终端都要单独设置
 printf '粘贴终端A显示的会议ID：'
 read -r live_meeting
-"$py" -m meeting_copilot ask "$live_meeting" 'Catch me up' --skill catch_up --conversation mine
 "$py" -m meeting_copilot live-status "$live_meeting"
 ```
 
-之后在 B 继续用 `ask` 提问，A 保持录音。
+*`export API_KEY` 只对当前 shell 及其子进程有效，A、B、C 等终端需各自设置。`config.json` 只保留 `"api_key_env": "API_KEY"`，不把真实 key 填进去。*
 
-*按系统提示允许 Terminal/Python 使用麦克风。第一次下载 `base.en` 需要等待；快速试录可把 `asr_model` 改为 `tiny.en`。上面写法可用于 bash/zsh，不需要切换 shell。*
+**常用：概括近期讨论，只显示回答正文**
+
+```bash
+result=$("$py" -m meeting_copilot ask "$live_meeting" 'Summarize the recent discussion in at most 3 sentences.' --skill catch_up --conversation mine) &&
+printf '%s' "$result" | "$py" -c 'import json,sys; print(json.load(sys.stdin)["text"])'
+```
+
+*目前不自动选择技能：省略 `--skill` 就固定使用 `trace_decision`，通用总结问题可能检索不到证据，即使全英文也会发生。`catch_up` 读取提交时最近 8 段已入库转写，概括近期内容。*
+
+*先看 JSON 的 `text`；只看 `inferences` 可能是空的。若正文仍为 `Insufficient evidence...`，表示没有形成可用引文，需继续排查转写质量、模型输出或校验，不能只凭它断定原因。若出现 `missing_api_key` 等错误，先在当前终端设置 key、重跑 `ask`，成功后再导出。*
+
+之后在 B 继续用 `ask` 提问，A 保持录音。连续追问保留 `--conversation mine`；独立话题换成其他名称，如 `design`、`tasks`。录音停止后，只要没有清理会议，也可继续按原会议 ID 提问。
+
+*当前 `base.en` 是英语专用模型，代码也固定 `language='en'`；中英混说可能误转。它与技能选择是独立限制，只改模型名还不能解除固定英语参数。按系统提示允许麦克风权限；首次下载模型需要等待。上面写法可用于 bash/zsh。*
 
 <details>
 <summary>可选：让这场真实会议也读取自己的项目，并导出回答</summary>
