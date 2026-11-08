@@ -24,13 +24,15 @@ async def test_long_meeting_search_ranks_before_limit_and_exports_citations(stor
     assert len(EvidenceService(store,'alice',sid).get_transcript(offset=100))==80
 
 
-async def test_late_file_identifier_exact_line_hash_and_multi_file_ranking(store,event,assistant,tmp_path):
+@pytest.mark.parametrize('newline',['\n','\r\n'],ids=['LF','CRLF'])
+async def test_late_file_identifier_exact_line_hash_and_multi_file_ranking(store,event,assistant,tmp_path,newline):
     project=tmp_path/'project';project.mkdir()
     for i in range(130):
-        (project/f'a{i:03}.py').write_text('queue capacity common settings\n')
-    content=''.join(f'# filler line {i} unrelated\n' for i in range(240))+'MAX_PENDING_JOBS = 937  # prevents queue saturation\n'
-    (project/'z_worker.py').write_text(content)
-    before=hashlib.sha256((project/'z_worker.py').read_bytes()).hexdigest()
+        (project/f'a{i:03}.py').write_bytes(('queue capacity common settings'+newline).encode('utf-8'))
+    content=newline.join([f'# filler line {i} unrelated' for i in range(240)]+['MAX_PENDING_JOBS = 937  # prevents queue saturation',''])
+    target=project/'z_worker.py';target.write_bytes(content.encode('utf-8'))
+    raw=target.read_bytes();decoded=raw.decode('utf-8')
+    before=hashlib.sha256(raw).hexdigest()
     folder=store.approve('alice','m',project);store.refresh('alice',folder)
     sid=store.snapshot('alice','m',folders=[folder])
     answer=await assistant.ask(sid,'What is MAX_PENDING_JOBS queue capacity?')
@@ -38,13 +40,16 @@ async def test_late_file_identifier_exact_line_hash_and_multi_file_ranking(store
     claim=next(c for c in answer['claims'] if '937' in c['quote'])
     cite=next(c for c in answer['citations'] if c['source_id']==claim['source_id'])
     assert cite['line_start']==241 and cite['line_end']==241
-    assert content[cite['char_start']:cite['char_end']]==claim['quote']
+    retained=store.raw('alice',sid,claim['source_id'])
+    assert retained['text']==decoded and retained['text'].encode('utf-8')==raw
+    assert decoded[cite['char_start']:cite['char_end']]==claim['quote']
+    assert cite['char_start']==sum(len(line) for line in decoded.splitlines(keepends=True)[:240])
     assert cite['sha256']==before
     matches=EvidenceService(store,'alice',sid).search_project('MAX_PENDING_JOBS queue capacity')
     found=next(r for r in matches if r['path']=='z_worker.py')
     assert '937' in found['excerpt'] and found['line_start']>80
     assert hashlib.sha256((project/'z_worker.py').read_bytes()).hexdigest()==before
-    (project/'z_worker.py').write_text('MAX_PENDING_JOBS = 12345\n')
+    target.write_bytes(('MAX_PENDING_JOBS = 12345'+newline).encode('utf-8'))
     store.refresh('alice',folder)
     assert '937' in (await assistant.ask(sid,'MAX_PENDING_JOBS'))['text']
     assert '12345' not in json.dumps(store.export('alice',sid,'default'))
@@ -226,14 +231,16 @@ def test_cross_connection_acl_swap_cannot_mix_two_authorization_states(tmp_path,
     finally:reader.close();writer.close()
 
 
-async def test_tool_reads_preserve_multiple_views_and_exact_original_lines(store,tmp_path,assistant):
+@pytest.mark.parametrize('newline',['\n','\r\n'],ids=['LF','CRLF'])
+async def test_tool_reads_preserve_multiple_views_and_exact_original_lines(store,tmp_path,assistant,newline):
     first='FIRST_MARKER chooses SQLite for local deployment.'
     second='SECOND_MARKER records the later capacity decision.'
     third='THIRD_MARKER records the separate rollback decision.'
     unseen='UNSENT_MARKER must not become a validated quotation.'
     project=tmp_path/'multi-view-project';project.mkdir()
-    original='\n'.join([first]+['# filler']*999+[unseen]+['# filler']*1000+[second,third])+'\n'
-    (project/'decisions.md').write_text(original)
+    original=newline.join([first]+['# filler']*999+[unseen]+['# filler']*1000+[second,third,''])
+    target=project/'decisions.md';target.write_bytes(original.encode('utf-8'))
+    raw=target.read_bytes();decoded=raw.decode('utf-8');before=hashlib.sha256(raw).hexdigest()
     folder=store.approve('alice','m',project);store.refresh('alice',folder)
     sid=store.snapshot('alice','m',folders=[folder])
 
@@ -253,5 +260,9 @@ async def test_tool_reads_preserve_multiple_views_and_exact_original_lines(store
     assert [c['quote'] for c in result['claims']]==[first,second,third]
     assert [c['line_start'] for c in result['citations']]==[1,2002,2003]
     for claim,cite in zip(result['claims'],result['citations']):
-        assert original[cite['char_start']:cite['char_end']]==claim['quote']
+        assert store.raw('alice',sid,claim['source_id'])['text']==decoded
+        assert decoded[cite['char_start']:cite['char_end']]==claim['quote']
+        assert cite['line_end']==cite['line_start'] and cite['sha256']==before
+        assert cite['char_start']==sum(len(line) for line in decoded.splitlines(keepends=True)[:cite['line_start']-1])
     assert unseen not in result['text']
+    assert target.read_bytes()==raw

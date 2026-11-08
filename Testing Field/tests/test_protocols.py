@@ -15,6 +15,7 @@ def fake_http():
         def do_POST(self):
             payload=json.loads(self.rfile.read(int(self.headers['content-length'])))
             state['requests'].append({'path':self.path,'payload':payload,'headers':dict(self.headers)})
+            if state.get('response_gate') is not None:state['response_gate'].wait(timeout=45)
             time.sleep(state['delay'])
             anthropic=self.path.endswith('/messages')
             tool=state.get('tool') if len(state['requests'])==1 or state.get('always_tool') else None

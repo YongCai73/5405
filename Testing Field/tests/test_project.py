@@ -5,18 +5,28 @@ from meeting_copilot.project import safe_relative,approved_root
 from meeting_copilot.store import Denied
 
 
-def test_refresh_retains_old_hash_lines_and_deleted_files(store,tmp_path):
-    p=tmp_path/'source folder';p.mkdir();f=p/'a.py';f.write_text('alpha\nbeta\n',encoding='utf-8')
-    before=hashlib.sha256(f.read_bytes()).hexdigest();fid=store.approve('alice','m',p);store.refresh('alice',fid)
+@pytest.mark.parametrize('newline',['\n','\r\n'],ids=['LF','CRLF'])
+def test_refresh_retains_old_hash_lines_and_deleted_files(store,tmp_path,newline):
+    p=tmp_path/'source folder';p.mkdir();f=p/'a.py'
+    f.write_bytes(('alpha'+newline+'beta'+newline).encode('utf-8'))
+    raw=f.read_bytes();decoded=raw.decode('utf-8');display=decoded.rstrip('\r\n')
+    before=hashlib.sha256(raw).hexdigest();fid=store.approve('alice','m',p);store.refresh('alice',fid)
     sid=store.snapshot('alice','m',folders=[fid]);s=EvidenceService(store,'alice',sid);rid=s.list_project_files()[0]['id']
     assert hashlib.sha256(f.read_bytes()).hexdigest()==before
-    assert s.read_project_file(rid,2,2)['text']=='beta'
-    f.write_text('new\n',encoding='utf-8');store.refresh('alice',fid)
-    assert s.read_project_file(rid)['text']=='alpha\nbeta'
+    assert s.raw(rid)['text']==decoded and s.raw(rid)['text'].encode('utf-8')==raw
+    line=s.read_project_file(rid,2,2)
+    assert line['text']=='beta' and line['start_line']==line['end_line']==2
+    assert line['char_start']==len('alpha'+newline)
+    assert decoded[line['char_start']:line['char_end']]==line['text']
+    f.write_bytes(('new'+newline).encode('utf-8'));store.refresh('alice',fid)
+    old=s.read_project_file(rid)
+    assert old['text']==display and old['start_line']==1 and old['end_line']==2
+    assert decoded[old['char_start']:old['char_end']]==display
     assert s.read_project_file(rid)['sha256']==before
     ns=store.snapshot('alice','m',folders=[fid]);assert EvidenceService(store,'alice',ns).list_project_files()[0]['hash']!=before
     f.unlink();store.refresh('alice',fid);assert EvidenceService(store,'alice',store.snapshot('alice','m',folders=[fid])).list_project_files()==[]
-    assert s.read_project_file(rid)['text']=='alpha\nbeta'
+    assert s.read_project_file(rid)['text']==display
+    assert s.raw(rid)['text']==decoded and s.read_project_file(rid)['sha256']==before
     store.revoke_folder('alice',fid)
     for call in [s.list_project_files,lambda:s.search_project('alpha'),lambda:s.read_project_file(rid),lambda:store.export('alice',sid,'default')]:
         with pytest.raises(Denied):call()
