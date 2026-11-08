@@ -185,7 +185,7 @@ $liveAnswer.text
 & $py -m meeting_copilot export $liveAnswer.snapshot_id data/live-export.json --conversation mine
 ```
 
-*项目文件夹应与应用的 `data/` 分开；若选的是包含 data 的整个工程根目录，先把配置中的 `data_dir` 移到工程之外。文件改动后，再执行 `refresh-folder` 导入新版本。*
+*优先选择不含应用 `data/` 的源码目录，例如工程的 `src`。若需要改 `data_dir`，先停止录音，回 W2 配置工程外路径，再从 W5 新开会议。文件改动后用 `refresh-folder` 导入新版本。*
 
 </details>
 
@@ -379,7 +379,7 @@ printf '%s' "$live_answer" | "$py" -c 'import json,sys; print(json.load(sys.stdi
 "$py" -m meeting_copilot export "$live_snapshot_id" data/live-export.json --conversation mine
 ```
 
-*项目目录与应用实际 `data/` 分开；若要批准包含 data 的整个工程根，先把 `data_dir` 配到工程之外。文件改动后用 `refresh-folder` 导入新版本。*
+*优先选择不含应用 `data/` 的源码目录，例如工程的 `src`。若需要改 `data_dir`，先停止录音，回 M2 配置工程外路径，再从 M5 新开会议。文件改动后用 `refresh-folder` 导入新版本。*
 
 </details>
 
