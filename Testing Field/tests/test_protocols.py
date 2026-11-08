@@ -30,11 +30,11 @@ def fake_http():
                 if tool:message['tool_calls']=[{'id':'call-fixture','type':'function','function':{'name':tool['name'],'arguments':json.dumps(tool['arguments'])}}]
                 body={'id':'chat-fixture','object':'chat.completion','created':1,'model':payload['model'],'choices':[{'index':0,'message':message,'finish_reason':'tool_calls' if tool else 'stop'}],'usage':{'prompt_tokens':17,'completion_tokens':11,'total_tokens':28}}
             if payload.get('stream') and state['status']==200:
-                self.send_response(200);self.send_header('Content-Type','text/event-stream');self.end_headers()
                 def emit(data):
                     prefix=('event: '+data['type']+'\n') if anthropic else ''
                     self.wfile.write((prefix+'data: '+json.dumps(data)+'\n\n').encode());self.wfile.flush()
                 try:
+                    self.send_response(200);self.send_header('Content-Type','text/event-stream');self.end_headers()
                     if anthropic:
                         initial={**body,'content':[],'stop_reason':None,'usage':{'input_tokens':17,'output_tokens':0}}
                         emit({'type':'message_start','message':initial})
@@ -65,13 +65,15 @@ def fake_http():
                         emit(chunk({},'tool_calls' if tool else 'stop'))
                         if not state.get('omit_usage'):emit({'id':'chat-fixture','object':'chat.completion.chunk','created':1,'model':payload['model'],'choices':[],'usage':body['usage']})
                         self.wfile.write(b'data: [DONE]\n\n');self.wfile.flush()
-                except (BrokenPipeError,ConnectionResetError):pass
+                except ConnectionError:pass  # Includes Windows cancellation aborts.
                 finally:state['closed_streams']+=1
                 return
             if state.get('omit_usage') and not anthropic:body.pop('usage',None)
-            raw=json.dumps(body).encode();self.send_response(state['status']);self.send_header('Content-Type','application/json');self.send_header('Content-Length',str(len(raw)));self.end_headers()
-            try:self.wfile.write(raw)
-            except (BrokenPipeError,ConnectionResetError):pass
+            raw=json.dumps(body).encode()
+            try:
+                self.send_response(state['status']);self.send_header('Content-Type','application/json');self.send_header('Content-Length',str(len(raw)));self.end_headers()
+                self.wfile.write(raw)
+            except ConnectionError:pass  # Only response transport closure is expected.
     server=ThreadingHTTPServer(('127.0.0.1',0),Handler);server.daemon_threads=True
     thread=threading.Thread(target=server.serve_forever,name='fake-api-loopback');thread.start()
     state['url']='http://127.0.0.1:'+str(server.server_port)
@@ -80,6 +82,9 @@ def fake_http():
 
 def provider(state,kind,monkeypatch,**kw):
     monkeypatch.setenv('MEETING_COPILOT_API_KEY','fake-contract-key')
+    # Successful wire contracts include cold SDK/tokenizer startup on Windows.
+    # Explicit short timeout/cancellation limits below take precedence.
+    kw.setdefault('timeout_seconds',120)
     return Provider(Config(provider=kind,model='claude-3-5-sonnet-20241022' if kind=='anthropic' else 'gpt-4o-mini',base_url=state['url']+('/v1' if kind=='openai' else ''),send_evidence=True,**kw))
 
 @pytest.mark.parametrize('kind',['openai','anthropic'])
@@ -114,6 +119,21 @@ async def test_timeout_and_cancellation(fake_http,kind,monkeypatch):
     p.config.timeout_seconds=2
     task=asyncio.create_task(p.complete('q',[],{}));await asyncio.sleep(.05);task.cancel()
     with pytest.raises(asyncio.CancelledError):await task
+
+
+@pytest.mark.parametrize('entrypoint',['chat','complete'])
+async def test_timeout_cancels_startup_before_http(monkeypatch,entrypoint):
+    p=Provider(Config(timeout_seconds=.1))
+    started=asyncio.Event();cancelled=asyncio.Event()
+    async def cold_request(*args):
+        started.set()
+        try:await asyncio.sleep(10)
+        finally:cancelled.set()
+    monkeypatch.setattr(p,'_request',cold_request)
+    call=p.chat([]) if entrypoint=='chat' else p.complete('q',[],{})
+    with pytest.raises(ProviderError,match='^timeout$'):
+        await asyncio.wait_for(call,1)
+    assert started.is_set() and cancelled.is_set()
 
 async def test_no_key_no_upload_opt_in(monkeypatch):
     monkeypatch.delenv('MEETING_COPILOT_API_KEY',raising=False)

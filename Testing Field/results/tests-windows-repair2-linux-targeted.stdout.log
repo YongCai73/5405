@@ -1,0 +1,16 @@
+......................                                                   [100%]
+=============================== warnings summary ===============================
+tests/test_protocols.py::test_stream_timeout_and_cancel_close[openai]
+  <BUILD_ROOT>/.venv-audit/lib/python3.12/site-packages/pydantic/_internal/_generate_schema.py:1574: UserWarning: Item 'index' on TypedDict class 'ChatCompletionThinkingBlock' is using the `ReadOnly` qualifier. Pydantic will not protect items from any mutation on dictionary instances.
+    warnings.warn(
+
+tests/test_protocols.py::test_stream_timeout_and_cancel_close[openai]
+  <BUILD_ROOT>/.venv-audit/lib/python3.12/site-packages/pydantic/_internal/_generate_schema.py:1574: UserWarning: Item 'index' on TypedDict class 'ChatCompletionRedactedThinkingBlock' is using the `ReadOnly` qualifier. Pydantic will not protect items from any mutation on dictionary instances.
+    warnings.warn(
+
+tests/test_protocols.py::test_stream_timeout_and_cancel_close[openai]
+  <BUILD_ROOT>/.venv-audit/lib/python3.12/site-packages/pydantic/_internal/_generate_schema.py:1574: UserWarning: Item 'summary' on TypedDict class 'ChatCompletionReasoningItem' is using the `ReadOnly` qualifier. Pydantic will not protect items from any mutation on dictionary instances.
+    warnings.warn(
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+22 passed, 34 deselected, 3 warnings in 16.24s

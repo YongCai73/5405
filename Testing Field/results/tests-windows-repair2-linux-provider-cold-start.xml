@@ -1,0 +1,1 @@
+<testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="0" skipped="0" tests="1" time="25.358" timestamp="2026-11-08T02:39:12.781957-05:00" hostname="validation-host"><testcase classname="tests.test_protocols" name="test_wire_protocol_roles_usage_cost[openai]" time="25.323" /></testsuite></testsuites>
