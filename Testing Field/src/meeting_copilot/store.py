@@ -178,18 +178,22 @@ class Store:
             s=self._snapshot(user,sid)
             return {k:s[k] for k in ('id','meeting','watermark','created','meetings','folders','refs')}
 
-    def evidence(self,user,sid,*,kind=None,query=None,limit=20):
+    def evidence(self,user,sid,*,kind=None,query=None,limit=20,recent=False,meeting=None):
         with self.lock:
             s=self._snapshot(user,sid);refs=json.loads(s['refs'])
             if not refs: return []
             sql='SELECT e.* FROM evidence e JOIN json_each(?) j ON e.id=j.value WHERE 1=1';args=[json.dumps(refs)]
             if kind: sql+=' AND e.kind=?';args.append(kind)
+            if meeting is not None:
+                if meeting not in json.loads(s['meetings']):raise Denied('meeting outside snapshot')
+                sql+=' AND e.meeting=?';args.append(meeting)
             if query:
                 terms=tokens(query)
                 if not terms:return []
                 sql+=' AND e.id IN (SELECT rowid FROM evidence_fts WHERE evidence_fts MATCH ?)';args.append(' OR '.join('"'+t+'"' for t in terms))
-            sql+=' ORDER BY COALESCE(e.start_ms,0),e.id LIMIT ?';args.append(max(1,min(limit,100)))
-            return [dict(r) for r in self.db.execute(sql,args)]
+            sql+=(' ORDER BY COALESCE(e.start_ms,0) DESC,e.id DESC LIMIT ?' if recent else ' ORDER BY COALESCE(e.start_ms,0),e.id LIMIT ?');args.append(max(1,min(limit,100)))
+            result=[dict(r) for r in self.db.execute(sql,args)]
+            return result[::-1] if recent else result
 
     def raw(self,user,sid,rid):
         with self.lock:

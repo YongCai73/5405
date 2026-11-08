@@ -1,0 +1,54 @@
+{
+  "platform": "Linux aarch64 Python 3.12.3",
+  "windows_macos": "not executed",
+  "suites": {
+    "source_venv": {
+      "tests": "32",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "24.348"
+    },
+    "independent_wheel_venv_without_audio": {
+      "tests": "32",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "21.085"
+    },
+    "readme_linux_verbatim_app_local_venv": {
+      "tests": "32",
+      "failures": "0",
+      "errors": "0",
+      "skipped": "0",
+      "time": "21.17"
+    }
+  },
+  "tests_cover": "snapshot revisions/cutoffs/idempotency/gaps; ACL/private/checkpoints; folder retention/paths/secrets/hash; slow-provider/queues/background scheduler; OpenAI+Anthropic local HTTP; actual MCP stdio; CLI spaces/export/cleanup; evaluation ablations",
+  "paid_api_validation": false,
+  "api_protocols": {
+    "openai_chat_completions": "local fake HTTP passed",
+    "anthropic_messages": "local fake HTTP passed",
+    "roles_usage_errors_timeouts_cancellation": true
+  },
+  "mcp": {
+    "transport": "stdio",
+    "initialize_list_call": true,
+    "tool_count": 10,
+    "revocation": true
+  },
+  "readme_linux_commands": {
+    "status": "passed",
+    "cwd": "Testing Field",
+    "venv": "app-local .venv",
+    "steps": [
+      "python3.12 -m venv .venv",
+      ".venv/bin/python -m pip install -e '.[dev]'",
+      ".venv/bin/python -m meeting_copilot init",
+      ".venv/bin/python -m meeting_copilot demo",
+      ".venv/bin/python -m meeting_copilot evaluate --output results/local-report.json --stress",
+      ".venv/bin/python -m pytest --basetemp data/test-temp -q"
+    ],
+    "note": "exact Linux README sequence; Windows/macOS commands were not executed"
+  }
+}

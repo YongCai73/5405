@@ -103,3 +103,10 @@ async def test_unknown_abstention_and_skill_contracts(store,event,assistant):
         r=await assistant.ask(sid,'SQLite',skill=skill)
         assert r['contract']['name']==skill and r['claims'] and r['contract']['abstention']
         assert set(r['fields'])==set(r['contract']['output_fields'])
+
+async def test_catch_up_and_summary_use_recent_bounded_rows(store,event,assistant):
+    for i in range(120):store.ingest('alice','m',{**event,'event_id':f'e{i}','seq':i+1,'segment_id':f's{i}','start_ms':i*1000,'end_ms':i*1000+500,'text':f'Design progress marker {i}.'})
+    sid=store.snapshot('alice','m');r=await assistant.ask(sid,'Catch up',skill='catch_up')
+    assert 'marker 119' in r['text'] and 'marker 0.' not in r['text']
+    await assistant.summary_graph.ainvoke({'snapshot':sid});summary=store.summary_get('alice',sid)
+    assert len(summary['refs'])==12 and 'marker 119' in summary['text']

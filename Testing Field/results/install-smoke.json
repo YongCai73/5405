@@ -1,0 +1,67 @@
+{
+  "status": "passed",
+  "installation": "independent venv, built wheel (not editable); no upstream sibling import, no audio extra",
+  "module_origin": "<build>/.venv-clean/lib/python3.12/site-packages/meeting_copilot",
+  "records": [
+    {
+      "command": "meeting_copilot init",
+      "exit_code": 0,
+      "elapsed_seconds": 0.165
+    },
+    {
+      "command": "meeting_copilot demo",
+      "exit_code": 0,
+      "elapsed_seconds": 1.211
+    },
+    {
+      "command": "meeting_copilot create",
+      "exit_code": 0,
+      "elapsed_seconds": 1.183
+    },
+    {
+      "command": "meeting_copilot replay",
+      "exit_code": 0,
+      "elapsed_seconds": 1.18
+    },
+    {
+      "command": "meeting_copilot approve-folder",
+      "exit_code": 0,
+      "elapsed_seconds": 1.187
+    },
+    {
+      "command": "meeting_copilot refresh-folder",
+      "exit_code": 0,
+      "elapsed_seconds": 1.144
+    },
+    {
+      "command": "meeting_copilot ask",
+      "exit_code": 0,
+      "elapsed_seconds": 1.154
+    },
+    {
+      "command": "meeting_copilot export",
+      "exit_code": 0,
+      "elapsed_seconds": 1.189
+    },
+    {
+      "command": "meeting_copilot checkpoint",
+      "exit_code": 0,
+      "elapsed_seconds": 1.148
+    },
+    {
+      "command": "meeting_copilot evaluate",
+      "exit_code": 0,
+      "elapsed_seconds": 2.115
+    },
+    {
+      "command": "meeting_copilot cleanup",
+      "exit_code": 0,
+      "elapsed_seconds": 2.127
+    }
+  ],
+  "cited_meeting_plus_project": true,
+  "source_files_unchanged": true,
+  "pip_check": "both environments passed",
+  "windows_macos": "not executed",
+  "processes": "all subprocess.run children exited; no listener launched"
+}

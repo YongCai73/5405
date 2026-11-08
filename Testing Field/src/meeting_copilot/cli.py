@@ -61,7 +61,7 @@ def run(a):
     c=Config.load(config_path);root=c.root;root.mkdir(parents=True,exist_ok=True)
     for key,rel in [('HF_HOME','cache/huggingface'),('XDG_CACHE_HOME','cache'),('LITELLM_CACHE_DIR','cache/litellm'),('TIKTOKEN_CACHE_DIR','cache/tiktoken')]:os.environ[key]=str(root/rel)
     os.environ['LITELLM_LOCAL_MODEL_COST_MAP']='True'
-    from .assistant import Assistant,Workers
+    from .assistant import Assistant,Workers,LiveSummaries
     from .provider import Provider
     store=Store(root/'evidence.db');trace=Trace(root/'traces.jsonl');assistant=Assistant(store,c.principal,Provider(c),trace);user=c.principal
     try:
@@ -107,7 +107,13 @@ def run(a):
             output(microphones())
         elif a.command=='listen':
             from .audio import listen
-            output(listen(store,user,a.meeting,root,a.source,a.seconds,a.consent,c.asr_model,a.download_model,trace))
+            workers=Workers(assistant);summaries=LiveSummaries(workers,a.meeting)
+            try:
+                result=listen(store,user,a.meeting,root,a.source,a.seconds,a.consent,c.asr_model,a.download_model,trace)
+            finally:summaries.close();workers.close()
+            result['background_summary_snapshot']=summaries.last_snapshot
+            result['background_summary_failures']=summaries.failures
+            output(result)
         elif a.command=='asr':
             from .audio import LocalASR
             with store.lock:store._check(user,a.meeting,True)

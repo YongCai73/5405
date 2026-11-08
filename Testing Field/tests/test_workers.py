@@ -56,3 +56,15 @@ def test_worker_pending_requests_bounded(store,event,assistant):
         for _ in range(4):w.submit('m','SQLite')
         with pytest.raises(RuntimeError):w.submit('m','SQLite')
     finally:p.release.set();w.close()
+
+
+def test_live_summary_scheduler_uses_separate_worker_and_stops(store,event,assistant):
+    from meeting_copilot.assistant import LiveSummaries
+    store.ingest('alice','m',event);workers=Workers(assistant);scheduler=LiveSummaries(workers,'m',interval=.01)
+    try:
+        deadline=time.monotonic()+2
+        while scheduler.last_snapshot is None and time.monotonic()<deadline:time.sleep(.005)
+        assert scheduler.last_snapshot is not None
+    finally:scheduler.close();workers.close()
+    assert not scheduler.thread.is_alive() and scheduler.failures==0
+    assert store.summary_get('alice',scheduler.last_snapshot)['refs']==[1]

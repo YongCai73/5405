@@ -5,6 +5,8 @@ build-backend = "hatchling.build"
 name = "meeting-copilot-prototype"
 version = "0.1.0"
 description = "Local evidence snapshots and private meeting QA"
+license = "MIT"
+license-files = ["docs/UPSTREAM_LICENSE.txt"]
 requires-python = ">=3.11"
 dependencies = ["langgraph>=1,<2", "litellm>=1.80,<2", "mcp>=2.3,<3", "aiofiles>=24,<26", "numpy>=1.26,<3"]
 [project.optional-dependencies]

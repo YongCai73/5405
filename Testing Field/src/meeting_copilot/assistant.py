@@ -1,6 +1,7 @@
 from __future__ import annotations
 import asyncio
 import json
+import os
 import re
 import threading
 import time
@@ -36,6 +37,7 @@ class State(TypedDict,total=False):
 
 class Assistant:
     def __init__(self,store,user,provider,trace):
+        os.environ['LANGSMITH_TRACING']='false';os.environ['LANGCHAIN_TRACING_V2']='false'
         self.store=store;self.user=user;self.provider=provider;self.trace=trace
         graph=StateGraph(State);graph.add_node('retrieve',self.retrieve);graph.add_node('answer',self.answer)
         graph.add_edge(START,'retrieve');graph.add_edge('retrieve','answer');graph.add_edge('answer',END);self.graph=graph.compile()
@@ -45,8 +47,7 @@ class Assistant:
         skill_contract(state['skill'])
         rows=self.store.evidence(self.user,state['snapshot'],query=state['question'],limit=100)
         if state['skill']=='catch_up':
-            rows=self.store.evidence(self.user,state['snapshot'],kind='segment',limit=100)
-            rows=rows[-16:]
+            rows=self.store.evidence(self.user,state['snapshot'],kind='segment',limit=8,recent=True)
         q=terms(state['question'])
         rows.sort(key=lambda e:len(q&terms(e['text'])),reverse=True)
         selected=[];size=0
@@ -101,7 +102,7 @@ class Assistant:
 
     async def summarize(self,state):
         s=self.store.snapshot_info(self.user,state['snapshot'])
-        rows=[r for r in self.store.evidence(self.user,state['snapshot'],kind='segment',limit=100) if r['meeting']==s['meeting']]
+        rows=self.store.evidence(self.user,state['snapshot'],kind='segment',meeting=s['meeting'],limit=12,recent=True)
         # Shared worker never consumes private graph state, project files, supplements or API responses.
         rows=rows[-12:];text='\n'.join(f"{r['text'][:500]} [E{r['id']}]" for r in rows)
         self.store.summary_put(self.user,state['snapshot'],text,[r['id'] for r in rows])
@@ -123,3 +124,21 @@ class Workers:
         f=self.bg.submit(lambda: asyncio.run(self.a.summary_graph.ainvoke({'snapshot':sid})));f.add_done_callback(lambda _:self.bgslots.release());return f
     def close(self):
         self.qa.shutdown(wait=True,cancel_futures=True);self.bg.shutdown(wait=True,cancel_futures=True)
+
+
+class LiveSummaries:
+    """Periodic host snapshots run on the bounded shared worker, separate from capture."""
+    def __init__(self,workers,meeting,interval=15):
+        self.workers=workers;self.meeting=meeting;self.interval=interval;self.stop_event=threading.Event();self.last_snapshot=None;self.failures=0
+        self.thread=threading.Thread(target=self._run,name='summary-scheduler');self.thread.start()
+    def _run(self):
+        while not self.stop_event.wait(self.interval):
+            try:
+                a=self.workers.a;sid=a.store.snapshot(a.user,self.meeting)
+                future=self.workers.summary(sid);self.last_snapshot=sid
+                def checked(f):
+                    if not f.cancelled() and f.exception() is not None:self.failures+=1
+                future.add_done_callback(checked)
+            except Exception:self.failures+=1
+    def close(self):
+        self.stop_event.set();self.thread.join()
