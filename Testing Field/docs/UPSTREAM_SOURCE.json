@@ -92,6 +92,48 @@
       "upstream_path": "src/local_meeting_ai/mcp/server.py",
       "upstream_sha256": "ae4fd6a7feaccf7ce2987a9a4f3734e772147cca47f5a46f337c6585d75d975c",
       "adaptation": "Host-bound service replaces desktop REST gateway, native read-only ToolAnnotations and historical tool registration pattern retained; new project/live tools. No native duplicate generator."
+    },
+    {
+      "path": "src/local_meeting_ai/application/live_assistant.py",
+      "upstream_path": "src/local_meeting_ai/application/live_assistant.py",
+      "upstream_sha256": "579cdebcc950ecec1762bd321b4531329d077cbe193c12c85cd01d63f2ad83de",
+      "usage": "Unmodified native LiveAssistantService replay harness; evaluation only, no desktop credential store is instantiated."
+    },
+    {
+      "path": "src/local_meeting_ai/domain/live_assistant.py",
+      "upstream_path": "src/local_meeting_ai/domain/live_assistant.py",
+      "upstream_sha256": "8069f0b56806028280b31b0fd50e596a169f2279c81ac32e377c7eafd399bfb9",
+      "usage": "Unmodified native LiveAssistantService replay harness; evaluation only, no desktop credential store is instantiated."
+    },
+    {
+      "path": "src/local_meeting_ai/infrastructure/database/connection.py",
+      "upstream_path": "src/local_meeting_ai/infrastructure/database/connection.py",
+      "upstream_sha256": "4655c508fcd6d9f2898299f0de8bf999a3d1c93dc2309703cc41ad28cd9befa5",
+      "usage": "Unmodified native LiveAssistantService replay harness; evaluation only, no desktop credential store is instantiated."
+    },
+    {
+      "path": "src/local_meeting_ai/infrastructure/database/repositories.py",
+      "upstream_path": "src/local_meeting_ai/infrastructure/database/repositories.py",
+      "upstream_sha256": "31dc9bf0ba8352717ca0c448a8f7b5754c848f2a02fc5591ecec24bdecfad9ed",
+      "usage": "Unmodified native LiveAssistantService replay harness; evaluation only, no desktop credential store is instantiated."
+    },
+    {
+      "path": "src/local_meeting_ai/infrastructure/database/live_assistant.py",
+      "upstream_path": "src/local_meeting_ai/infrastructure/database/live_assistant.py",
+      "upstream_sha256": "f2c7e12c17bd473d5b4d652814479be84da141503b98076696582c57f3c66ba9",
+      "usage": "Unmodified native LiveAssistantService replay harness; evaluation only, no desktop credential store is instantiated."
+    },
+    {
+      "path": "src/local_meeting_ai/infrastructure/live_assistant_credentials.py",
+      "upstream_path": "src/local_meeting_ai/infrastructure/live_assistant_credentials.py",
+      "upstream_sha256": "b734b3f7357e52cf0a4d0b5b5780b88264b7c5e35f709afdd39c47b93e07c299",
+      "usage": "Unmodified native LiveAssistantService replay harness; evaluation only, no desktop credential store is instantiated."
+    },
+    {
+      "path": "src/local_meeting_ai/infrastructure/database/sql/010_live_assistant.sql",
+      "upstream_path": "src/local_meeting_ai/infrastructure/database/sql/010_live_assistant.sql",
+      "upstream_sha256": "042a8c45830499d5dcd4e9cb394dc40952402f0390a58cc326265e6b17409b92",
+      "usage": "Unmodified native LiveAssistantService replay harness; evaluation only, no desktop credential store is instantiated."
     }
   ],
   "adaptations": {

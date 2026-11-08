@@ -20,7 +20,7 @@ def parser():
     c=sub.add_parser('create');c.add_argument('meeting');c.add_argument('--title',default='Technical meeting')
     sub.add_parser('list')
     c=sub.add_parser('replay');c.add_argument('meeting');c.add_argument('file')
-    c=sub.add_parser('correct');c.add_argument('meeting');c.add_argument('segment');c.add_argument('text');c.add_argument('--revision',type=int,required=True);c.add_argument('--start-ms',type=int,default=0);c.add_argument('--end-ms',type=int,default=0)
+    c=sub.add_parser('correct');c.add_argument('meeting');c.add_argument('segment');c.add_argument('text');c.add_argument('--revision',type=int,required=True);c.add_argument('--start-ms',type=int);c.add_argument('--end-ms',type=int)
     c=sub.add_parser('gaps');c.add_argument('meeting')
     c=sub.add_parser('approve-folder');c.add_argument('meeting');c.add_argument('root')
     for name in ('refresh-folder','revoke-folder'):
@@ -31,16 +31,20 @@ def parser():
     c=sub.add_parser('snapshot');c.add_argument('meeting');c.add_argument('--previous',action='append',default=[]);c.add_argument('--folder',action='append',default=[])
     c=sub.add_parser('ask');c.add_argument('meeting');c.add_argument('question');c.add_argument('--snapshot');c.add_argument('--previous',action='append',default=[]);c.add_argument('--folder',action='append',default=[]);c.add_argument('--conversation',default='default');c.add_argument('--skill',choices=['catch_up','trace_decision','compare_options','direct'],default='trace_decision')
     c=sub.add_parser('summary');c.add_argument('snapshot')
-    c=sub.add_parser('history');c.add_argument('snapshot');c.add_argument('--conversation',default='default')
+    c=sub.add_parser('history');c.add_argument('snapshot');c.add_argument('--conversation',default='default');c.add_argument('--across-snapshots',action='store_true')
+    c=sub.add_parser('live-status');c.add_argument('meeting')
     c=sub.add_parser('checkpoint');c.add_argument('snapshot');c.add_argument('--conversation',default='default')
     c=sub.add_parser('promote');c.add_argument('meeting');c.add_argument('snapshot');c.add_argument('question');c.add_argument('--conversation',default='default')
     c=sub.add_parser('export');c.add_argument('snapshot');c.add_argument('output');c.add_argument('--conversation',default='default')
     c=sub.add_parser('cleanup');c.add_argument('meeting');c.add_argument('--confirm',required=True,help='must exactly match meeting ID')
     c=sub.add_parser('listen');c.add_argument('meeting');c.add_argument('--source',required=True);c.add_argument('--seconds',type=int,default=30);c.add_argument('--consent',action='store_true');c.add_argument('--download-model',action='store_true')
+    c.add_argument('--summary-interval',type=float,default=15)
     c=sub.add_parser('asr');c.add_argument('meeting');c.add_argument('audio');c.add_argument('--download-model',action='store_true')
     c=sub.add_parser('mcp');c.add_argument('snapshot')
     c=sub.add_parser('trace-export');c.add_argument('output')
     c=sub.add_parser('evaluate');c.add_argument('--output',default='results/report.json');c.add_argument('--stress',action='store_true')
+    c.add_argument('--api',action='store_true',help='explicitly run 88 configured API requests on synthetic fixtures; may incur cost')
+    c=sub.add_parser('native-baseline');c.add_argument('--output',default='results/native-baseline.json')
     return p
 
 def main():
@@ -78,7 +82,15 @@ def run(a):
             output({'events':import_jsonl(store,user,a.meeting,a.file),'gaps':store.gaps(user,a.meeting)})
         elif a.command=='correct':
             n=uuid.uuid4().hex
-            output({'source_id':store.ingest(user,a.meeting,{'event_id':n,'stream':n,'seq':1,'segment_id':a.segment,'revision':a.revision,'start_ms':a.start_ms,'end_ms':a.end_ms,'text':a.text,'final':True})})
+            with store.tx() as db:
+                store._check(user,a.meeting,True)
+                old=db.execute("SELECT * FROM evidence WHERE meeting=? AND kind='segment' AND logical=? ORDER BY revision DESC LIMIT 1",(a.meeting,a.segment)).fetchone()
+                if not old:raise ValueError('segment to correct was not found')
+                if a.revision<=old['revision']:raise ValueError('correction revision must exceed the current revision')
+                start=old['start_ms'] if a.start_ms is None else a.start_ms
+                end=old['end_ms'] if a.end_ms is None else a.end_ms
+                rid=store.ingest(user,a.meeting,{'event_id':n,'stream':n,'seq':1,'segment_id':a.segment,'revision':a.revision,'start_ms':start,'end_ms':end,'text':a.text,'final':True})
+            output({'source_id':rid,'start_ms':start,'end_ms':end})
         elif a.command=='gaps':output(store.gaps(user,a.meeting))
         elif a.command=='approve-folder':output({'folder_id':store.approve(user,a.meeting,a.root),'next':'refresh-folder FOLDER_ID'})
         elif a.command=='refresh-folder':output(store.refresh(user,a.folder))
@@ -91,7 +103,8 @@ def run(a):
             if store.snapshot_info(user,sid)['meeting']!=a.meeting:raise ValueError('snapshot meeting mismatch')
             output(asyncio.run(assistant.ask(sid,a.question,a.conversation,a.skill)))
         elif a.command=='summary':output(asyncio.run(assistant.summary_graph.ainvoke({'snapshot':a.snapshot}))['result'])
-        elif a.command=='history':output(store.private_get(user,a.snapshot,a.conversation))
+        elif a.command=='history':output(store.conversation_history(user,a.snapshot,a.conversation) if a.across_snapshots else store.private_get(user,a.snapshot,a.conversation))
+        elif a.command=='live-status':output({'meeting':store.metadata(user,a.meeting),'streams':store.gaps(user,a.meeting),'latest_shared_summary':store.latest_summary(user,a.meeting)})
         elif a.command=='checkpoint':output(store.checkpoint_get(user,a.snapshot,a.conversation))
         elif a.command=='promote':output({'source_id':store.promote(user,a.snapshot,a.conversation,a.question,a.meeting)})
         elif a.command=='export':Path(a.output).write_text(json.dumps(store.export(user,a.snapshot,a.conversation),indent=2),encoding='utf-8');output({'export':a.output})
@@ -107,12 +120,17 @@ def run(a):
             output(microphones())
         elif a.command=='listen':
             from .audio import listen
-            workers=Workers(assistant);summaries=LiveSummaries(workers,a.meeting)
+            if not 1<=a.summary_interval<=3600:raise ValueError('summary interval 1..3600 seconds')
+            workers=Workers(assistant);summaries=LiveSummaries(workers,a.meeting,a.summary_interval)
+            def status(data):
+                print(json.dumps({**data,'summary_completed':summaries.completed,'summary_failures':summaries.failures,'summary_last_error':summaries.last_error,'summary_snapshot':summaries.last_snapshot}),file=sys.stderr,flush=True)
             try:
-                result=listen(store,user,a.meeting,root,a.source,a.seconds,a.consent,c.asr_model,a.download_model,trace)
+                result=listen(store,user,a.meeting,root,a.source,a.seconds,a.consent,c.asr_model,a.download_model,trace,on_status=status)
             finally:summaries.close();workers.close()
             result['background_summary_snapshot']=summaries.last_snapshot
             result['background_summary_failures']=summaries.failures
+            result['background_summary_completed']=summaries.completed
+            result['background_summary_last_error']=summaries.last_error
             output(result)
         elif a.command=='asr':
             from .audio import LocalASR
@@ -127,10 +145,13 @@ def run(a):
             from .mcp_server import server
             from .service import EvidenceService
             service=EvidenceService(store,user,a.snapshot,trace);service.info();server(service).run(transport='stdio')
-        elif a.command=='trace-export':output({'redacted_events':trace.redacted_export(a.output),'format':'local NDJSON; external Langfuse upload/hosting not configured'})
+        elif a.command=='trace-export':output({'redacted_events':trace.redacted_export(a.output,lambda sid:store.snapshot_info(user,sid)),'format':'local NDJSON; external Langfuse upload/hosting not configured'})
         elif a.command=='evaluate':
             from .evaluation import evaluate
-            output(evaluate(Path(a.output),root/'evaluation',stress=a.stress))
+            output(evaluate(Path(a.output),root/'evaluation',stress=a.stress,config=c if a.api else None))
+        elif a.command=='native-baseline':
+            from .native_baseline import run_native
+            output(asyncio.run(run_native(c,root/'native-evaluation',Path(a.output))))
     finally:store.close()
 
 if __name__=='__main__':main()

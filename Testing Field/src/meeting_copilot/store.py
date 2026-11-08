@@ -16,13 +16,13 @@ def digest(value):
     return hashlib.sha256(value.encode()).hexdigest()
 
 def tokens(text):
-    return re.findall(r"[a-z0-9]+", text.lower())[:80]
+    return re.findall(r"[a-z0-9]+", text.lower())
 
 class Store:
     def __init__(self, path):
         Path(path).parent.mkdir(parents=True, exist_ok=True)
         self.root = Path(path).resolve().parent
-        self.db = sqlite3.connect(path, check_same_thread=False)
+        self.db = sqlite3.connect(path, check_same_thread=False, timeout=30)
         self.db.row_factory = sqlite3.Row
         self.lock = threading.RLock()
         self.db.executescript('''
@@ -39,10 +39,25 @@ class Store:
         CREATE TABLE IF NOT EXISTS manifests(id INTEGER PRIMARY KEY AUTOINCREMENT,folder TEXT REFERENCES folders ON DELETE CASCADE,watermark INTEGER,refs TEXT);
         CREATE TABLE IF NOT EXISTS snapshots(id TEXT PRIMARY KEY,user TEXT,meeting TEXT REFERENCES meetings ON DELETE CASCADE,watermark INTEGER,meetings TEXT,folders TEXT,refs TEXT,created REAL);
         CREATE TABLE IF NOT EXISTS private(snapshot TEXT REFERENCES snapshots ON DELETE CASCADE,user TEXT,conversation TEXT,question TEXT,answer TEXT,PRIMARY KEY(snapshot,user,conversation,question));
+        CREATE TABLE IF NOT EXISTS conversation_turns(id INTEGER PRIMARY KEY AUTOINCREMENT,snapshot TEXT REFERENCES snapshots ON DELETE CASCADE,user TEXT,conversation TEXT,question TEXT,answer TEXT,created REAL);
+        CREATE INDEX IF NOT EXISTS conversation_turn_scope ON conversation_turns(user,conversation,id);
+        CREATE TABLE IF NOT EXISTS snapshot_turn_watermarks(snapshot TEXT PRIMARY KEY REFERENCES snapshots ON DELETE CASCADE,watermark INTEGER);
+        CREATE TABLE IF NOT EXISTS app_meta(key TEXT PRIMARY KEY,value TEXT);
         CREATE TABLE IF NOT EXISTS checkpoints(snapshot TEXT REFERENCES snapshots ON DELETE CASCADE,user TEXT,conversation TEXT,state TEXT,PRIMARY KEY(snapshot,user,conversation));
         CREATE TABLE IF NOT EXISTS summaries(snapshot TEXT REFERENCES snapshots ON DELETE CASCADE,meeting TEXT REFERENCES meetings ON DELETE CASCADE,refs TEXT,text TEXT,PRIMARY KEY(snapshot,meeting));
         ''')
         self.db.commit()
+        # Additive v0.1 upgrade: preserve existing answers as prior turns. Old
+        # snapshots have turn cutoff zero; only new snapshots may consume them.
+        with self.tx() as db:
+            if not db.execute("SELECT 1 FROM app_meta WHERE key='private_turn_backfill'").fetchone():
+                db.execute('''INSERT INTO conversation_turns(snapshot,user,conversation,question,answer,created)
+                    SELECT p.snapshot,p.user,p.conversation,p.question,p.answer,s.created
+                    FROM private p JOIN snapshots s ON s.id=p.snapshot
+                    WHERE NOT EXISTS(SELECT 1 FROM conversation_turns t WHERE t.snapshot=p.snapshot
+                    AND t.user=p.user AND t.conversation=p.conversation AND t.question=p.question)
+                    ORDER BY s.created,p.rowid''')
+                db.execute("INSERT INTO app_meta VALUES('private_turn_backfill','1')")
 
     @contextmanager
     def tx(self):
@@ -52,6 +67,21 @@ class Store:
             else:
                 with self.db:
                     self.db.execute('BEGIN IMMEDIATE')
+                    yield self.db
+
+    @contextmanager
+    def read(self):
+        """One SQLite view for policy checks and data, including across processes.
+
+        WAL readers do not block ingestion. A fresh call sees new revocations;
+        an in-flight read is authorized against one coherent database state.
+        """
+        with self.lock:
+            if self.db.in_transaction:
+                yield self.db
+            else:
+                with self.db:
+                    self.db.execute('BEGIN')
                     yield self.db
 
     def close(self): self.db.close()
@@ -75,11 +105,11 @@ class Store:
             else: db.execute('DELETE FROM acl WHERE meeting=? AND user=?',(meeting,other))
 
     def list_meetings(self,user):
-        with self.lock:
+        with self.read():
             return [dict(r) for r in self.db.execute('SELECT m.* FROM meetings m JOIN acl a ON m.id=a.meeting WHERE a.user=? ORDER BY m.id LIMIT 50',(user,))]
 
     def metadata(self,user,meeting):
-        with self.lock: return self._check(user,meeting)
+        with self.read(): return self._check(user,meeting)
 
     def ingest(self,user,meeting,event,*,kind='segment'):
         """Observed time/watermark assigned here, never accepted from an event."""
@@ -101,14 +131,15 @@ class Store:
             return rid
 
     def gaps(self,user,meeting):
-        with self.lock:
+        with self.read():
             self._check(user,meeting)
             return [dict(r) for r in self.db.execute('SELECT stream,MAX(seq) AS highest,COUNT(*) AS received,MAX(seq)-COUNT(*) AS missing FROM events WHERE meeting=? GROUP BY stream',(meeting,))]
 
     def approve(self,user,meeting,root):
         from .project import approved_root
         root=approved_root(root)
-        if root == self.root:raise ValueError('cannot index application data root')
+        if root == self.root or root.is_relative_to(self.root) or self.root.is_relative_to(root):
+            raise ValueError('project root must not overlap application data root')
         with self.tx() as db:
             self._check(user,meeting,True)
             fid=uuid.uuid4().hex
@@ -119,23 +150,31 @@ class Store:
         row=self.db.execute('SELECT * FROM folders WHERE id=?',(fid,)).fetchone()
         if not row or not row['active'] or row['owner']!=user: raise Denied('folder access denied')
         self._check(user,row['meeting'])
+        root=Path(row['root']).resolve()
+        if root == self.root or root.is_relative_to(self.root) or self.root.is_relative_to(root):
+            raise Denied('project root overlaps application data root')
         return dict(row)
 
     def folders(self,user,meeting):
-        with self.lock:
+        with self.read():
             self._check(user,meeting)
             return [dict(r) for r in self.db.execute('SELECT id,meeting,active FROM folders WHERE meeting=? AND owner=? AND active=1',(meeting,user))]
 
     def revoke_folder(self,user,fid):
         with self.tx() as db:
-            self._folder(user,fid)
+            row=db.execute('SELECT * FROM folders WHERE id=? AND owner=?',(fid,user)).fetchone()
+            if not row:raise Denied('folder access denied')
+            self._check(user,row['meeting'],True)
             db.execute('UPDATE folders SET active=0 WHERE id=?',(fid,))
 
     def refresh(self,user,fid):
         from .project import scan
         with self.tx() as db:
             f=self._folder(user,fid)
-            contents=scan(Path(f['root']))
+            root=Path(f['root']).resolve()
+            if root == self.root or root.is_relative_to(self.root) or self.root.is_relative_to(root):
+                raise Denied('project root overlaps application data root')
+            contents=scan(root)
             refs=[]
             for path,text in contents:
                 logical=fid+':'+path;h=digest(text)
@@ -164,6 +203,8 @@ class Store:
             sid=uuid.uuid4().hex
             w=db.execute('SELECT COALESCE(MAX(id),0) FROM evidence').fetchone()[0]
             db.execute('INSERT INTO snapshots VALUES(?,?,?,?,?,?,?,?)',(sid,user,meeting,w,json.dumps(meetings),json.dumps(list(folders)),json.dumps(refs),time.time()))
+            turn_watermark=db.execute('SELECT COALESCE(MAX(id),0) FROM conversation_turns').fetchone()[0]
+            db.execute('INSERT INTO snapshot_turn_watermarks VALUES(?,?)',(sid,turn_watermark))
             return sid
 
     def _snapshot(self,user,sid):
@@ -171,32 +212,39 @@ class Store:
         if not row: raise Denied('snapshot access denied')
         for m in json.loads(row['meetings']): self._check(user,m)
         for f in json.loads(row['folders']): self._folder(user,f)
-        return dict(row)
+        result=dict(row)
+        turns=self.db.execute('SELECT watermark FROM snapshot_turn_watermarks WHERE snapshot=?',(sid,)).fetchone()
+        result['conversation_watermark']=turns[0] if turns else 0
+        return result
 
     def snapshot_info(self,user,sid):
-        with self.lock:
+        with self.read():
             s=self._snapshot(user,sid)
-            return {k:s[k] for k in ('id','meeting','watermark','created','meetings','folders','refs')}
+            return {k:s[k] for k in ('id','meeting','watermark','conversation_watermark','created','meetings','folders','refs')}
 
-    def evidence(self,user,sid,*,kind=None,query=None,limit=20,recent=False,meeting=None):
-        with self.lock:
+    def evidence(self,user,sid,*,kind=None,query=None,limit=20,recent=False,meeting=None,offset=0):
+        with self.read():
             s=self._snapshot(user,sid);refs=json.loads(s['refs'])
             if not refs: return []
-            sql='SELECT e.* FROM evidence e JOIN json_each(?) j ON e.id=j.value WHERE 1=1';args=[json.dumps(refs)]
+            if not isinstance(offset,int) or not 0<=offset<=1000000:raise ValueError('offset limit')
+            sql='SELECT e.* FROM evidence e JOIN json_each(?) j ON e.id=j.value'
+            if query:sql+=' JOIN evidence_fts ON evidence_fts.rowid=e.id'
+            sql+=' WHERE 1=1';args=[json.dumps(refs)]
             if kind: sql+=' AND e.kind=?';args.append(kind)
             if meeting is not None:
                 if meeting not in json.loads(s['meetings']):raise Denied('meeting outside snapshot')
                 sql+=' AND e.meeting=?';args.append(meeting)
             if query:
-                terms=tokens(query)
+                terms=tokens(query)[:80]
                 if not terms:return []
-                sql+=' AND e.id IN (SELECT rowid FROM evidence_fts WHERE evidence_fts MATCH ?)';args.append(' OR '.join('"'+t+'"' for t in terms))
-            sql+=(' ORDER BY COALESCE(e.start_ms,0) DESC,e.id DESC LIMIT ?' if recent else ' ORDER BY COALESCE(e.start_ms,0),e.id LIMIT ?');args.append(max(1,min(limit,100)))
+                sql+=' AND evidence_fts MATCH ?';args.append(' OR '.join('"'+t+'"' for t in terms))
+            order='bm25(evidence_fts),e.id DESC' if query else ('COALESCE(e.start_ms,0) DESC,e.id DESC' if recent else 'COALESCE(e.start_ms,0),e.id')
+            sql+=' ORDER BY '+order+' LIMIT ? OFFSET ?';args.extend([max(1,min(limit,100)),offset])
             result=[dict(r) for r in self.db.execute(sql,args)]
-            return result[::-1] if recent else result
+            return result[::-1] if recent and not query else result
 
     def raw(self,user,sid,rid):
-        with self.lock:
+        with self.read():
             s=self._snapshot(user,sid)
             if rid not in json.loads(s['refs']): raise Denied('source outside snapshot')
             r=self.db.execute('SELECT * FROM evidence WHERE id=?',(rid,)).fetchone()
@@ -207,9 +255,33 @@ class Store:
         with self.tx() as db:
             self._snapshot(user,sid)
             db.execute('INSERT OR REPLACE INTO private VALUES(?,?,?,?,?)',(sid,user,conversation,question,json.dumps(answer)))
+            db.execute('INSERT INTO conversation_turns(snapshot,user,conversation,question,answer,created) VALUES(?,?,?,?,?,?)',(sid,user,conversation,question,json.dumps(answer),time.time()))
+
+    def conversation_history(self,user,sid,conversation,limit=8):
+        """Prior private turns within this meeting and currently opted-in scope.
+
+        Each turn keeps its own snapshot. A later snapshot never makes a revoked
+        or unselected earlier meeting/folder available through conversation state.
+        """
+        with self.read():
+            current=self._snapshot(user,sid)
+            meetings=set(json.loads(current['meetings']));folders=set(json.loads(current['folders']))
+            rows=self.db.execute('''SELECT t.*,s.meetings,s.folders,s.watermark FROM conversation_turns t
+                JOIN snapshots s ON s.id=t.snapshot
+                WHERE t.user=? AND t.conversation=? AND s.meeting=? AND t.id<=?
+                AND s.watermark<=? ORDER BY t.id DESC''',
+                (user,conversation,current['meeting'],current['conversation_watermark'],current['watermark']))
+            result=[]
+            for r in rows:
+                if not set(json.loads(r['meetings'])).issubset(meetings) or not set(json.loads(r['folders'])).issubset(folders):continue
+                try:self._snapshot(user,r['snapshot'])
+                except Denied:continue
+                result.append({'turn_id':r['id'],'snapshot_id':r['snapshot'],'question':r['question'],'answer':json.loads(r['answer'])})
+                if len(result)>=max(1,min(limit,20)):break
+            return result[::-1]
 
     def private_get(self,user,sid,conversation,question=None):
-        with self.lock:
+        with self.read():
             self._snapshot(user,sid)
             sql='SELECT question,answer FROM private WHERE snapshot=? AND user=? AND conversation=?';args=[sid,user,conversation]
             if question is not None:sql+=' AND question=?';args.append(question)
@@ -222,7 +294,7 @@ class Store:
             db.execute('INSERT OR REPLACE INTO checkpoints VALUES(?,?,?,?)',(sid,user,conversation,json.dumps(state)))
 
     def checkpoint_get(self,user,sid,conversation):
-        with self.lock:
+        with self.read():
             self._snapshot(user,sid)
             row=self.db.execute('SELECT state FROM checkpoints WHERE snapshot=? AND user=? AND conversation=?',(sid,user,conversation)).fetchone()
             return json.loads(row[0]) if row else None
@@ -245,14 +317,30 @@ class Store:
             db.execute('INSERT OR REPLACE INTO summaries VALUES(?,?,?,?)',(sid,s['meeting'],json.dumps(refs),text))
 
     def summary_get(self,user,sid):
-        with self.lock:
+        with self.read():
             self._snapshot(user,sid)
             r=self.db.execute('SELECT text,refs FROM summaries WHERE snapshot=?',(sid,)).fetchone()
             return {'text':r[0],'refs':json.loads(r[1])} if r else None
 
+    def latest_summary(self,user,meeting):
+        with self.read():
+            self._check(user,meeting)
+            rows=self.db.execute('SELECT s.id FROM snapshots s JOIN summaries m ON m.snapshot=s.id WHERE s.user=? AND s.meeting=? ORDER BY s.created DESC',(user,meeting))
+            for row in rows:
+                try:
+                    result=self.summary_get(user,row[0])
+                    return {'snapshot_id':row[0],**result}
+                except Denied:continue
+            return None
+
     def export(self,user,sid,conversation):
-        with self.lock:
-            return {'snapshot':self.snapshot_info(user,sid),'evidence':self.evidence(user,sid,limit=100),'private':self.private_get(user,sid,conversation),'summary':self.summary_get(user,sid),'truncated':len(json.loads(self._snapshot(user,sid)['refs']))>100}
+        with self.read():
+            private=self.private_get(user,sid,conversation);summary=self.summary_get(user,sid)
+            required={c['source_id'] for turn in private for c in turn['answer'].get('claims',[])}
+            if summary:required.update(summary['refs'])
+            rows={r['id']:r for r in self.evidence(user,sid,limit=100)}
+            for rid in required:rows[rid]=self.raw(user,sid,rid)
+            return {'snapshot':self.snapshot_info(user,sid),'evidence':list(rows.values()),'private':private,'summary':summary,'truncated':len(rows)<len(json.loads(self._snapshot(user,sid)['refs'])),'note':'First 100 sources plus all answer/summary cited sources; use paginated evidence reads for the rest.'}
 
     def cleanup(self,user,meeting):
         with self.tx() as db:

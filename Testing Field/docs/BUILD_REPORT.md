@@ -1,3 +1,5 @@
+> Historical v0.1 build record. For v0.2 fixes and final independent validation, see [INDEPENDENT_REVIEW.md](INDEPENDENT_REVIEW.md). Earlier deferrals/counts below describe the initial release.
+
 # Server build and validation report
 
 Build root: `/home/jy2283/meeting-copilot-dev-20261108-eHu73X5Y`. Linux aarch64, Python 3.12.3, glibc 2.39. All package installations, caches, model/audio downloads, test temp directories and wheel artifacts stayed inside this dedicated root. Inherited `TMPDIR=<build>/tmp`, `XDG_CACHE_HOME=<build>/cache/xdg`, `PIP_CACHE_DIR=<build>/cache/pip` were verified. No sudo/global install, dotfile/config/auth edits, paid API use or pre-existing service changes. [source: server commands; results/asr-smoke.json]

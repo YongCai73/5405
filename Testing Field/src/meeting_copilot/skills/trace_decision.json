@@ -1,1 +1,20 @@
-{"name":"trace_decision","trigger":["why","decision","rejected"],"retrieval":"keyword FTS in pinned current and explicitly opted-in prior meetings, plus matching pinned files","output_fields":["decision_evidence","rationale_evidence"],"citation":"Every rationale must be a verbatim excerpt with source/version/hash/time","abstention":"Absent rationale is unknown; private answers are never meeting evidence"}
+{
+  "name": "trace_decision",
+  "trigger": [
+    "why",
+    "decision",
+    "rejected"
+  ],
+  "retrieval": "keyword FTS in pinned current and explicitly opted-in prior meetings, plus matching pinned files",
+  "output_fields": [
+    "decision_evidence",
+    "rationale_evidence"
+  ],
+  "citation": "Exact supporting quotations retain source ID/version/hash/time or original file lines. Model synthesis is separately labelled inference with IDs of validated quotations; structural validation is not semantic proof.",
+  "abstention": "Absent rationale is unknown; private answers are never meeting evidence",
+  "task_steps": [
+    "Identify the decision and distinguish adopted, rejected and merely proposed options.",
+    "Separate explicitly stated reasons from your interpretation; say when rationale was not stated.",
+    "Connect a reason to its decision using supporting quotations; cite relevant retained code when present."
+  ]
+}

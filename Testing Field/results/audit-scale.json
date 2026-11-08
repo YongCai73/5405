@@ -1,0 +1,497 @@
+{
+  "mode": "SYNTHETIC scale/lookup check, not 60-minute wall-clock or semantic model evaluation",
+  "package_version": "0.2.0",
+  "platform": "Linux-6.8.0-138-generic-aarch64-with-glibc2.39",
+  "transcript_segments": 1200,
+  "logical_meeting_seconds": 3600,
+  "project_files": 300,
+  "target_file_bytes": 129023,
+  "target_line": 3001,
+  "setup_ms": 954.4022344052792,
+  "source_hashes_unchanged": true,
+  "revoked_export_denied": true,
+  "cited_sources_in_export": true,
+  "answers": [
+    {
+      "question": "Why was Kafka rejected due to migration overhead?",
+      "result": {
+        "snapshot_id": "df9d406d35f64275a206001026e38115",
+        "mode": "SIMULATED / deterministic extractive",
+        "skill": "trace_decision",
+        "contract": {
+          "name": "trace_decision",
+          "trigger": [
+            "why",
+            "decision",
+            "rejected"
+          ],
+          "retrieval": "keyword FTS in pinned current and explicitly opted-in prior meetings, plus matching pinned files",
+          "output_fields": [
+            "decision_evidence",
+            "rationale_evidence"
+          ],
+          "citation": "Exact supporting quotations retain source ID/version/hash/time or original file lines. Model synthesis is separately labelled inference with IDs of validated quotations; structural validation is not semantic proof.",
+          "abstention": "Absent rationale is unknown; private answers are never meeting evidence",
+          "task_steps": [
+            "Identify the decision and distinguish adopted, rejected and merely proposed options.",
+            "Separate explicitly stated reasons from your interpretation; say when rationale was not stated.",
+            "Connect a reason to its decision using supporting quotations; cite relevant retained code when present."
+          ]
+        },
+        "text": "Kafka was rejected because migration overhead exceeds the maintenance budget. [E1200]\nKafka proposed for iteration 1198. [E1199]\nKafka proposed for iteration 1197. [E1198]\nKafka proposed for iteration 1196. [E1197]\nKafka proposed for iteration 1195. [E1196]\nKafka proposed for iteration 1194. [E1195]\nKafka proposed for iteration 1193. [E1194]\nKafka proposed for iteration 1192. [E1193]",
+        "claims": [
+          {
+            "source_id": 1200,
+            "quote": "Kafka was rejected because migration overhead exceeds the maintenance budget."
+          },
+          {
+            "source_id": 1199,
+            "quote": "Kafka proposed for iteration 1198."
+          },
+          {
+            "source_id": 1198,
+            "quote": "Kafka proposed for iteration 1197."
+          },
+          {
+            "source_id": 1197,
+            "quote": "Kafka proposed for iteration 1196."
+          },
+          {
+            "source_id": 1196,
+            "quote": "Kafka proposed for iteration 1195."
+          },
+          {
+            "source_id": 1195,
+            "quote": "Kafka proposed for iteration 1194."
+          },
+          {
+            "source_id": 1194,
+            "quote": "Kafka proposed for iteration 1193."
+          },
+          {
+            "source_id": 1193,
+            "quote": "Kafka proposed for iteration 1192."
+          }
+        ],
+        "inferences": [],
+        "citations": [
+          {
+            "source_id": 1200,
+            "kind": "segment",
+            "meeting": "long",
+            "revision": 1,
+            "sha256": "88eebd6b863bb5cc5b949735522e1e92c85601f2c8451326059e2fd917c7359c",
+            "segment": "s1199",
+            "start_ms": 3597000,
+            "end_ms": 3599500
+          },
+          {
+            "source_id": 1199,
+            "kind": "segment",
+            "meeting": "long",
+            "revision": 1,
+            "sha256": "e8b5ad1b07ab72b27782c0606026ff769aac4ff740ca27e38075cb72e9232aa0",
+            "segment": "s1198",
+            "start_ms": 3594000,
+            "end_ms": 3596500
+          },
+          {
+            "source_id": 1198,
+            "kind": "segment",
+            "meeting": "long",
+            "revision": 1,
+            "sha256": "fddd5601038b63d3e1686cf3c034377979a53c0fd104c64dd0a6415815b6eacc",
+            "segment": "s1197",
+            "start_ms": 3591000,
+            "end_ms": 3593500
+          },
+          {
+            "source_id": 1197,
+            "kind": "segment",
+            "meeting": "long",
+            "revision": 1,
+            "sha256": "929ea2b403eab4c9898844bedba2933498a3c118a521e3d2ba5db244f0624a96",
+            "segment": "s1196",
+            "start_ms": 3588000,
+            "end_ms": 3590500
+          },
+          {
+            "source_id": 1196,
+            "kind": "segment",
+            "meeting": "long",
+            "revision": 1,
+            "sha256": "103d3ac9d16ece9bcd521bf0d84e4bf42821ba33d7d6d60bc75d2e1477c4b384",
+            "segment": "s1195",
+            "start_ms": 3585000,
+            "end_ms": 3587500
+          },
+          {
+            "source_id": 1195,
+            "kind": "segment",
+            "meeting": "long",
+            "revision": 1,
+            "sha256": "c13c6442b372bb13519662a06c0ee13cc24cc49551bff2bef9985adefc655bd0",
+            "segment": "s1194",
+            "start_ms": 3582000,
+            "end_ms": 3584500
+          },
+          {
+            "source_id": 1194,
+            "kind": "segment",
+            "meeting": "long",
+            "revision": 1,
+            "sha256": "bd499615a431a98abc02ce464f1954c0e4c509b86b8e66a0d18ede8e64bad82e",
+            "segment": "s1193",
+            "start_ms": 3579000,
+            "end_ms": 3581500
+          },
+          {
+            "source_id": 1193,
+            "kind": "segment",
+            "meeting": "long",
+            "revision": 1,
+            "sha256": "0231a7e2e4a74a4307aa7784f2a8c6223e9e55137cd50afff86d7dca9c7a8f3f",
+            "segment": "s1192",
+            "start_ms": 3576000,
+            "end_ms": 3578500
+          }
+        ],
+        "abstained": false,
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "estimated_cost_usd": 0.0
+        },
+        "tool_events": [],
+        "conversation_context": [],
+        "validation": "Exact quotation membership and source references checked; semantic entailment of model inference is not automatically verified.",
+        "latency_ms": 12.397,
+        "fields": {
+          "decision_evidence": [
+            {
+              "source_id": 1200,
+              "quote": "Kafka was rejected because migration overhead exceeds the maintenance budget."
+            },
+            {
+              "source_id": 1199,
+              "quote": "Kafka proposed for iteration 1198."
+            },
+            {
+              "source_id": 1198,
+              "quote": "Kafka proposed for iteration 1197."
+            },
+            {
+              "source_id": 1197,
+              "quote": "Kafka proposed for iteration 1196."
+            },
+            {
+              "source_id": 1196,
+              "quote": "Kafka proposed for iteration 1195."
+            },
+            {
+              "source_id": 1195,
+              "quote": "Kafka proposed for iteration 1194."
+            },
+            {
+              "source_id": 1194,
+              "quote": "Kafka proposed for iteration 1193."
+            },
+            {
+              "source_id": 1193,
+              "quote": "Kafka proposed for iteration 1192."
+            }
+          ],
+          "rationale_evidence": [
+            {
+              "source_id": 1200,
+              "quote": "Kafka was rejected because migration overhead exceeds the maintenance budget."
+            }
+          ]
+        },
+        "inferred_fields": {
+          "decision_evidence": [],
+          "rationale_evidence": []
+        }
+      },
+      "graph_wall_ms": 413.32098841667175
+    },
+    {
+      "question": "What is MAX_RETRY_BUDGET?",
+      "result": {
+        "snapshot_id": "df9d406d35f64275a206001026e38115",
+        "mode": "SIMULATED / deterministic extractive",
+        "skill": "direct",
+        "contract": {
+          "name": "direct",
+          "retrieval": "question keywords",
+          "output_fields": [
+            "evidence"
+          ],
+          "abstention": "insufficient evidence"
+        },
+        "text": "MAX_RETRY_BUDGET = 937 [E1500]\nKafka was rejected because migration overhead exceeds the maintenance budget. [E1200]",
+        "claims": [
+          {
+            "source_id": 1500,
+            "quote": "MAX_RETRY_BUDGET = 937"
+          },
+          {
+            "source_id": 1200,
+            "quote": "Kafka was rejected because migration overhead exceeds the maintenance budget."
+          }
+        ],
+        "inferences": [],
+        "citations": [
+          {
+            "source_id": 1500,
+            "kind": "file",
+            "meeting": "long",
+            "revision": 1,
+            "sha256": "5559788bcf1356779977cc850996a7d13a54d3b8811260159b9eea4adcc4411b",
+            "path": "zz_critical.py",
+            "line_start": 3001,
+            "line_end": 3001,
+            "folder": "b926dedbaa0e40a4bd8084e323a80592",
+            "char_start": 129000,
+            "char_end": 129022
+          },
+          {
+            "source_id": 1200,
+            "kind": "segment",
+            "meeting": "long",
+            "revision": 1,
+            "sha256": "88eebd6b863bb5cc5b949735522e1e92c85601f2c8451326059e2fd917c7359c",
+            "segment": "s1199",
+            "start_ms": 3597000,
+            "end_ms": 3599500
+          }
+        ],
+        "abstained": false,
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "estimated_cost_usd": 0.0
+        },
+        "tool_events": [],
+        "conversation_context": [],
+        "validation": "Exact quotation membership and source references checked; semantic entailment of model inference is not automatically verified.",
+        "latency_ms": 2.386,
+        "fields": {
+          "evidence": [
+            {
+              "source_id": 1500,
+              "quote": "MAX_RETRY_BUDGET = 937"
+            },
+            {
+              "source_id": 1200,
+              "quote": "Kafka was rejected because migration overhead exceeds the maintenance budget."
+            }
+          ]
+        },
+        "inferred_fields": {
+          "evidence": []
+        }
+      },
+      "graph_wall_ms": 14.427775517106056
+    },
+    {
+      "question": "Catch up",
+      "result": {
+        "snapshot_id": "df9d406d35f64275a206001026e38115",
+        "mode": "SIMULATED / deterministic extractive",
+        "skill": "catch_up",
+        "contract": {
+          "name": "catch_up",
+          "trigger": [
+            "catch up",
+            "missed",
+            "status"
+          ],
+          "retrieval": "chronological current-meeting segments; relevant project excerpts only when matched",
+          "output_fields": [
+            "recent_evidence",
+            "open_questions"
+          ],
+          "citation": "Exact supporting quotations retain source ID/version/hash/time or original file lines. Model synthesis is separately labelled inference with IDs of validated quotations; structural validation is not semantic proof.",
+          "abstention": "State insufficient evidence when no supported excerpt; do not invent tasks or owners",
+          "task_steps": [
+            "Describe what changed in the current meeting using recent evidence.",
+            "Separate agreed decisions from proposals and unresolved questions.",
+            "Mention owners and next steps only when stated; do not infer assignments."
+          ]
+        },
+        "text": "Kafka proposed for iteration 1192. [E1193]\nKafka proposed for iteration 1193. [E1194]\nKafka proposed for iteration 1194. [E1195]\nKafka proposed for iteration 1195. [E1196]\nKafka proposed for iteration 1196. [E1197]\nKafka proposed for iteration 1197. [E1198]\nKafka proposed for iteration 1198. [E1199]\nKafka was rejected because migration overhead exceeds the maintenance budget. [E1200]",
+        "claims": [
+          {
+            "source_id": 1193,
+            "quote": "Kafka proposed for iteration 1192."
+          },
+          {
+            "source_id": 1194,
+            "quote": "Kafka proposed for iteration 1193."
+          },
+          {
+            "source_id": 1195,
+            "quote": "Kafka proposed for iteration 1194."
+          },
+          {
+            "source_id": 1196,
+            "quote": "Kafka proposed for iteration 1195."
+          },
+          {
+            "source_id": 1197,
+            "quote": "Kafka proposed for iteration 1196."
+          },
+          {
+            "source_id": 1198,
+            "quote": "Kafka proposed for iteration 1197."
+          },
+          {
+            "source_id": 1199,
+            "quote": "Kafka proposed for iteration 1198."
+          },
+          {
+            "source_id": 1200,
+            "quote": "Kafka was rejected because migration overhead exceeds the maintenance budget."
+          }
+        ],
+        "inferences": [],
+        "citations": [
+          {
+            "source_id": 1193,
+            "kind": "segment",
+            "meeting": "long",
+            "revision": 1,
+            "sha256": "0231a7e2e4a74a4307aa7784f2a8c6223e9e55137cd50afff86d7dca9c7a8f3f",
+            "segment": "s1192",
+            "start_ms": 3576000,
+            "end_ms": 3578500
+          },
+          {
+            "source_id": 1194,
+            "kind": "segment",
+            "meeting": "long",
+            "revision": 1,
+            "sha256": "bd499615a431a98abc02ce464f1954c0e4c509b86b8e66a0d18ede8e64bad82e",
+            "segment": "s1193",
+            "start_ms": 3579000,
+            "end_ms": 3581500
+          },
+          {
+            "source_id": 1195,
+            "kind": "segment",
+            "meeting": "long",
+            "revision": 1,
+            "sha256": "c13c6442b372bb13519662a06c0ee13cc24cc49551bff2bef9985adefc655bd0",
+            "segment": "s1194",
+            "start_ms": 3582000,
+            "end_ms": 3584500
+          },
+          {
+            "source_id": 1196,
+            "kind": "segment",
+            "meeting": "long",
+            "revision": 1,
+            "sha256": "103d3ac9d16ece9bcd521bf0d84e4bf42821ba33d7d6d60bc75d2e1477c4b384",
+            "segment": "s1195",
+            "start_ms": 3585000,
+            "end_ms": 3587500
+          },
+          {
+            "source_id": 1197,
+            "kind": "segment",
+            "meeting": "long",
+            "revision": 1,
+            "sha256": "929ea2b403eab4c9898844bedba2933498a3c118a521e3d2ba5db244f0624a96",
+            "segment": "s1196",
+            "start_ms": 3588000,
+            "end_ms": 3590500
+          },
+          {
+            "source_id": 1198,
+            "kind": "segment",
+            "meeting": "long",
+            "revision": 1,
+            "sha256": "fddd5601038b63d3e1686cf3c034377979a53c0fd104c64dd0a6415815b6eacc",
+            "segment": "s1197",
+            "start_ms": 3591000,
+            "end_ms": 3593500
+          },
+          {
+            "source_id": 1199,
+            "kind": "segment",
+            "meeting": "long",
+            "revision": 1,
+            "sha256": "e8b5ad1b07ab72b27782c0606026ff769aac4ff740ca27e38075cb72e9232aa0",
+            "segment": "s1198",
+            "start_ms": 3594000,
+            "end_ms": 3596500
+          },
+          {
+            "source_id": 1200,
+            "kind": "segment",
+            "meeting": "long",
+            "revision": 1,
+            "sha256": "88eebd6b863bb5cc5b949735522e1e92c85601f2c8451326059e2fd917c7359c",
+            "segment": "s1199",
+            "start_ms": 3597000,
+            "end_ms": 3599500
+          }
+        ],
+        "abstained": false,
+        "usage": {
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "estimated_cost_usd": 0.0
+        },
+        "tool_events": [],
+        "conversation_context": [],
+        "validation": "Exact quotation membership and source references checked; semantic entailment of model inference is not automatically verified.",
+        "latency_ms": 6.423,
+        "fields": {
+          "recent_evidence": [
+            {
+              "source_id": 1193,
+              "quote": "Kafka proposed for iteration 1192."
+            },
+            {
+              "source_id": 1194,
+              "quote": "Kafka proposed for iteration 1193."
+            },
+            {
+              "source_id": 1195,
+              "quote": "Kafka proposed for iteration 1194."
+            },
+            {
+              "source_id": 1196,
+              "quote": "Kafka proposed for iteration 1195."
+            },
+            {
+              "source_id": 1197,
+              "quote": "Kafka proposed for iteration 1196."
+            },
+            {
+              "source_id": 1198,
+              "quote": "Kafka proposed for iteration 1197."
+            },
+            {
+              "source_id": 1199,
+              "quote": "Kafka proposed for iteration 1198."
+            },
+            {
+              "source_id": 1200,
+              "quote": "Kafka was rejected because migration overhead exceeds the maintenance budget."
+            }
+          ],
+          "open_questions": []
+        },
+        "inferred_fields": {
+          "recent_evidence": [],
+          "open_questions": []
+        }
+      },
+      "graph_wall_ms": 13.852176256477833
+    }
+  ],
+  "concurrent_load": "Separate prerecorded real-ASR soaks running"
+}

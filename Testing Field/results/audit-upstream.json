@@ -1,0 +1,32 @@
+{
+  "upstream_commit": "b75077e588f5623d48d9c9bac05aa428b4257c52",
+  "unmodified_files_verified": 24,
+  "files": [
+    "src/local_meeting_ai/domain/entities.py",
+    "src/local_meeting_ai/domain/enums.py",
+    "src/local_meeting_ai/domain/errors.py",
+    "src/local_meeting_ai/domain/protocols.py",
+    "src/local_meeting_ai/domain/meeting_text.py",
+    "src/local_meeting_ai/adapters/litellm_compat.py",
+    "src/local_meeting_ai/adapters/model_files.py",
+    "src/local_meeting_ai/adapters/transcription/faster_whisper.py",
+    "src/local_meeting_ai/application/transcription_config.py",
+    "src/local_meeting_ai/infrastructure/storage.py",
+    "src/local_meeting_ai/adapters/audio_capture/__init__.py",
+    "src/local_meeting_ai/adapters/audio_capture/combined.py",
+    "src/local_meeting_ai/adapters/audio_capture/factory.py",
+    "src/local_meeting_ai/adapters/audio_capture/mixer.py",
+    "src/local_meeting_ai/adapters/audio_capture/portaudio.py",
+    "src/local_meeting_ai/adapters/audio_capture/unavailable.py",
+    "src/local_meeting_ai/adapters/audio_capture/windows_wasapi.py",
+    "src/local_meeting_ai/application/live_assistant.py",
+    "src/local_meeting_ai/domain/live_assistant.py",
+    "src/local_meeting_ai/infrastructure/database/connection.py",
+    "src/local_meeting_ai/infrastructure/database/repositories.py",
+    "src/local_meeting_ai/infrastructure/database/live_assistant.py",
+    "src/local_meeting_ai/infrastructure/live_assistant_credentials.py",
+    "src/local_meeting_ai/infrastructure/database/sql/010_live_assistant.sql"
+  ],
+  "mcp_adaptation": "explicitly marked in source manifest; not byte-identical",
+  "native_engine_bridge": "custom common transport bridge, not native desktop model engine"
+}

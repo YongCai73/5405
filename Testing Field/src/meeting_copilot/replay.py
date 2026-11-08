@@ -18,7 +18,7 @@ def import_jsonl(store,user,meeting,path):
 def seed(store,user,root,meeting='demo'):
     if meeting not in [m['id'] for m in store.list_meetings(user)]:store.create(user,meeting,'Atlas technical design (SIMULATED REPLAY)')
     for event in events():store.ingest(user,meeting,event)
-    project=root/'demo-project';project.mkdir(parents=True,exist_ok=True)
+    project=root.parent/'demo-project';project.mkdir(parents=True,exist_ok=True)
     for name,text in fixture()['project'].items():
         p=project/name
         if not p.exists():p.write_text(text,encoding='utf-8')

@@ -1,3 +1,5 @@
+> Historical v0.1 build record. For v0.2 fixes and final independent validation, see [INDEPENDENT_REVIEW.md](INDEPENDENT_REVIEW.md). Earlier deferrals/counts below describe the initial release.
+
 # Actual compatibility experiments
 
 All experiments were local to the dedicated build root. No custom capture/ASR/provider replacement was introduced after a failed dependency import. Logs here are sanitized summaries, not invented attempts. Exact upstream pin and copied-file hashes are in UPSTREAM_SOURCE.json.

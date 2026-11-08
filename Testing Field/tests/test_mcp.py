@@ -24,7 +24,12 @@ async def test_actual_stdio_tools_scope_and_revocation(tmp_path,event):
                 result=await session.call_tool('list_meetings',{})
                 text=json.dumps(result.model_dump());assert 'Chosen' in text and 'NOT-OPTED-IN' not in text
                 bad=await session.call_tool('read_evidence',{'source_id':secret});assert bad.is_error
+                spoofed=await session.call_tool('read_evidence',{'source_id':secret,'principal':'owner'});assert spoofed.is_error
                 good=await session.call_tool('read_evidence',{'source_id':rid});assert not good.is_error and 'SQLite' in json.dumps(good.model_dump())
+                future=store.ingest('owner','m',{**event,'event_id':'late-final','seq':2,'revision':2,'text':'FUTURE-FINAL-CANARY','final':True})
+                late=await session.call_tool('read_evidence',{'source_id':future});assert late.is_error
+                pinned=await session.call_tool('get_transcript',{'offset':0})
+                assert 'SQLite' in json.dumps(pinned.model_dump()) and 'FUTURE-FINAL-CANARY' not in json.dumps(pinned.model_dump())
                 store.grant('owner','m','viewer',False)
                 for tool,args in [('get_transcript',{}),('get_summary',{}),('list_project_files',{}),('meet2notes_status',{}),('find_in_transcripts',{'query':'SQLite'})]:
                     result=await session.call_tool(tool,args);assert result.is_error

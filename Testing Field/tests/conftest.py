@@ -7,7 +7,7 @@ from meeting_copilot.trace import Trace
 
 @pytest.fixture
 def store(tmp_path):
-    s=Store(tmp_path/'evidence.db');s.create('alice','m','Meeting');yield s;s.close()
+    s=Store(tmp_path/'runtime'/'evidence.db');s.create('alice','m','Meeting');yield s;s.close()
 
 @pytest.fixture
 def event():

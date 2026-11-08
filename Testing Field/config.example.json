@@ -7,5 +7,7 @@
   "send_evidence": false,
   "timeout_seconds": 20,
   "max_tokens": 800,
-  "asr_model": "tiny.en"
+  "asr_model": "tiny.en",
+  "streaming": false,
+  "tool_rounds": 0
 }

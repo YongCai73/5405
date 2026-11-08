@@ -1,0 +1,221 @@
+{
+  "mode": "clean installed wheel CLI smoke; demo is synthetic; no live endpoint or microphone",
+  "commands": [
+    {
+      "args": [
+        "init"
+      ],
+      "exit_code": 0,
+      "expected_success": true
+    },
+    {
+      "args": [
+        "demo"
+      ],
+      "exit_code": 0,
+      "expected_success": true
+    },
+    {
+      "args": [
+        "create",
+        "design",
+        "--title",
+        "Audit design"
+      ],
+      "exit_code": 0,
+      "expected_success": true
+    },
+    {
+      "args": [
+        "replay",
+        "design",
+        "/home/jy2283/meeting-copilot-dev-20261108-eHu73X5Y/team/Testing Field/examples/replay.jsonl"
+      ],
+      "exit_code": 0,
+      "expected_success": true
+    },
+    {
+      "args": [
+        "approve-folder",
+        "design",
+        "/home/jy2283/meeting-copilot-dev-20261108-eHu73X5Y/team/Testing Field/examples/project"
+      ],
+      "exit_code": 0,
+      "expected_success": true
+    },
+    {
+      "args": [
+        "refresh-folder",
+        "10d33862affc4f66aab9112e0e51fb14"
+      ],
+      "exit_code": 0,
+      "expected_success": true
+    },
+    {
+      "args": [
+        "ask",
+        "design",
+        "Compare SQLite and Kafka deployment",
+        "--folder",
+        "10d33862affc4f66aab9112e0e51fb14",
+        "--skill",
+        "compare_options",
+        "--conversation",
+        "notes"
+      ],
+      "exit_code": 0,
+      "expected_success": true
+    },
+    {
+      "args": [
+        "ask",
+        "design",
+        "Why was it chosen?",
+        "--folder",
+        "10d33862affc4f66aab9112e0e51fb14",
+        "--conversation",
+        "notes"
+      ],
+      "exit_code": 0,
+      "expected_success": true
+    },
+    {
+      "args": [
+        "history",
+        "7fbb0b4b9f394eefb54fc45a5b310e12",
+        "--conversation",
+        "notes",
+        "--across-snapshots"
+      ],
+      "exit_code": 0,
+      "expected_success": true
+    },
+    {
+      "args": [
+        "checkpoint",
+        "59fdd7a2f3ca40cb8ed9473fb0c19f35",
+        "--conversation",
+        "notes"
+      ],
+      "exit_code": 0,
+      "expected_success": true
+    },
+    {
+      "args": [
+        "summary",
+        "59fdd7a2f3ca40cb8ed9473fb0c19f35"
+      ],
+      "exit_code": 0,
+      "expected_success": true
+    },
+    {
+      "args": [
+        "live-status",
+        "design"
+      ],
+      "exit_code": 0,
+      "expected_success": true
+    },
+    {
+      "args": [
+        "export",
+        "59fdd7a2f3ca40cb8ed9473fb0c19f35",
+        "tmp/audit-smoke-multiview/answer.json",
+        "--conversation",
+        "notes"
+      ],
+      "exit_code": 0,
+      "expected_success": true
+    },
+    {
+      "args": [
+        "trace-export",
+        "tmp/audit-smoke-multiview/trace-export.jsonl"
+      ],
+      "exit_code": 0,
+      "expected_success": true
+    },
+    {
+      "args": [
+        "evaluate",
+        "--output",
+        "tmp/audit-smoke-multiview/eval.json",
+        "--stress"
+      ],
+      "exit_code": 0,
+      "expected_success": true
+    },
+    {
+      "args": [
+        "native-baseline",
+        "--output",
+        "tmp/audit-smoke-multiview/not-run.json"
+      ],
+      "exit_code": 1,
+      "expected_success": false
+    },
+    {
+      "args": [
+        "approve-folder",
+        "design",
+        "tmp/audit-smoke-multiview"
+      ],
+      "exit_code": 1,
+      "expected_success": false
+    },
+    {
+      "args": [
+        "revoke-folder",
+        "10d33862affc4f66aab9112e0e51fb14"
+      ],
+      "exit_code": 0,
+      "expected_success": true
+    },
+    {
+      "args": [
+        "export",
+        "59fdd7a2f3ca40cb8ed9473fb0c19f35",
+        "tmp/audit-smoke-multiview/denied.json"
+      ],
+      "exit_code": 1,
+      "expected_success": false
+    },
+    {
+      "args": [
+        "cleanup",
+        "design",
+        "--confirm",
+        "design"
+      ],
+      "exit_code": 0,
+      "expected_success": true
+    },
+    {
+      "args": [
+        "cleanup",
+        "demo",
+        "--confirm",
+        "demo"
+      ],
+      "exit_code": 0,
+      "expected_success": true
+    },
+    {
+      "args": [
+        "list"
+      ],
+      "exit_code": 0,
+      "expected_success": true
+    }
+  ],
+  "source_project_hashes_unchanged": true,
+  "source_hashes": {
+    "architecture.md": "3137d73dfe384920fb43ee43fbd4c3b031ce7e49ca674e347e443ce46ddb28fe",
+    "worker.py": "c605010b94ef46ff721ccc36f84c2def1b0856c36d6fea085662e35b83d1139a"
+  },
+  "pip_check": "No broken requirements found.",
+  "faster_whisper_installed": false,
+  "package_version": "0.2.0",
+  "native_baseline_demo_rejected": true,
+  "result": "passed"
+}

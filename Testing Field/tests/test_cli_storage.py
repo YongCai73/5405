@@ -40,3 +40,26 @@ def test_cli_space_paths_replay_export_cleanup(tmp_path):
     cli('cleanup','m','--confirm','m');assert cli('list')==[]
     cli('export',sid,str(root/'denied.json'),ok=False)
     assert not (root/'denied.json').exists()
+
+@pytest.mark.parametrize('values',[{'send_evidence':'false'},{'send_evidence':1},{'streaming':'false'},{'tool_rounds':3},{'timeout_seconds':True},{'input_cost_per_million':-1},{'max_tokens':True}])
+def test_invalid_config_cannot_silently_enable_upload_or_break_limits(tmp_path,values):
+    from meeting_copilot.config import Config
+    path=tmp_path/'config.json';path.write_text(json.dumps(values))
+    with pytest.raises(ValueError):Config.load(path)
+
+
+def test_cli_correction_preserves_speech_time_and_old_snapshot(tmp_path):
+    config=tmp_path/'config.json'
+    def cli(*args,ok=True):
+        p=subprocess.run([sys.executable,'-m','meeting_copilot','--config',str(config),*args],capture_output=True,text=True,timeout=30)
+        assert (p.returncode==0)==ok,p.stderr
+        return json.loads(p.stdout) if ok else p.stderr
+    cli('init');cli('create','m')
+    path=tmp_path/'events.jsonl';path.write_text(json.dumps({'event_id':'e','segment_id':'s','revision':1,'seq':1,'start_ms':12000,'end_ms':15000,'text':'SQLite is local.'})+'\n')
+    cli('replay','m',str(path));old=cli('ask','m','SQLite')['snapshot_id']
+    corrected=cli('correct','m','s','SQLite is preferred for deployment simplicity.','--revision','2')
+    assert corrected['start_ms']==12000 and corrected['end_ms']==15000
+    new=cli('ask','m','SQLite');assert new['citations'][0]['start_ms']==12000 and new['citations'][0]['end_ms']==15000
+    assert 'simplicity' in new['text']
+    pinned=cli('ask','m','SQLite','--snapshot',old);assert 'simplicity' not in pinned['text'] and 'local' in pinned['text']
+    cli('correct','m','s','stale','--revision','1',ok=False)

@@ -1,1 +1,20 @@
-{"name":"compare_options","trigger":["compare","versus","options"],"retrieval":"same snapshot keyword evidence for both options; include approved project files","output_fields":["option_evidence","tradeoff_evidence"],"citation":"Cite each supported tradeoff separately with exact source version","abstention":"If one option lacks evidence, label that comparison incomplete"}
+{
+  "name": "compare_options",
+  "trigger": [
+    "compare",
+    "versus",
+    "options"
+  ],
+  "retrieval": "same snapshot keyword evidence for both options; include approved project files",
+  "output_fields": [
+    "option_evidence",
+    "tradeoff_evidence"
+  ],
+  "citation": "Exact supporting quotations retain source ID/version/hash/time or original file lines. Model synthesis is separately labelled inference with IDs of validated quotations; structural validation is not semantic proof.",
+  "abstention": "If one option lacks evidence, label that comparison incomplete",
+  "task_steps": [
+    "Describe each named option separately, including any missing evidence for an option.",
+    "Compare tradeoffs on dimensions actually mentioned: deployment, complexity, latency, capacity or constraints.",
+    "Explain how current project code supports or limits each option. Do not invent benchmark numbers or a winner."
+  ]
+}

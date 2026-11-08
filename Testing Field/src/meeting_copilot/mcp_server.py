@@ -29,9 +29,9 @@ def server(service):
         """Get authorized opted-in meeting metadata."""
         return service.get_meeting(meeting_id)
     @mcp.tool(annotations=READ_ONLY)
-    def get_transcript() -> list[dict]:
+    def get_transcript(offset: Annotated[int,Field(ge=0,le=1000000)]=0) -> list[dict]:
         """Read up to 100 pinned transcript revisions."""
-        return service.get_transcript()
+        return service.get_transcript(offset)
     @mcp.tool(annotations=READ_ONLY)
     def find_in_transcripts(query: Annotated[str,Field(min_length=1,max_length=1000)]) -> list[dict]:
         """Find exact terms with FTS5 in retained snapshot transcripts."""

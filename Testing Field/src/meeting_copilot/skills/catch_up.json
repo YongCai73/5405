@@ -1,1 +1,20 @@
-{"name":"catch_up","trigger":["catch up","missed","status"],"retrieval":"chronological current-meeting segments; relevant project excerpts only when matched","output_fields":["recent_evidence","open_questions"],"citation":"Each excerpt includes exact source ID, version/hash and time or path/line","abstention":"State insufficient evidence when no supported excerpt; do not invent tasks or owners"}
+{
+  "name": "catch_up",
+  "trigger": [
+    "catch up",
+    "missed",
+    "status"
+  ],
+  "retrieval": "chronological current-meeting segments; relevant project excerpts only when matched",
+  "output_fields": [
+    "recent_evidence",
+    "open_questions"
+  ],
+  "citation": "Exact supporting quotations retain source ID/version/hash/time or original file lines. Model synthesis is separately labelled inference with IDs of validated quotations; structural validation is not semantic proof.",
+  "abstention": "State insufficient evidence when no supported excerpt; do not invent tasks or owners",
+  "task_steps": [
+    "Describe what changed in the current meeting using recent evidence.",
+    "Separate agreed decisions from proposals and unresolved questions.",
+    "Mention owners and next steps only when stated; do not infer assignments."
+  ]
+}

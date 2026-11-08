@@ -9,4 +9,5 @@ data/
 build/
 dist/
 config.json
+demo-project/
 results/local-*.json

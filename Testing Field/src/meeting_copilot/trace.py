@@ -12,10 +12,14 @@ class Trace:
         row={'event':event,'time':time.time(),**{k:v for k,v in values.items() if k in self.allowed}}
         with self.lock:
             with self.path.open('a',encoding='utf-8') as f:f.write(json.dumps(row)+'\n')
-    def redacted_export(self,destination):
+    def redacted_export(self,destination,authorize=None):
         rows=[]
         if self.path.exists():
             for line in self.path.read_text(encoding='utf-8').splitlines():
-                r=json.loads(line);rows.append({k:v for k,v in r.items() if k in self.allowed|{'event','time'}})
+                r=json.loads(line)
+                if authorize and r.get('snapshot_id'):
+                    try:authorize(r['snapshot_id'])
+                    except PermissionError:continue
+                rows.append({k:v for k,v in r.items() if k in self.allowed|{'event','time'}})
         Path(destination).write_text(''.join(json.dumps(r)+'\n' for r in rows),encoding='utf-8')
         return len(rows)

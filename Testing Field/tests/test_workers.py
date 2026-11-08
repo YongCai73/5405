@@ -11,6 +11,9 @@ from meeting_copilot.store import Denied
 class Slow(Provider):
     def __init__(self):super().__init__(Config(provider='openai'));self.started=threading.Event();self.release=threading.Event()
     async def complete(self,q,e,c):
+        if c.get('name')=='catch_up':
+            import json
+            return Completion(json.dumps({'claims':[{'source_id':r['id'],'quote':r['text']} for r in e]}))
         self.started.set()
         await asyncio.to_thread(self.release.wait,3)
         return Completion('{"claims":[]}')
