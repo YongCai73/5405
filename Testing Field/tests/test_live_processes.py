@@ -89,7 +89,10 @@ from meeting_copilot.audio import Pipeline
 root=Path(sys.argv[1]);store=Store(root/'evidence.db')
 identity={'pid':os.getpid(),'ppid':os.getppid(),'nonce':sys.argv[2]}
 a=Assistant(store,'host',Provider(Config()),Trace(root/'trace.jsonl'))
-w=Workers(a);bg=LiveSummaries(w,'live',.1)
+# Functional concurrency load: 2 events/sec and 1 summary/sec leave WAL headroom.
+# Production accumulates 3-second audio chunks and defaults to 15-second summaries.
+# Deliberate queue saturation belongs in test_pipeline_bounded_drop_accounting.
+w=Workers(a);bg=LiveSummaries(w,'live',1)
 p=Pipeline(lambda x:[x],lambda x:store.ingest('host','live',x))
 try:
     i=2
@@ -101,7 +104,7 @@ try:
             ready=root/'capture-ready.tmp'
             ready.write_text(json.dumps({**identity,'processed':p.processed,'summaries':bg.completed}))
             ready.replace(root/'capture-ready.json')
-        time.sleep(.05)
+        time.sleep(.5)
 finally:
     stats=p.close();bg.close();w.close();store.close()
     (root/'capture-result.json').write_text(json.dumps({**identity,**stats,'summaries':bg.completed,'summary_errors':bg.failures}))
@@ -136,9 +139,14 @@ finally:
         # Receipt at the loopback endpoint is the real ask-child readiness handshake.
         wait_for('waiting for ask provider request',lambda:bool(fake_http['requests']),[('ask',ask),('capture',capture)])
         before=progress()
+        before_watermark=db.db.execute('SELECT MAX(id) FROM evidence').fetchone()[0]
         def advanced():
             after=progress()
-            return after[0]>before[0] and after[1]>before[1]
+            if not (after[0]>before[0] and after[1]>before[1]):return False
+            # A completed summary must include post-request ingestion before release.
+            # Count advancement alone can finish an older, already queued snapshot.
+            summary=db.latest_summary('host','live')
+            return db.snapshot_info('host',summary['snapshot_id'])['watermark']>before_watermark
         wait_for('checking ingestion and summaries during pending ask',advanced,[('ask',ask),('capture',capture)],timeout=30)
         assert ask.poll() is None and capture.poll() is None
         response_gate.set()
