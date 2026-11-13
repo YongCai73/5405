@@ -113,7 +113,7 @@ def listen(store,user,meeting,root,source,seconds,consent,model='tiny.en',downlo
             last_end=batch.end_frame
             if chunk_start is None:chunk_start=batch.start_frame
             pcm.extend(batch.pcm_s16le)
-            if len(pcm)>=rate*channels*2*3:flush()
+            if len(pcm)>=rate*channels*2*10:flush()
     try:
         asr=LocalASR(root,model,download)
         pipe=Pipeline(transcribe,lambda e:store.ingest(user,meeting,e),trace)
