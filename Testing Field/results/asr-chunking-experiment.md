@@ -56,10 +56,34 @@ The microphone callback runs late while local ASR keeps the CPU busy, and PortAu
 Effects: lost words (some sentences lost their first half) and inflated latency.
 A larger buffer reduces the loss but does not remove it. A full fix is to run ASR in a separate process.
 
+## 4. 20-minute run (2026-11-12)
+
+Setup: English technical lecture (YouTube) played through the laptop speakers and picked up by the built-in microphone (`pyaudio:9`), 1200 s.
+Settings: base.en, pause cutting, `MC_ASR_THREADS=4`, `MC_SPEECH_RMS=400`, `MC_PAUSE_MS=300`, buffer 8192.
+
+| Metric | Value |
+|---|---|
+| errors / summary failures | 0 / 0 (20 background summaries completed) |
+| Audio missing | 3.0 s of 1200 s (0.25%); `input_overflows` 0 |
+| Segments committed | 60 |
+| `speech_to_ready` mean / p50 / p95 / max | 7.0 / 6.3 / 12.4 / 13.7 s |
+| Cuts | 86 at pauses, 95 at the 10 s maximum |
+| Chunks skipped as silence | **94** |
+| Frames classified as speech | 6% |
+| Audio queue | peaked at 4 of 4; 1 chunk dropped (`dropped_segments` 1) |
+
+Findings:
+- **Stable**: 20 minutes with no errors, no summary failures and almost no lost audio.
+- **Problem: quiet speech is skipped.** The 400 RMS threshold was tuned for someone speaking close to the microphone. Speech played from the speakers was quieter, so 94 chunks were treated as silence and never transcribed, and only 60 segments were committed for a 20-minute lecture. In a real meeting, people far from the microphone could be lost the same way.
+- Continuous lecture speech has few pauses, so many chunks ran to the 10 s maximum. Latency was higher than in the 60 s read-aloud runs (mean 7.0 s vs 5.1 s).
+- ASR fell behind once (queue full), dropping one chunk.
+
+Proposed fix (not implemented yet): use separate thresholds for cutting (keep ~400) and for skipping silence (much lower, e.g. 50), so quiet speech is still transcribed.
+
 ## Not yet tested / next steps
 
+- Separate the cut threshold from the skip-silence threshold (see section 4).
 - Run ASR in a separate process so it cannot starve audio capture.
-- Check `input_overflows` (reported from now on) in the next run.
 - Vocabulary prompt for technical terms.
-- 20-minute run (planned with a played-back English technical talk) and microphone unplug test.
-- macOS (`portaudio.py` backend has not been changed).
+- Microphone unplug test (planned with AirPods: put them back in the case mid-recording).
+- macOS (`portaudio.py` backend has not been changed); needs a teammate with a Mac.
