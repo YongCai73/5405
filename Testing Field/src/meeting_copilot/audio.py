@@ -147,9 +147,13 @@ def listen(store,user,meeting,root,source,seconds,consent,model='tiny.en',downlo
     if cut_mode not in ('pause','fixed'):raise ValueError("MC_CUT_MODE must be 'pause' or 'fixed'")
     cutter=PauseCutter(_env_number('MC_PAUSE_MS',500,100,3000),1.0,_env_number('MC_SPEECH_RMS',100,1,30000))
     silent_skipped=0;cuts={'pause_cuts':0,'max_length_cuts':0}
-    def cut_stats():return {'silent_chunks_skipped':silent_skipped,**cuts,**cutter.diagnostics()}
+    def cut_stats():
+        # captured_audio_seconds should track elapsed recording time; a gap means clock drift.
+        audio_s=round(last_end/rate,2) if rate else None
+        wall_s=round((capture_stop or time.monotonic())-capture_t0,2) if capture_t0 is not None else None
+        return {'silent_chunks_skipped':silent_skipped,**cuts,**cutter.diagnostics(),'captured_audio_seconds':audio_s,'capture_wall_seconds':wall_s}
     # capture_t0 = clock time when recording began; segment end_ms is relative to it.
-    capture_t0=None;speech_lags=deque(maxlen=10000);lag_lock=threading.Lock()
+    capture_t0=None;capture_stop=None;speech_lags=deque(maxlen=10000);lag_lock=threading.Lock()
     def ingest(e):
         store.ingest(user,meeting,e)
         if capture_t0 is not None:
@@ -203,7 +207,7 @@ def listen(store,user,meeting,root,source,seconds,consent,model='tiny.en',downlo
             interrupted=True
         finally:
             # Stop callbacks first, then ingest the final partial chunk as well.
-            backend.stop();started=False
+            backend.stop();started=False;capture_stop=time.monotonic()
             drain();flush(final=True)
     finally:
         try:backend.shutdown()
