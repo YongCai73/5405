@@ -1,5 +1,6 @@
 """Upstream capture/ASR with independent bounded chunk and ingestion queues."""
 import asyncio
+import os
 import queue
 import threading
 import time
@@ -75,9 +76,24 @@ class LocalASR:
         self.engine=FasterWhisperEngine(Path(root)/'models');self.model=model;self.allow_download=allow_download
     def transcribe(self,path):
         from local_meeting_ai.domain.entities import TranscriptionEngineRequest
-        req=TranscriptionEngineRequest(audio_path=Path(path),model=self.model,device='cpu',compute_type='int8',language='en',task='transcribe',beam_size=1,vad_filter=True,allow_model_download=self.allow_download,cpu_threads=2,num_workers=1)
+        req=TranscriptionEngineRequest(audio_path=Path(path),model=self.model,device='cpu',compute_type='int8',language='en',task='transcribe',beam_size=1,vad_filter=True,allow_model_download=self.allow_download,cpu_threads=_env_number('MC_ASR_THREADS',2,1,16,int),num_workers=1)
         return asyncio.run(self.engine.transcribe(req,lambda *a:None,lambda:False,lambda s:None)).segments
     def close(self):self.engine.shutdown()
+
+def _env_number(name,default,low,high,kind=float):
+    """Experiment knob read from an environment variable, e.g. MC_CHUNK_SECONDS=5."""
+    raw=os.environ.get(name)
+    if raw is None or not raw.strip():return default
+    value=kind(raw)
+    if not low<=value<=high:raise ValueError(f'{name} must be between {low} and {high}')
+    return value
+
+def _latency_summary(values):
+    """Speech end -> segment committed (seconds): mean, p50, p95, max."""
+    v=sorted(values)
+    if not v:return {'speech_to_ready_mean_s':None,'speech_to_ready_p50_s':None,'speech_to_ready_p95_s':None,'speech_to_ready_max_s':None,'speech_to_ready_count':0}
+    pick=lambda q:round(v[min(len(v)-1,int(len(v)*q))],2)
+    return {'speech_to_ready_mean_s':round(sum(v)/len(v),2),'speech_to_ready_p50_s':pick(.5),'speech_to_ready_p95_s':pick(.95),'speech_to_ready_max_s':round(v[-1],2),'speech_to_ready_count':len(v)}
 
 def microphones():return [asdict(x) for x in create_audio_capture_backend().list_sources()]
 
@@ -89,6 +105,16 @@ def listen(store,user,meeting,root,source,seconds,consent,model='tiny.en',downlo
     backend=create_audio_capture_backend()
     asr=None;pipe=None;stream=uuid.uuid4().hex;seq=0;last_end=0
     pcm=bytearray();chunk_start=None;rate=channels=0;interrupted=False;started=False
+    chunk_seconds=_env_number('MC_CHUNK_SECONDS',10,1,30)
+    # capture_t0 = clock time when recording began; segment end_ms is relative to it.
+    capture_t0=None;speech_lags=deque(maxlen=10000);lag_lock=threading.Lock()
+    def ingest(e):
+        store.ingest(user,meeting,e)
+        if capture_t0 is not None:
+            with lag_lock:speech_lags.append(time.monotonic()-(capture_t0+e['end_ms']/1000))
+    def latency():
+        with lag_lock:values=list(speech_lags)
+        return _latency_summary(values)
     def transcribe(item):
         nonlocal seq
         for s in asr.transcribe(item['path']):
@@ -113,18 +139,18 @@ def listen(store,user,meeting,root,source,seconds,consent,model='tiny.en',downlo
             last_end=batch.end_frame
             if chunk_start is None:chunk_start=batch.start_frame
             pcm.extend(batch.pcm_s16le)
-            if len(pcm)>=rate*channels*2*10:flush()
+            if len(pcm)>=rate*channels*2*chunk_seconds:flush()
     try:
         asr=LocalASR(root,model,download)
-        pipe=Pipeline(transcribe,lambda e:store.ingest(user,meeting,e),trace)
+        pipe=Pipeline(transcribe,ingest,trace)
         backend.start(session_id=meeting,source_id=source,destination=storage.new_live_capture_path(meeting));started=True
-        start=time.monotonic();last_status=start
-        if on_status:on_status({'event':'recording_started','source':source,'meeting':meeting})
+        start=time.monotonic();last_status=start;capture_t0=start
+        if on_status:on_status({'event':'recording_started','source':source,'meeting':meeting,'chunk_seconds':chunk_seconds})
         try:
             while not seconds or time.monotonic()-start<seconds:
                 time.sleep(.1);drain()
                 if on_status and time.monotonic()-last_status>=status_interval:
-                    on_status({'event':'recording_status',**pipe.stats()});last_status=time.monotonic()
+                    on_status({'event':'recording_status',**pipe.stats(),**latency()});last_status=time.monotonic()
         except KeyboardInterrupt:
             interrupted=True
         finally:
@@ -137,4 +163,4 @@ def listen(store,user,meeting,root,source,seconds,consent,model='tiny.en',downlo
             try:result=pipe.close() if pipe else {'errors':1}
             finally:
                 if asr:asr.close()
-    return {**result,'interrupted':interrupted,'source':source,'mode':'microphone / local ASR'}
+    return {**result,**latency(),'chunk_seconds':chunk_seconds,'interrupted':interrupted,'source':source,'mode':'microphone / local ASR'}
