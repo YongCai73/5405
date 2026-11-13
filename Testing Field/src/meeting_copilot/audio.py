@@ -1,5 +1,6 @@
 """Upstream capture/ASR with independent bounded chunk and ingestion queues."""
 import asyncio
+import os
 import queue
 import threading
 import time
@@ -75,9 +76,60 @@ class LocalASR:
         self.engine=FasterWhisperEngine(Path(root)/'models');self.model=model;self.allow_download=allow_download
     def transcribe(self,path):
         from local_meeting_ai.domain.entities import TranscriptionEngineRequest
-        req=TranscriptionEngineRequest(audio_path=Path(path),model=self.model,device='cpu',compute_type='int8',language='en',task='transcribe',beam_size=1,vad_filter=False,allow_model_download=self.allow_download,cpu_threads=2,num_workers=1)
+        req=TranscriptionEngineRequest(audio_path=Path(path),model=self.model,device='cpu',compute_type='int8',language='en',task='transcribe',beam_size=1,vad_filter=True,allow_model_download=self.allow_download,cpu_threads=_env_number('MC_ASR_THREADS',2,1,16,int),num_workers=1)
         return asyncio.run(self.engine.transcribe(req,lambda *a:None,lambda:False,lambda s:None)).segments
     def close(self):self.engine.shutdown()
+
+def _env_number(name,default,low,high,kind=float):
+    """Experiment knob read from an environment variable, e.g. MC_CHUNK_SECONDS=5."""
+    raw=os.environ.get(name)
+    if raw is None or not raw.strip():return default
+    value=kind(raw)
+    if not low<=value<=high:raise ValueError(f'{name} must be between {low} and {high}')
+    return value
+
+class PauseCutter:
+    """Ends a chunk at a pause in speech instead of a fixed length.
+
+    Audio is checked in 20 ms frames. A frame counts as speech when its loudness (RMS)
+    is above max(speech_rms, 3 x background noise). Once speech has been heard, a pause of
+    pause_ms ends the chunk, as long as the chunk is at least min_seconds long.
+
+    Background noise is tracked as a running minimum: it drops quickly to quiet frames and
+    creeps up slowly otherwise, so a noisy room still gets a sensible threshold.
+    """
+    def __init__(self,pause_ms=500,min_seconds=1.0,speech_rms=100.0):
+        self.pause_ms=pause_ms;self.min_ms=min_seconds*1000;self.speech_rms=speech_rms
+        self.noise=None;self.frames=0;self.speech_frames=0;self.reset()
+    def reset(self):
+        self.speech=False;self.silence_ms=0.0;self.chunk_ms=0.0
+    def diagnostics(self):
+        return {'noise_rms':round(self.noise or 0,1),'speech_threshold_rms':round(max(self.speech_rms,3*(self.noise or 0)),1),
+                'speech_frame_ratio':round(self.speech_frames/self.frames,2) if self.frames else None}
+    def update(self,pcm,rate,channels):
+        """Feed new 16-bit audio; returns True when the chunk should be sent now."""
+        import numpy as np
+        samples=np.frombuffer(bytes(pcm),dtype='<i2').astype(np.float32)
+        step=max(1,int(rate*channels*.02))
+        for i in range(0,len(samples),step):
+            frame=samples[i:i+step]
+            rms=float(np.sqrt(np.mean(frame*frame)))
+            if self.noise is None:self.noise=rms
+            elif rms<self.noise:self.noise=.7*self.noise+.3*rms
+            else:self.noise=self.noise*1.001+.01
+            self.chunk_ms+=len(frame)*1000/(rate*channels);self.frames+=1
+            if rms>=max(self.speech_rms,3*self.noise):
+                self.speech=True;self.silence_ms=0.0;self.speech_frames+=1
+            else:
+                self.silence_ms+=len(frame)*1000/(rate*channels)
+        return self.speech and self.silence_ms>=self.pause_ms and self.chunk_ms>=self.min_ms
+
+def _latency_summary(values):
+    """Speech end -> segment committed (seconds): mean, p50, p95, max."""
+    v=sorted(values)
+    if not v:return {'speech_to_ready_mean_s':None,'speech_to_ready_p50_s':None,'speech_to_ready_p95_s':None,'speech_to_ready_max_s':None,'speech_to_ready_count':0}
+    pick=lambda q:round(v[min(len(v)-1,int(len(v)*q))],2)
+    return {'speech_to_ready_mean_s':round(sum(v)/len(v),2),'speech_to_ready_p50_s':pick(.5),'speech_to_ready_p95_s':pick(.95),'speech_to_ready_max_s':round(v[-1],2),'speech_to_ready_count':len(v)}
 
 def microphones():return [asdict(x) for x in create_audio_capture_backend().list_sources()]
 
@@ -89,13 +141,39 @@ def listen(store,user,meeting,root,source,seconds,consent,model='tiny.en',downlo
     backend=create_audio_capture_backend()
     asr=None;pipe=None;stream=uuid.uuid4().hex;seq=0;last_end=0
     pcm=bytearray();chunk_start=None;rate=channels=0;interrupted=False;started=False
+    chunk_seconds=_env_number('MC_CHUNK_SECONDS',10,1,30)
+    # 'pause' = cut at pauses (chunk_seconds is then the maximum); 'fixed' = cut every chunk_seconds.
+    cut_mode=os.environ.get('MC_CUT_MODE','pause').strip() or 'pause'
+    if cut_mode not in ('pause','fixed'):raise ValueError("MC_CUT_MODE must be 'pause' or 'fixed'")
+    cutter=PauseCutter(_env_number('MC_PAUSE_MS',500,100,3000),1.0,_env_number('MC_SPEECH_RMS',100,1,30000))
+    silent_skipped=0;cuts={'pause_cuts':0,'max_length_cuts':0}
+    def cut_stats():
+        # captured_audio_seconds should track elapsed recording time; a gap means clock drift.
+        audio_s=round(last_end/rate,2) if rate else None
+        wall_s=round((capture_stop or time.monotonic())-capture_t0,2) if capture_t0 is not None else None
+        return {'silent_chunks_skipped':silent_skipped,**cuts,**cutter.diagnostics(),'captured_audio_seconds':audio_s,'capture_wall_seconds':wall_s,
+                'capture_missing_seconds':round(wall_s-audio_s,2) if audio_s is not None and wall_s is not None else None,
+                'input_overflows':getattr(backend,'input_overflows',getattr(getattr(backend,'native',None),'input_overflows',None))}
+    # capture_t0 = clock time when recording began; segment end_ms is relative to it.
+    capture_t0=None;capture_stop=None;speech_lags=deque(maxlen=10000);lag_lock=threading.Lock()
+    def ingest(e):
+        store.ingest(user,meeting,e)
+        if capture_t0 is not None:
+            with lag_lock:speech_lags.append(time.monotonic()-(capture_t0+e['end_ms']/1000))
+    def latency():
+        with lag_lock:values=list(speech_lags)
+        return _latency_summary(values)
     def transcribe(item):
         nonlocal seq
         for s in asr.transcribe(item['path']):
             seq+=1;yield {'event_id':stream+str(seq),'stream':stream,'seq':seq,'segment_id':stream+str(seq),'revision':1,'start_ms':item['start_ms']+s.start_ms,'end_ms':item['start_ms']+s.end_ms,'text':s.text,'final':True}
-    def flush():
-        nonlocal pcm,chunk_start
+    def flush(final=False):
+        nonlocal pcm,chunk_start,silent_skipped
         if not pcm:return
+        heard_speech=cutter.speech;cutter.reset()
+        if cut_mode=='pause' and not heard_speech and not final:
+            # Only background noise in this chunk: skip ASR (saves time, avoids hallucinations).
+            silent_skipped+=1;pcm=bytearray();chunk_start=None;return
         path=storage.new_realtime_chunk_path(meeting)
         with wave.open(str(path),'wb') as f:
             f.setnchannels(channels);f.setsampwidth(2);f.setframerate(rate);f.writeframes(bytes(pcm))
@@ -113,28 +191,30 @@ def listen(store,user,meeting,root,source,seconds,consent,model='tiny.en',downlo
             last_end=batch.end_frame
             if chunk_start is None:chunk_start=batch.start_frame
             pcm.extend(batch.pcm_s16le)
-            if len(pcm)>=rate*channels*2*3:flush()
+            pause=cutter.update(batch.pcm_s16le,rate,channels)
+            if cut_mode=='pause' and pause:cuts['pause_cuts']+=1;flush()
+            elif len(pcm)>=rate*channels*2*chunk_seconds:cuts['max_length_cuts']+=1;flush()
     try:
         asr=LocalASR(root,model,download)
-        pipe=Pipeline(transcribe,lambda e:store.ingest(user,meeting,e),trace)
+        pipe=Pipeline(transcribe,ingest,trace)
         backend.start(session_id=meeting,source_id=source,destination=storage.new_live_capture_path(meeting));started=True
-        start=time.monotonic();last_status=start
-        if on_status:on_status({'event':'recording_started','source':source,'meeting':meeting})
+        start=time.monotonic();last_status=start;capture_t0=start
+        if on_status:on_status({'event':'recording_started','source':source,'meeting':meeting,'chunk_seconds':chunk_seconds,'cut_mode':cut_mode})
         try:
             while not seconds or time.monotonic()-start<seconds:
                 time.sleep(.1);drain()
                 if on_status and time.monotonic()-last_status>=status_interval:
-                    on_status({'event':'recording_status',**pipe.stats()});last_status=time.monotonic()
+                    on_status({'event':'recording_status',**pipe.stats(),**latency(),**cut_stats()});last_status=time.monotonic()
         except KeyboardInterrupt:
             interrupted=True
         finally:
             # Stop callbacks first, then ingest the final partial chunk as well.
-            backend.stop();started=False
-            drain();flush()
+            backend.stop();started=False;capture_stop=time.monotonic()
+            drain();flush(final=True)
     finally:
         try:backend.shutdown()
         finally:
             try:result=pipe.close() if pipe else {'errors':1}
             finally:
                 if asr:asr.close()
-    return {**result,'interrupted':interrupted,'source':source,'mode':'microphone / local ASR'}
+    return {**result,**latency(),'chunk_seconds':chunk_seconds,'cut_mode':cut_mode,**cut_stats(),'interrupted':interrupted,'source':source,'mode':'microphone / local ASR'}
