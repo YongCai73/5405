@@ -15,11 +15,17 @@ import threading
 import uuid
 
 
-PRINCIPAL = 'local-host'
 CONVERSATION = 'desktop-private'
 SAMPLE_ID = 'demo'
+SAMPLE_SOURCE_TITLE = 'Atlas technical design (SIMULATED REPLAY)'
 SKILLS = {'catch_up', 'trace_decision', 'compare_options', 'direct'}
 MAX_REQUEST_BYTES = 64 * 1024
+PROVIDER_LABELS = {'demo': 'Local extractive', 'openai': 'OpenAI-compatible', 'anthropic': 'Anthropic'}
+PROVIDER_MESSAGES = {
+    'evidence_upload_not_enabled': 'Enable send_evidence in the desktop configuration to use the configured API.',
+    'missing_api_key': 'The configured provider API key is not available to the desktop process.',
+    'timeout': 'The configured API did not respond before the timeout.',
+}
 
 
 class DesktopError(Exception):
@@ -31,6 +37,14 @@ def required_text(payload, key, limit):
     if not isinstance(value, str) or not value.strip() or len(value) > limit:
         raise DesktopError(f'Enter a valid {key}.')
     return value.strip()
+
+
+def scope_ids(payload, key):
+    values = payload.get(key, [])
+    if (not isinstance(values, list) or len(values) > 10
+            or any(not isinstance(value, str) or not value.strip() or len(value) > 80 for value in values)):
+        raise DesktopError(f'Choose valid {key} for this question.')
+    return list(dict.fromkeys(value.strip() for value in values))
 
 
 def selected_path(payload):
@@ -54,7 +68,7 @@ def write_json(stream, value):
 
 
 class Capture:
-    def __init__(self, root, meeting, device, offset):
+    def __init__(self, root, meeting, device, offset, principal, model):
         self.meeting = meeting
         self.ready = threading.Event()
         self.finished = threading.Event()
@@ -62,8 +76,8 @@ class Capture:
         self.error = None
         self.stop_requested = False
         self.process = subprocess.Popen(
-            [sys.executable, '-u', str(Path(__file__).resolve()), '--data-dir', str(root.parent),
-             '--capture', meeting, device, str(offset), str(os.getpid())],
+            [sys.executable, '-u', str(Path(__file__).resolve()), '--data-dir', str(root),
+             '--capture', meeting, device, str(offset), str(os.getpid()), principal, model],
             stdin=subprocess.DEVNULL,
             stdout=subprocess.PIPE,
             start_new_session=True,
@@ -134,7 +148,7 @@ def configure_cache(root):
     os.environ['HF_HUB_DISABLE_IMPLICIT_TOKEN'] = '1'
 
 
-def capture_audio(root, stream, meeting, device, offset, parent_pid):
+def capture_audio(root, stream, meeting, device, offset, parent_pid, principal, model):
     from meeting_copilot.audio import listen
     from meeting_copilot.store import Store
     from meeting_copilot.trace import Trace
@@ -150,8 +164,8 @@ def capture_audio(root, stream, meeting, device, offset, parent_pid):
     try:
         if os.getppid() != parent_pid:
             return 0
-        result = listen(OffsetStore(store, offset), PRINCIPAL, meeting, root, device, 28800, True,
-                        download=True, trace=Trace(root / 'traces.jsonl'), on_status=on_status)
+        result = listen(OffsetStore(store, offset), principal, meeting, root, device, 28800, True,
+                        model=model, download=True, trace=Trace(root / 'traces.jsonl'), on_status=on_status)
         if result['errors'] or result['dropped_segments']:
             write_json(stream, {'error': 'Some audio could not be transcribed. Review the transcript for gaps.'})
         return 0
@@ -165,25 +179,39 @@ def capture_audio(root, stream, meeting, device, offset, parent_pid):
 
 
 class DesktopBridge:
-    def __init__(self, root):
-        from meeting_copilot.assistant import Assistant
+    def __init__(self, config):
+        from meeting_copilot.assistant import Assistant, Workers
         from meeting_copilot.config import Config
         from meeting_copilot.provider import Provider
         from meeting_copilot.store import Store
         from meeting_copilot.trace import Trace
 
-        self.root = root
-        self.store = Store(root / 'evidence.db')
-        self.trace = Trace(root / 'traces.jsonl')
-        self.assistant = Assistant(self.store, PRINCIPAL, Provider(Config()), self.trace)
+        self.config = config
+        self.root = config.root
+        self.principal = config.principal
+        self.store = Store(self.root / 'evidence.db')
+        self.trace = Trace(self.root / 'traces.jsonl')
+        self.assistant = Assistant(self.store, self.principal, Provider(config), self.trace)
+        self.local_assistant = self.assistant if config.provider == 'demo' else Assistant(
+            self.store, self.principal, Provider(Config()), self.trace,
+        )
+        self.workers = Workers(self.assistant)
+        self.live_summaries = None
         self.capture = None
         self.recording_errors = {}
+        self.sample_id = SAMPLE_ID
+        with self.store.read() as db:
+            reserved = db.execute('SELECT title, owner FROM meetings WHERE id=?', (SAMPLE_ID,)).fetchone()
+            if reserved and (reserved['title'] != SAMPLE_SOURCE_TITLE or reserved['owner'] != self.principal):
+                self.sample_id = f'desktop-sample-{uuid.uuid5(uuid.NAMESPACE_OID, self.principal).hex}'
 
     def close(self):
         try:
+            self._stop_live_summaries()
             if self.capture and not self.capture.finished.is_set():
                 self.capture.stop(closing=True)
         finally:
+            self.workers.close()
             self.store.close()
 
     def run(self, action, payload):
@@ -208,23 +236,41 @@ class DesktopBridge:
         with self.store.read() as db:
             rows = db.execute(
                 'SELECT m.id, m.title FROM meetings m JOIN acl a ON m.id=a.meeting '
-                'WHERE a.user=? ORDER BY m.rowid DESC', (PRINCIPAL,),
+                'WHERE a.user=? ORDER BY m.rowid DESC', (self.principal,),
             )
             return [self._meeting_header(dict(row)) for row in rows]
 
     def _meeting_header(self, row):
-        sample = row['id'] == SAMPLE_ID
+        sample = row['id'] == self.sample_id
         title = 'Atlas technical design' if sample else row['title']
-        return {'id': row['id'], 'title': title, 'mode': 'sample' if sample else 'local'}
+        return {
+            'id': row['id'], 'title': title, 'mode': 'sample' if sample else 'local',
+            **self._answer_mode(row['id']),
+        }
 
-    def _scope(self, meeting):
-        folders = [folder['id'] for folder in self.store.folders(PRINCIPAL, meeting)]
-        return self.store.snapshot(PRINCIPAL, meeting, folders=folders)
+    def _answer_mode(self, meeting):
+        provider = 'demo' if meeting == self.sample_id else self.config.provider
+        return {'answerMode': 'local' if provider == 'demo' else 'api', 'providerLabel': PROVIDER_LABELS[provider]}
+
+    def _scope(self, meeting, payload=None):
+        requested = payload or {}
+        previous = [value for value in scope_ids(requested, 'previous') if value != meeting]
+        folders = scope_ids(requested, 'folders')
+        if meeting == self.sample_id:
+            if previous:
+                raise DesktopError('The sample meeting can only use its own evidence.')
+            if 'folders' not in requested:
+                folders = [folder['id'] for folder in self.store.folders(self.principal, meeting)]
+        elif self.sample_id in previous:
+            raise DesktopError('Choose a real meeting to include in the evidence scope.')
+        if len(previous) >= 10:
+            raise DesktopError('Choose up to nine previous meetings.')
+        return self.store.snapshot(self.principal, meeting, previous=previous, folders=folders)
 
     def _current_segments(self, meeting):
         # Polling the transcript should not create persistent question snapshots.
         with self.store.read() as db:
-            self.store._check(PRINCIPAL, meeting)
+            self.store._check(self.principal, meeting)
             rows = db.execute(
                 "SELECT e.id, e.text, e.start_ms, e.end_ms FROM evidence e WHERE e.meeting=? AND e.kind='segment' "
                 "AND e.revision=(SELECT MAX(v.revision) FROM evidence v WHERE v.meeting=e.meeting "
@@ -236,21 +282,27 @@ class DesktopBridge:
 
     def _offset(self, meeting):
         with self.store.read() as db:
-            self.store._check(PRINCIPAL, meeting)
+            self.store._check(self.principal, meeting, owner=True)
             return db.execute('SELECT COALESCE(MAX(end_ms), 0) FROM evidence WHERE meeting=?', (meeting,)).fetchone()[0]
 
     def _current_capture(self):
         capture = self.capture
         if capture and capture.finished.is_set():
+            self._stop_live_summaries()
             if capture.error:
                 self.recording_errors[capture.meeting] = capture.error
             self.capture = None
         return self.capture
 
+    def _stop_live_summaries(self):
+        if self.live_summaries:
+            self.live_summaries.close()
+            self.live_summaries = None
+
     def _detail(self, meeting):
-        row = self.store.metadata(PRINCIPAL, meeting)
-        summary = self.store.latest_summary(PRINCIPAL, meeting)
+        row = self.store.metadata(self.principal, meeting)
         capture = self._current_capture()
+        summary = self.store.latest_summary(self.principal, meeting)
         detail = {
             **self._meeting_header(row),
             'segments': self._current_segments(meeting),
@@ -274,14 +326,14 @@ class DesktopBridge:
         from meeting_copilot.replay import seed
 
         with self.store.tx():
-            existing = any(row['id'] == SAMPLE_ID for row in self._meetings())
-            if not existing or not self.store.folders(PRINCIPAL, SAMPLE_ID):
-                seed(self.store, PRINCIPAL, self.root, meeting=SAMPLE_ID)
-        return self._selection(SAMPLE_ID)
+            existing = any(row['id'] == self.sample_id for row in self._meetings())
+            if not existing or not self.store.folders(self.principal, self.sample_id):
+                seed(self.store, self.principal, self.root, meeting=self.sample_id)
+        return self._selection(self.sample_id)
 
     def create(self, payload):
         meeting = uuid.uuid4().hex
-        self.store.create(PRINCIPAL, meeting, required_text(payload, 'title', 200))
+        self.store.create(self.principal, meeting, required_text(payload, 'title', 200))
         return self._selection(meeting)
 
     def meeting(self, payload):
@@ -293,8 +345,9 @@ class DesktopBridge:
         skill = payload.get('skill', 'trace_decision')
         if not isinstance(skill, str) or skill not in SKILLS:
             raise DesktopError('Choose a supported question type.')
-        snapshot = self._scope(meeting)
-        answer = asyncio.run(self.assistant.ask(snapshot, question, conversation=CONVERSATION, skill=skill))
+        snapshot = self._scope(meeting, payload)
+        assistant = self.local_assistant if meeting == self.sample_id else self.assistant
+        answer = asyncio.run(assistant.ask(snapshot, question, conversation=CONVERSATION, skill=skill))
         quotes = {claim['source_id']: claim['quote'] for claim in answer['claims']}
         citations = []
         for source in answer['citations']:
@@ -303,25 +356,34 @@ class DesktopBridge:
                 label = f"{source['path']} · line {source['line_start']}"
             else:
                 label = timestamp(source.get('start_ms'))
-            citations.append({'id': source_id, 'kind': source['kind'], 'label': label, 'quote': quotes[source_id]})
-        return {'text': answer['text'], 'citations': citations, 'mode': answer['mode']}
+            citations.append({
+                'id': source_id, 'kind': source['kind'], 'label': label,
+                'quote': quotes[source_id], 'meetingId': source['meeting'],
+            })
+        return {'text': answer['text'], 'citations': citations, 'mode': answer['mode'], **self._answer_mode(meeting)}
 
-    def _summarize(self, snapshot):
-        result = asyncio.run(self.assistant.summary_graph.ainvoke({'snapshot': snapshot}))['result']
+    def _summarize(self, snapshot, assistant):
+        result = asyncio.run(assistant.summary_graph.ainvoke({'snapshot': snapshot}))['result']
         return result['text']
 
     def summary(self, payload):
         meeting = required_text(payload, 'meetingId', 80)
-        return {'text': self._summarize(self._scope(meeting))}
+        assistant = self.local_assistant if meeting == self.sample_id else self.assistant
+        return {'text': self._summarize(self._scope(meeting), assistant)}
 
     def export(self, payload):
         meeting = required_text(payload, 'meetingId', 80)
         destination = selected_path(payload)
-        if destination.suffix.lower() != '.json' or destination.is_relative_to(self.root.parent):
+        if destination.suffix.lower() != '.json' or destination.is_relative_to(self.root):
             raise DesktopError('Choose a JSON file outside the application data folder.')
         snapshot = self._scope(meeting)
-        self._summarize(snapshot)
-        result = self.store.export(PRINCIPAL, snapshot, 'desktop-export')
+        latest = self.store.latest_summary(self.principal, meeting)
+        refs = set(json.loads(self.store.snapshot_info(self.principal, snapshot)['refs']))
+        if latest and set(latest['refs']).issubset(refs):
+            self.store.summary_put(self.principal, snapshot, latest['text'], latest['refs'])
+        else:
+            self._summarize(snapshot, self.local_assistant)
+        result = self.store.export(self.principal, snapshot, 'desktop-export')
         temporary = None
         try:
             with tempfile.NamedTemporaryFile(mode='w', encoding='utf-8', dir=destination.parent, delete=False) as file:
@@ -340,7 +402,7 @@ class DesktopBridge:
         from meeting_copilot.audio import LocalASR
 
         meeting = required_text(payload, 'meetingId', 80)
-        if meeting == SAMPLE_ID:
+        if meeting == self.sample_id:
             raise DesktopError('Create a new meeting to import audio.')
         if self._current_capture():
             raise DesktopError('Stop recording before importing an audio file.')
@@ -350,7 +412,7 @@ class DesktopBridge:
         offset = self._offset(meeting)
         asr = None
         try:
-            asr = LocalASR(self.root, allow_download=True)
+            asr = LocalASR(self.root, model=self.config.asr_model, allow_download=True)
             segments = asr.transcribe(path)
         except Exception as exc:
             raise DesktopError('Could not transcribe this file. Check the audio format and the connection for the first model download.') from exc
@@ -363,7 +425,7 @@ class DesktopBridge:
         with self.store.tx():
             for number, segment in enumerate(segments, 1):
                 event_id = f'{stream}-{number}'
-                self.store.ingest(PRINCIPAL, meeting, {
+                self.store.ingest(self.principal, meeting, {
                     'event_id': event_id, 'segment_id': event_id, 'stream': stream, 'seq': number,
                     'revision': 1, 'start_ms': offset + segment.start_ms, 'end_ms': offset + segment.end_ms,
                     'text': segment.text, 'final': True,
@@ -381,32 +443,37 @@ class DesktopBridge:
                             for item in devices if item['available']]}
 
     def start_recording(self, payload):
+        from meeting_copilot.assistant import LiveSummaries
+
         meeting = required_text(payload, 'meetingId', 80)
         device = required_text(payload, 'deviceId', 300)
-        if meeting == SAMPLE_ID:
+        if meeting == self.sample_id:
             raise DesktopError('Create a new meeting to record audio.')
         if self._current_capture():
             raise DesktopError('A meeting is already recording.')
         offset = self._offset(meeting)
         self.recording_errors.pop(meeting, None)
-        self.capture = Capture(self.root, meeting, device, offset)
+        self.capture = Capture(self.root, meeting, device, offset, self.principal, self.config.asr_model)
         self.capture.ready.wait(8)
         if not self.capture.started:
             capture = self.capture
             capture.stop(closing=True)
             self._current_capture()
             raise DesktopError(capture.error or 'Microphone recording did not start.')
+        self.live_summaries = LiveSummaries(self.workers, meeting)
         return self._detail(meeting)
 
     def stop_recording(self, payload):
         meeting = required_text(payload, 'meetingId', 80)
         capture = self._current_capture()
         if capture and capture.meeting == meeting:
+            self._stop_live_summaries()
             capture.stop()
         return self._detail(meeting)
 
 
 def serve(bridge, stream):
+    from meeting_copilot.provider import ProviderError
     from meeting_copilot.store import Denied
 
     while line := sys.stdin.buffer.readline(MAX_REQUEST_BYTES + 1):
@@ -436,6 +503,9 @@ def serve(bridge, stream):
             reply = {'id': request_id, 'ok': False, 'error': str(exc)}
         except Denied:
             reply = {'id': request_id, 'ok': False, 'error': 'This meeting is unavailable.'}
+        except ProviderError as exc:
+            message = PROVIDER_MESSAGES.get(exc.code, 'The configured provider could not complete this request.')
+            reply = {'id': request_id, 'ok': False, 'error': message}
         except Exception as exc:
             print(f'Desktop request failed ({type(exc).__name__}).', file=sys.stderr)
             reply = {'id': request_id, 'ok': False, 'error': 'The desktop operation failed. Please try again.'}
@@ -443,11 +513,26 @@ def serve(bridge, stream):
 
 
 def main():
+    from meeting_copilot.config import Config
+
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--data-dir', type=Path, required=True)
-    parser.add_argument('--capture', nargs=4, help=argparse.SUPPRESS)
+    parser.add_argument('--config', type=Path, help='Trusted configuration file using the existing Meeting Copilot schema.')
+    parser.add_argument('--capture', nargs=6, help=argparse.SUPPRESS)
     args = parser.parse_args()
-    root = args.data_dir.resolve() / 'data'
+    workspace = args.data_dir.resolve()
+    config = None
+    if args.capture:
+        root = workspace
+    else:
+        default_path = workspace / 'config.json'
+        config_path = args.config or (default_path if default_path.exists() else None)
+        try:
+            config = Config.load(config_path) if config_path else Config(_base=workspace)
+        except (OSError, TypeError, ValueError):
+            print('The desktop configuration could not be loaded.', file=sys.stderr)
+            return 1
+        root = config.root
     root.mkdir(parents=True, exist_ok=True)
     configure_cache(root)
 
@@ -457,9 +542,9 @@ def main():
         os.dup2(sys.stderr.fileno(), sys.stdout.fileno())
         if args.capture:
             signal.signal(signal.SIGINT, signal.default_int_handler)
-            meeting, device, offset, parent_pid = args.capture
-            return capture_audio(root, protocol, meeting, device, int(offset), int(parent_pid))
-        bridge = DesktopBridge(root)
+            meeting, device, offset, parent_pid, principal, model = args.capture
+            return capture_audio(root, protocol, meeting, device, int(offset), int(parent_pid), principal, model)
+        bridge = DesktopBridge(config)
 
         def terminate(_signum, _frame):
             raise KeyboardInterrupt

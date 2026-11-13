@@ -202,7 +202,7 @@ mark { color: inherit; background: #e9ddfd; border-radius: 2px; }
 .composer-footer { display: flex; align-items: center; justify-content: space-between; gap: 4px; }
 .composer-mode { display: flex; align-items: center; gap: 5px; padding-left: 4px; color: var(--muted); font-size: 10px; }
 .composer-mode i { width: 5px; height: 5px; border-radius: 50%; background: #8d6ad2; }
-.send-button { width: 27px; height: 27px; display: grid; place-items: center; border-radius: 7px; background: var(--violet); color: #fff; border: 0; font-size: 19px; line-height: 1; font-weight: 600; }
+.send-button { width: 27px; height: 27px; margin-left: auto; display: grid; place-items: center; border-radius: 7px; background: var(--violet); color: #fff; border: 0; font-size: 19px; line-height: 1; font-weight: 600; }
 .send-button:hover:not(:disabled) { background: var(--violet-dark); }
 .composer-help { color: var(--muted); font-size: 10px; text-align: center; margin-top: 8px; }
 

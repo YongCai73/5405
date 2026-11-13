@@ -29,10 +29,14 @@ final class BackendProcess {
                                                   appropriateFor: nil, create: true)
         let dataRoot = override.flatMap { $0.hasPrefix("/") ? $0 : nil }
             ?? support.appendingPathComponent("Meeting Copilot/Workspace").path
-        process.executableURL = python
-        process.arguments = ["-u", script.path, "--data-dir", dataRoot]
-        process.currentDirectoryURL = backendRoot
         var environment = ProcessInfo.processInfo.environment
+        var arguments = ["-u", script.path, "--data-dir", dataRoot]
+        if let config = environment["MEETING_COPILOT_DESKTOP_CONFIG"], config.hasPrefix("/") {
+            arguments += ["--config", config]
+        }
+        process.executableURL = python
+        process.arguments = arguments
+        process.currentDirectoryURL = backendRoot
         environment["PYTHONPATH"] = backendRoot.appendingPathComponent("src").path
         environment.removeValue(forKey: "PYTHONHOME")
         process.environment = environment

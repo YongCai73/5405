@@ -367,6 +367,10 @@ function renderConversation(scrollToEnd = false) {
 
 function updateComposer() {
   const field = byId("question");
+  const mode = state.meeting?.answerMode;
+  const modeLabel = mode === "api" ? (state.meeting.providerLabel || "Configured model") + " API" : mode === "local" ? "Local excerpt answers" : "";
+  byId("composer-mode-label").textContent = modeLabel;
+  byId("composer-mode").hidden = !modeLabel;
   const enabled = Boolean(state.meeting?.segments?.length) && !currentTurns().some((turn) => turn.pending);
   field.disabled = !enabled;
   byId("send-question").disabled = !enabled || !field.value.trim();

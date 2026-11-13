@@ -91,7 +91,7 @@
       <form id="ask-form" class="ask-form">
         <div class="composer">
           <textarea id="question" rows="2" maxlength="4000" placeholder="Ask a question…" aria-label="Ask a question" disabled></textarea>
-          <div class="composer-footer"><span class="composer-mode"><i></i> Local excerpt answers</span><button type="submit" id="send-question" class="send-button" aria-label="Send question" disabled>↑</button></div>
+          <div class="composer-footer"><span class="composer-mode" id="composer-mode" hidden><i aria-hidden="true"></i><span id="composer-mode-label"></span></span><button type="submit" id="send-question" class="send-button" aria-label="Send question" disabled>↑</button></div>
         </div>
         <p class="composer-help">Select a citation to see its source.</p>
       </form>
