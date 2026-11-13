@@ -30,6 +30,15 @@ def test_cuts_shortly_after_speech_ends():
     assert fired is not None and 2.9 <= fired <= 3.2
 
 
+def test_cuts_in_a_noisy_room():
+    # Background noise (RMS ~350) is louder than the absolute speech floor.
+    cutter = PauseCutter(pause_ms=500, min_seconds=1.0)
+    noisy = quiet(1.0, 600) + tone(2.0, 3000) + quiet(2.0, 600)
+    fired = feed(cutter, noisy)
+    assert fired is not None and 3.4 <= fired <= 3.8
+    assert 250 < cutter.noise < 500
+
+
 def test_silence_alone_never_cuts():
     cutter = PauseCutter(pause_ms=500, min_seconds=1.0)
     assert feed(cutter, quiet(5.0)) is None

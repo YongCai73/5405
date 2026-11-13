@@ -94,12 +94,18 @@ class PauseCutter:
     Audio is checked in 20 ms frames. A frame counts as speech when its loudness (RMS)
     is above max(speech_rms, 3 x background noise). Once speech has been heard, a pause of
     pause_ms ends the chunk, as long as the chunk is at least min_seconds long.
+
+    Background noise is tracked as a running minimum: it drops quickly to quiet frames and
+    creeps up slowly otherwise, so a noisy room still gets a sensible threshold.
     """
-    def __init__(self,pause_ms=500,min_seconds=1.0,speech_rms=300.0):
+    def __init__(self,pause_ms=500,min_seconds=1.0,speech_rms=100.0):
         self.pause_ms=pause_ms;self.min_ms=min_seconds*1000;self.speech_rms=speech_rms
-        self.noise=None;self.reset()
+        self.noise=None;self.frames=0;self.speech_frames=0;self.reset()
     def reset(self):
         self.speech=False;self.silence_ms=0.0;self.chunk_ms=0.0
+    def diagnostics(self):
+        return {'noise_rms':round(self.noise or 0,1),'speech_threshold_rms':round(max(self.speech_rms,3*(self.noise or 0)),1),
+                'speech_frame_ratio':round(self.speech_frames/self.frames,2) if self.frames else None}
     def update(self,pcm,rate,channels):
         """Feed new 16-bit audio; returns True when the chunk should be sent now."""
         import numpy as np
@@ -109,12 +115,13 @@ class PauseCutter:
             frame=samples[i:i+step]
             rms=float(np.sqrt(np.mean(frame*frame)))
             if self.noise is None:self.noise=rms
-            self.chunk_ms+=len(frame)*1000/(rate*channels)
+            elif rms<self.noise:self.noise=.7*self.noise+.3*rms
+            else:self.noise=self.noise*1.001+.01
+            self.chunk_ms+=len(frame)*1000/(rate*channels);self.frames+=1
             if rms>=max(self.speech_rms,3*self.noise):
-                self.speech=True;self.silence_ms=0.0
+                self.speech=True;self.silence_ms=0.0;self.speech_frames+=1
             else:
                 self.silence_ms+=len(frame)*1000/(rate*channels)
-                self.noise=.95*self.noise+.05*rms
         return self.speech and self.silence_ms>=self.pause_ms and self.chunk_ms>=self.min_ms
 
 def _latency_summary(values):
@@ -138,8 +145,9 @@ def listen(store,user,meeting,root,source,seconds,consent,model='tiny.en',downlo
     # 'pause' = cut at pauses (chunk_seconds is then the maximum); 'fixed' = cut every chunk_seconds.
     cut_mode=os.environ.get('MC_CUT_MODE','pause').strip() or 'pause'
     if cut_mode not in ('pause','fixed'):raise ValueError("MC_CUT_MODE must be 'pause' or 'fixed'")
-    cutter=PauseCutter(_env_number('MC_PAUSE_MS',500,100,3000),1.0,_env_number('MC_SPEECH_RMS',300,1,30000))
-    silent_skipped=0
+    cutter=PauseCutter(_env_number('MC_PAUSE_MS',500,100,3000),1.0,_env_number('MC_SPEECH_RMS',100,1,30000))
+    silent_skipped=0;cuts={'pause_cuts':0,'max_length_cuts':0}
+    def cut_stats():return {'silent_chunks_skipped':silent_skipped,**cuts,**cutter.diagnostics()}
     # capture_t0 = clock time when recording began; segment end_ms is relative to it.
     capture_t0=None;speech_lags=deque(maxlen=10000);lag_lock=threading.Lock()
     def ingest(e):
@@ -178,7 +186,8 @@ def listen(store,user,meeting,root,source,seconds,consent,model='tiny.en',downlo
             if chunk_start is None:chunk_start=batch.start_frame
             pcm.extend(batch.pcm_s16le)
             pause=cutter.update(batch.pcm_s16le,rate,channels)
-            if (cut_mode=='pause' and pause) or len(pcm)>=rate*channels*2*chunk_seconds:flush()
+            if cut_mode=='pause' and pause:cuts['pause_cuts']+=1;flush()
+            elif len(pcm)>=rate*channels*2*chunk_seconds:cuts['max_length_cuts']+=1;flush()
     try:
         asr=LocalASR(root,model,download)
         pipe=Pipeline(transcribe,ingest,trace)
@@ -189,7 +198,7 @@ def listen(store,user,meeting,root,source,seconds,consent,model='tiny.en',downlo
             while not seconds or time.monotonic()-start<seconds:
                 time.sleep(.1);drain()
                 if on_status and time.monotonic()-last_status>=status_interval:
-                    on_status({'event':'recording_status',**pipe.stats(),**latency(),'silent_chunks_skipped':silent_skipped});last_status=time.monotonic()
+                    on_status({'event':'recording_status',**pipe.stats(),**latency(),**cut_stats()});last_status=time.monotonic()
         except KeyboardInterrupt:
             interrupted=True
         finally:
@@ -202,4 +211,4 @@ def listen(store,user,meeting,root,source,seconds,consent,model='tiny.en',downlo
             try:result=pipe.close() if pipe else {'errors':1}
             finally:
                 if asr:asr.close()
-    return {**result,**latency(),'chunk_seconds':chunk_seconds,'cut_mode':cut_mode,'silent_chunks_skipped':silent_skipped,'interrupted':interrupted,'source':source,'mode':'microphone / local ASR'}
+    return {**result,**latency(),'chunk_seconds':chunk_seconds,'cut_mode':cut_mode,**cut_stats(),'interrupted':interrupted,'source':source,'mode':'microphone / local ASR'}
