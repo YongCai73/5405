@@ -57,7 +57,7 @@ class WindowsWasapiCaptureBackend:
         """Callback buffer size; larger values tolerate a busy CPU (MC_CAPTURE_BUFFER_FRAMES)."""
         raw = os.environ.get("MC_CAPTURE_BUFFER_FRAMES", "").strip()
         if not raw:
-            return 1024
+            return 8192
         value = int(raw)
         if not 256 <= value <= 65536:
             raise ValidationError("MC_CAPTURE_BUFFER_FRAMES must be between 256 and 65536")

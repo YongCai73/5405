@@ -86,7 +86,7 @@
       "path": "src/local_meeting_ai/adapters/audio_capture/windows_wasapi.py",
       "upstream_path": "src/local_meeting_ai/adapters/audio_capture/windows_wasapi.py",
       "upstream_sha256": "960ba2c0f9b366d36c85ad3de755bf57f11a244b5fd69a1527e1bc3c43174d3e",
-      "adaptation": "Modified (Zimo Li, 2026-11-12): counts PortAudio input overflows (input_overflows) and makes the callback buffer size configurable via MC_CAPTURE_BUFFER_FRAMES (default 1024, unchanged). No longer byte-identical to upstream."
+      "adaptation": "Modified (Zimo Li, 2026-11-12): counts PortAudio input overflows (input_overflows) and makes the callback buffer size configurable via MC_CAPTURE_BUFFER_FRAMES (default raised from upstream 1024 to 8192 after real-mic tests). No longer byte-identical to upstream."
     },
     {
       "path": "src/meeting_copilot/mcp_server.py",

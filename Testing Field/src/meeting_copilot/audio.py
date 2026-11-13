@@ -153,7 +153,7 @@ def listen(store,user,meeting,root,source,seconds,consent,model='tiny.en',downlo
         wall_s=round((capture_stop or time.monotonic())-capture_t0,2) if capture_t0 is not None else None
         return {'silent_chunks_skipped':silent_skipped,**cuts,**cutter.diagnostics(),'captured_audio_seconds':audio_s,'capture_wall_seconds':wall_s,
                 'capture_missing_seconds':round(wall_s-audio_s,2) if audio_s is not None and wall_s is not None else None,
-                'input_overflows':getattr(backend,'input_overflows',None)}
+                'input_overflows':getattr(backend,'input_overflows',getattr(getattr(backend,'native',None),'input_overflows',None))}
     # capture_t0 = clock time when recording began; segment end_ms is relative to it.
     capture_t0=None;capture_stop=None;speech_lags=deque(maxlen=10000);lag_lock=threading.Lock()
     def ingest(e):
