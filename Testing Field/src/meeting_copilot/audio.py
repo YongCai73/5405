@@ -75,7 +75,7 @@ class LocalASR:
         self.engine=FasterWhisperEngine(Path(root)/'models');self.model=model;self.allow_download=allow_download
     def transcribe(self,path):
         from local_meeting_ai.domain.entities import TranscriptionEngineRequest
-        req=TranscriptionEngineRequest(audio_path=Path(path),model=self.model,device='cpu',compute_type='int8',language='en',task='transcribe',beam_size=1,vad_filter=False,allow_model_download=self.allow_download,cpu_threads=2,num_workers=1)
+        req=TranscriptionEngineRequest(audio_path=Path(path),model=self.model,device='cpu',compute_type='int8',language='en',task='transcribe',beam_size=1,vad_filter=True,allow_model_download=self.allow_download,cpu_threads=2,num_workers=1)
         return asyncio.run(self.engine.transcribe(req,lambda *a:None,lambda:False,lambda s:None)).segments
     def close(self):self.engine.shutdown()
 
