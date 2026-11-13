@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none'">
+  <title>Meeting Copilot</title>
+  <link rel="stylesheet" href="styles.css">
+  <script defer src="app.js"></script>
+</head>
+<body>
+  <div class="workspace">
+    <aside class="sidebar" aria-label="Meetings">
+      <div class="brand">
+        <span class="brand-icon" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
+        <span>Meeting Copilot</span>
+      </div>
+      <button type="button" class="button new-meeting" id="new-meeting"><span class="plus" aria-hidden="true">+</span> New meeting</button>
+      <div class="meeting-heading"><h2>Meetings</h2><span id="meeting-count"></span></div>
+      <nav class="meeting-list" id="meeting-list" aria-label="Meeting list"></nav>
+      <div class="sidebar-footer">
+        <button type="button" class="sample-button" id="load-sample"><span class="icon icon-note" aria-hidden="true"></span> Open sample meeting</button>
+        <div class="local-state"><span></span> Local workspace</div>
+      </div>
+    </aside>
+
+    <main class="main" aria-labelledby="meeting-title">
+      <header class="meeting-header">
+        <div class="meeting-context"><span class="icon icon-note" aria-hidden="true"></span> Meetings <span class="breadcrumb-separator" aria-hidden="true">/</span> <span id="meeting-context">Workspace</span></div>
+        <div class="meeting-title-row">
+          <h1 id="meeting-title">Loading meetings…</h1>
+          <span id="sample-label" class="sample-label" hidden>Sample</span>
+        </div>
+        <p class="meeting-meta" id="meeting-meta"></p>
+        <div class="meeting-actions" aria-label="Meeting actions">
+          <button type="button" id="record-button" class="button button-primary" disabled><span class="record-dot" aria-hidden="true"></span><span id="record-label">Record</span></button>
+          <button type="button" id="import-button" class="button button-outline" disabled><span class="action-symbol" aria-hidden="true">↑</span> Import audio</button>
+          <button type="button" id="export-button" class="button button-outline" disabled><span class="action-symbol" aria-hidden="true">↓</span> Export</button>
+        </div>
+      </header>
+
+      <div class="tabs" role="tablist" aria-label="Meeting content">
+        <button type="button" class="tab active" id="transcript-tab" role="tab" aria-controls="transcript-panel" aria-selected="true">Transcript</button>
+        <button type="button" class="tab" id="summary-tab" role="tab" aria-controls="summary-panel" aria-selected="false" tabindex="-1">Summary</button>
+      </div>
+
+      <section class="content-panel" id="transcript-panel" role="tabpanel" aria-labelledby="transcript-tab">
+        <div class="transcript-tools">
+          <label class="search-field">
+            <span class="icon icon-search" aria-hidden="true"></span>
+            <input id="transcript-search" type="search" placeholder="Search transcript" aria-label="Search transcript" autocomplete="off">
+            <kbd aria-hidden="true">⌘ F</kbd>
+          </label>
+          <span class="transcript-count" id="transcript-count"></span>
+        </div>
+        <div class="content-scroll" id="transcript-scroll" tabindex="0" aria-label="Transcript segments">
+          <ol class="transcript-list" id="transcript-list"></ol>
+          <div class="empty-state" id="transcript-empty" hidden></div>
+        </div>
+      </section>
+
+      <section class="content-panel summary-panel" id="summary-panel" role="tabpanel" aria-labelledby="summary-tab" hidden>
+        <div class="summary-tools">
+          <button type="button" class="button button-outline" id="generate-summary"><span aria-hidden="true">✦</span> Generate summary</button>
+        </div>
+        <div class="content-scroll" id="summary-scroll" tabindex="0" aria-label="Meeting summary">
+          <div class="empty-state" id="summary-empty"></div>
+          <div class="summary-content" id="summary-content"></div>
+        </div>
+      </section>
+    </main>
+
+    <aside class="assistant" aria-labelledby="assistant-title">
+      <header class="assistant-header">
+        <span class="assistant-icon" aria-hidden="true">✦</span>
+        <div><h2 id="assistant-title">Ask Copilot</h2><p>Private to this workspace</p></div>
+      </header>
+      <div class="assistant-scroll" id="assistant-scroll">
+        <div class="assistant-welcome" id="assistant-welcome">
+          <div class="welcome-icon" aria-hidden="true">✦</div>
+          <h3>Ask about this meeting</h3>
+          <p>Find a decision, recap the discussion, or go back to the original source.</p>
+          <div class="prompt-list" id="prompt-list">
+            <button type="button" class="prompt" data-skill="catch_up" data-question="Catch me up on the discussion.">Catch me up <span aria-hidden="true">↗</span></button>
+            <button type="button" class="prompt" data-skill="trace_decision" data-question="Why did we choose SQLite?">Why did we choose SQLite? <span aria-hidden="true">↗</span></button>
+            <button type="button" class="prompt" data-skill="compare_options" data-question="Compare SQLite and Kafka deployment.">Compare SQLite and Kafka <span aria-hidden="true">↗</span></button>
+          </div>
+        </div>
+        <div id="conversation" class="conversation" aria-live="polite" aria-relevant="additions text"></div>
+      </div>
+      <form id="ask-form" class="ask-form">
+        <div class="composer">
+          <textarea id="question" rows="2" maxlength="4000" placeholder="Ask a question…" aria-label="Ask a question" disabled></textarea>
+          <div class="composer-footer"><span class="composer-mode"><i></i> Local excerpt answers</span><button type="submit" id="send-question" class="send-button" aria-label="Send question" disabled>↑</button></div>
+        </div>
+        <p class="composer-help">Select a citation to see its source.</p>
+      </form>
+    </aside>
+  </div>
+
+  <dialog id="new-dialog" aria-labelledby="new-title">
+    <form id="new-form">
+      <div class="dialog-header"><h2 id="new-title">New meeting</h2><button type="button" class="close-button" data-close="new-dialog" aria-label="Close">×</button></div>
+      <label for="new-name">Meeting name</label>
+      <input id="new-name" name="title" maxlength="150" required autofocus placeholder="e.g. Weekly design review">
+      <div class="dialog-actions"><button type="button" class="button button-outline" data-close="new-dialog">Cancel</button><button type="submit" class="button button-primary" id="create-meeting">Create meeting</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="record-dialog" aria-labelledby="record-title">
+    <form id="record-form">
+      <div class="dialog-header"><h2 id="record-title">Start recording</h2><button type="button" class="close-button" data-close="record-dialog" aria-label="Close">×</button></div>
+      <label for="device-select">Microphone</label>
+      <select id="device-select" name="device" required></select>
+      <label class="consent" for="record-consent"><input id="record-consent" type="checkbox" required> Everyone in this meeting has agreed to be recorded.</label>
+      <p class="dialog-hint">The recording stays on this Mac. Local transcription uses an English model and may need a first-time download.</p>
+      <div class="dialog-actions"><button type="button" class="button button-outline" data-close="record-dialog">Cancel</button><button type="submit" class="button button-primary" id="start-recording"><span class="record-dot" aria-hidden="true"></span> Start recording</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="source-dialog" aria-labelledby="source-title">
+    <div class="dialog-header"><h2 id="source-title">Source</h2><button type="button" class="close-button" data-close="source-dialog" aria-label="Close">×</button></div>
+    <p class="source-label" id="source-label"></p>
+    <blockquote id="source-quote"></blockquote>
+    <div class="dialog-actions"><button type="button" class="button button-outline" data-close="source-dialog">Done</button></div>
+  </dialog>
+
+  <div id="toast" class="toast" role="status" hidden><span id="toast-text"></span><button type="button" id="dismiss-toast" class="close-button" aria-label="Dismiss message">×</button></div>
+</body>
+</html>
