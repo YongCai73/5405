@@ -4,7 +4,7 @@
 
 A privacy-conscious meeting assistant that combines continuous transcription with private, evidence-grounded Q&A, meeting memory, controlled tools, and reproducible evaluation.
 
-## Xiaolong 分支更新 · macOS 桌面版
+## Xiaolong 的 macOS 桌面版更新
 
 这个分支把现有 Meeting Copilot 原型接入 macOS 桌面应用。开会时可以录音、看转录和提问，结束后可以直接阅读纪要并核对原文。
 
@@ -17,7 +17,7 @@ A privacy-conscious meeting assistant that combines continuous transcription wit
 
 ### 在 Mac 上试用
 
-检出 `Xiaolong` 后，按 [桌面版构建指南](Testing%20Field/desktop/README.md#build-and-open) 在本机生成 `Meeting Copilot.app`，需要 macOS、Python 3.11 及以上和 Xcode Command Line Tools。构建后可以在 Finder 双击打开。点 **Open sample meeting** 可查看样例转录和纪要，并试用带引用的问答，样例无需 API key。实际录音需要授予麦克风权限，首次转写可能会下载英语模型。
+检出 `xiaolong/macos-desktop` 后，按 [桌面版构建指南](Testing%20Field/desktop/README.md#build-and-open) 在本机生成 `Meeting Copilot.app`，需要 macOS、Python 3.11 及以上和 Xcode Command Line Tools。构建后可以在 Finder 双击打开。点 **Open sample meeting** 可查看样例转录和纪要，并试用带引用的问答，样例无需 API key。实际录音需要授予麦克风权限，首次转写可能会下载英语模型。
 
 相关资料 · [原型与 CLI](Testing%20Field/README.md) · [交接文档](Testing%20Field/handoff.md) · [需求状态](Testing%20Field/results/requirements-current.json) · [Zimo 的 ASR 实验记录](Testing%20Field/results/asr-chunking-experiment.md)
 
