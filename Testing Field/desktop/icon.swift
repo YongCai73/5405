@@ -4,8 +4,8 @@ let canvas = NSSize(width: 1024, height: 1024)
 let image = NSImage(size: canvas, flipped: false) { _ in
     let tile = NSBezierPath(roundedRect: NSRect(x: 100, y: 100, width: 824, height: 824),
                             xRadius: 198, yRadius: 198)
-    let colors = [NSColor(srgbRed: 0.78, green: 0.22, blue: 0.30, alpha: 1),
-                  NSColor(srgbRed: 0.49, green: 0.09, blue: 0.16, alpha: 1)]
+    let colors = [NSColor(srgbRed: 0.97, green: 0.03, blue: 0.03, alpha: 1),
+                  NSColor(srgbRed: 0.72, green: 0, blue: 0, alpha: 1)]
     NSGradient(colors: colors)?.draw(in: tile, angle: -65)
 
     NSColor.white.withAlphaComponent(0.14).setFill()
