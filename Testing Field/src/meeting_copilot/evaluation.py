@@ -15,7 +15,7 @@ from .provider import Provider
 from .replay import events,fixture
 from .service import EvidenceService
 from .store import Store,Denied
-from .trace import Trace
+from .trace import Trace, evaluation_trace_context
 
 def percentile(values,p):return sorted(values)[max(0,math.ceil(len(values)*p)-1)] if values else None
 
@@ -97,11 +97,37 @@ def evaluate(output,work,stress=False,config=None):
                         old=store._snapshot(user,sid);new=uuid.uuid4().hex
                         refs=[i for i in json.loads(old['refs']) if store.raw(user,sid,i)['kind']!='file']
                         db.execute('INSERT INTO snapshots VALUES(?,?,?,?,?,?,?,?)',(new,user,meeting,old['watermark'],old['meetings'],'[]',json.dumps(refs),time.time()));sid=new
-                skill='direct' if variant=='direct' else q['skill'];start=time.perf_counter()
-                runner=direct if variant=='direct' else assistant
-                result=asyncio.run(runner.ask(sid,q['question'],'evaluation-'+variant,skill))
-                total_graph_latency=(time.perf_counter()-start)*1000
-                if variant=='skills':same_evidence[sid]=asyncio.run(assistant.retrieve({'snapshot':sid,'question':q['question'],'skill':skill}))['evidence']
+                skill = 'direct' if variant == 'direct' else q['skill']
+                runner = direct if variant == 'direct' else assistant
+
+                start = time.perf_counter()
+
+                with evaluation_trace_context(
+                        run_id=work.name,
+                        case_id=q['id'],
+                        variant=variant,
+                ):
+                    result = asyncio.run(
+                        runner.ask(
+                            sid,
+                            q['question'],
+                            'evaluation-' + variant,
+                            skill,
+                        )
+                    )
+
+                    total_graph_latency = (
+                                                  time.perf_counter() - start
+                                          ) * 1000
+
+                    if variant == 'skills':
+                        same_evidence[sid] = asyncio.run(
+                            assistant.retrieve({
+                                'snapshot': sid,
+                                'question': q['question'],
+                                'skill': skill,
+                            })
+                        )['evidence']
                 latency=result['latency_ms']
                 correct=result['abstained']==q.get('abstain',False) and all(term.lower() in result['text'].lower() for term in q['expected'])
                 supported=all(c['quote'] in store.raw(user,sid,c['source_id'])['text'] for c in result['claims'])
@@ -151,6 +177,7 @@ def evaluate(output,work,stress=False,config=None):
         usages=[case['usage'] for variant in ('skills','direct','no_snapshots','no_folder') for case in runs[variant]['cases']]
         totals={key:sum(u[key] for u in usages) if all(u[key] is not None for u in usages) else None for key in ('input_tokens','output_tokens','estimated_cost_usd')}
         report={'created_at_utc':time.strftime('%Y-%m-%dT%H:%M:%SZ',time.gmtime()),'mode':('API evaluation / synthetic transcript fixtures; expected-term and exact-quote checks are not semantic quality assessment' if api else 'SIMULATED deterministic extractive; no paid API or ASR quality measurement'),'provider':selected_config.provider,'model':selected_config.model,'tool_rounds':0,'fixture_sha256':__import__('hashlib').sha256(__import__('importlib').resources.files('meeting_copilot').joinpath('fixtures.json').read_bytes()).hexdigest(),'qa_questions':len(questions),'configurations':runs,'security':security,'native_meet2notes_baseline':{'status':'not measured','reason':'run native-baseline separately with the same provider/model; fake HTTP harness tests are not live native quality measurement'},'api_usage':totals,'stress':stress_capture() if stress else {'status':'not requested'},'scoring_limits':'Correct means expected substring checks plus abstention match. citation_supported means exact quotation membership only. Neither establishes semantic entailment of model inferences. All ablations use isolated synthetic data; unsafe policy ablation always uses demo generation.'}
+        report['run_id'] = work.name
     finally:store.close()
     output=Path(output);output.parent.mkdir(parents=True,exist_ok=True);output.write_text(json.dumps(report,indent=2),encoding='utf-8')
     return {'report':str(output),'qa_questions':report['qa_questions'],'skills_correct':runs['skills']['correct'],'future_leakage':runs['skills']['future_leakage_cases'],'security_passed':security['passed'],'security_total':security['total'],'mode':report['mode']}

@@ -3,13 +3,50 @@ import threading
 import time
 from pathlib import Path
 
+from contextlib import contextmanager
+from contextvars import ContextVar
+
+
+_evaluation_context = ContextVar(
+    "evaluation_context",
+    default=None,
+)
+
+
+@contextmanager
+def evaluation_trace_context(run_id, case_id, variant):
+    """Attach evaluation identifiers to trace events."""
+    token = _evaluation_context.set({
+        "run_id": run_id,
+        "case_id": case_id,
+        "variant": variant,
+    })
+
+    try:
+        yield
+    finally:
+        _evaluation_context.reset(token)
+
+
 class Trace:
     """Allowlisted metadata only: no questions, excerpts, paths, keys or model errors."""
-    allowed={'snapshot_id','source_ids','latency_ms','dropped_segments','input_tokens','output_tokens','estimated_cost_usd','policy','reason','watermark','queue_depth','mode'}
+    allowed={'snapshot_id','source_ids', 'run_id', 'case_id', 'variant', 'latency_ms','dropped_segments','input_tokens','output_tokens','estimated_cost_usd','policy','reason','watermark','queue_depth','mode'}
     def __init__(self,path):
         self.path=Path(path);self.path.parent.mkdir(parents=True,exist_ok=True);self.lock=threading.Lock()
-    def emit(self,event,**values):
-        row={'event':event,'time':time.time(),**{k:v for k,v in values.items() if k in self.allowed}}
+
+    def emit(self, event, **values):
+        context = _evaluation_context.get() or {}
+        metadata = {**values, **context}
+
+        row = {
+            'event': event,
+            'time': time.time(),
+            **{
+                k: v
+                for k, v in metadata.items()
+                if k in self.allowed
+            },
+        }
         with self.lock:
             with self.path.open('a',encoding='utf-8') as f:f.write(json.dumps(row)+'\n')
     def redacted_export(self,destination,authorize=None):
