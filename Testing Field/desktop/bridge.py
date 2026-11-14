@@ -25,6 +25,11 @@ PROVIDER_MESSAGES = {
     'evidence_upload_not_enabled': 'Enable send_evidence in the desktop configuration to use the configured API.',
     'missing_api_key': 'The configured provider API key is not available to the desktop process.',
     'timeout': 'The configured API did not respond before the timeout.',
+    'invalid_minutes_response': 'The configured API did not return usable cited meeting notes. Try again.',
+}
+MINUTES_SECTIONS = {
+    'overview': 'Overview', 'topics': 'Discussion topics', 'decisions': 'Decisions',
+    'actionItems': 'Action items', 'openQuestions': 'Open questions',
 }
 
 
@@ -65,6 +70,21 @@ def timestamp(milliseconds):
 
 def write_json(stream, value):
     print(json.dumps(value, ensure_ascii=True, separators=(',', ':')), file=stream, flush=True)
+
+
+def minutes_text(minutes):
+    sections = []
+    for key, heading in MINUTES_SECTIONS.items():
+        lines = []
+        for item in minutes.get(key, []):
+            details = [f'{label}: {item[field]}' for field, label in [('owner', 'Owner'), ('due', 'Due')]
+                       if item.get(field)]
+            citations = ' '.join(f"[E{source['id']}]" for source in item['sources'])
+            suffix = f" ({', '.join(details)})" if details else ''
+            lines.append(f"- {item['text']}{suffix} {citations}".rstrip())
+        if lines:
+            sections.append(f"{heading}\n" + '\n'.join(lines))
+    return '\n\n'.join(sections)
 
 
 class Capture:
@@ -190,6 +210,12 @@ class DesktopBridge:
         self.root = config.root
         self.principal = config.principal
         self.store = Store(self.root / 'evidence.db')
+        with self.store.tx() as db:
+            db.execute('''CREATE TABLE IF NOT EXISTS desktop_minutes (
+                snapshot TEXT PRIMARY KEY REFERENCES snapshots(id) ON DELETE CASCADE,
+                transcript_refs TEXT NOT NULL,
+                content TEXT NOT NULL
+            )''')
         self.trace = Trace(self.root / 'traces.jsonl')
         self.assistant = Assistant(self.store, self.principal, Provider(config), self.trace)
         self.local_assistant = self.assistant if config.provider == 'demo' else Assistant(
@@ -300,14 +326,19 @@ class DesktopBridge:
             self.live_summaries = None
 
     def _detail(self, meeting):
-        row = self.store.metadata(self.principal, meeting)
         capture = self._current_capture()
-        summary = self.store.latest_summary(self.principal, meeting)
+        recording = bool(capture and capture.meeting == meeting)
+        with self.store.read():
+            row = self.store.metadata(self.principal, meeting)
+            segments = self._current_segments(meeting)
+            minutes = None if recording else self._saved_minutes(meeting, [row['id'] for row in segments])
+            summary = minutes or self._latest_live_summary(meeting)
         detail = {
             **self._meeting_header(row),
-            'segments': self._current_segments(meeting),
+            'segments': segments,
             'summary': summary['text'] if summary else '',
-            'recording': bool(capture and capture.meeting == meeting),
+            'minutes': minutes['minutes'] if minutes else None,
+            'recording': recording,
         }
         if meeting in self.recording_errors:
             detail['recordingError'] = self.recording_errors[meeting]
@@ -366,9 +397,76 @@ class DesktopBridge:
         result = asyncio.run(assistant.summary_graph.ainvoke({'snapshot': snapshot}))['result']
         return result['text']
 
+    def _snapshot_transcript_ids(self, snapshot):
+        with self.store.read() as db:
+            scope = self.store.snapshot_info(self.principal, snapshot)
+            return [row[0] for row in db.execute(
+                "SELECT e.id FROM evidence e JOIN json_each(?) ref ON e.id=ref.value "
+                "WHERE e.kind='segment' AND e.meeting=? ORDER BY e.id",
+                (scope['refs'], scope['meeting']),
+            )]
+
+    def _saved_minutes(self, meeting, transcript_ids):
+        with self.store.read() as db:
+            self.store.metadata(self.principal, meeting)
+            row = db.execute('''
+                SELECT m.snapshot, m.content FROM desktop_minutes m
+                JOIN snapshots s ON s.id=m.snapshot
+                WHERE s.meeting=? AND s.user=? AND m.transcript_refs=?
+                ORDER BY s.created DESC LIMIT 1
+                ''', (meeting, self.principal, json.dumps(sorted(transcript_ids)))).fetchone()
+            if row is None:
+                return None
+            summary = self.store.summary_get(self.principal, row['snapshot'])
+            return {**summary, 'minutes': json.loads(row['content'])} if summary else None
+
+    def _latest_live_summary(self, meeting):
+        from meeting_copilot.store import Denied
+
+        with self.store.read() as db:
+            self.store.metadata(self.principal, meeting)
+            rows = db.execute('''
+                SELECT s.id FROM snapshots s JOIN summaries m ON s.id=m.snapshot
+                WHERE s.meeting=? AND s.user=?
+                AND NOT EXISTS (SELECT 1 FROM desktop_minutes d WHERE d.snapshot=s.id)
+                ORDER BY s.created DESC
+                ''', (meeting, self.principal))
+            for row in rows:
+                try:
+                    return self.store.summary_get(self.principal, row['id'])
+                except Denied:
+                    continue
+        return None
+
+    def _final_summary(self, meeting, assistant):
+        from minutes import generate_minutes
+
+        capture = self._current_capture()
+        if capture and capture.meeting == meeting:
+            raise DesktopError('Stop recording before generating final meeting notes.')
+        snapshot = self.store.snapshot(self.principal, meeting)
+        transcript_ids = self._snapshot_transcript_ids(snapshot)
+        if not transcript_ids:
+            return {'text': '', 'minutes': None}
+        mode = 'local' if assistant.provider.config.provider == 'demo' else 'api'
+        existing = self._saved_minutes(meeting, transcript_ids)
+        if existing and existing['minutes']['mode'] == mode:
+            return {'text': existing['text'], 'minutes': existing['minutes']}
+        minutes = asyncio.run(generate_minutes(self.store, self.principal, snapshot, assistant.provider))
+        text = minutes_text(minutes)
+        refs = sorted({source['id'] for key in MINUTES_SECTIONS for item in minutes.get(key, [])
+                       for source in item['sources']})
+        with self.store.tx() as db:
+            self.store.summary_put(self.principal, snapshot, text, refs)
+            db.execute('INSERT INTO desktop_minutes VALUES (?,?,?)',
+                       (snapshot, json.dumps(transcript_ids), json.dumps(minutes, ensure_ascii=False)))
+        return {'text': text, 'minutes': minutes}
+
     def summary(self, payload):
         meeting = required_text(payload, 'meetingId', 80)
         assistant = self.local_assistant if meeting == self.sample_id else self.assistant
+        if payload.get('final') is True:
+            return self._final_summary(meeting, assistant)
         return {'text': self._summarize(self._scope(meeting), assistant)}
 
     def export(self, payload):
@@ -377,13 +475,22 @@ class DesktopBridge:
         if destination.suffix.lower() != '.json' or destination.is_relative_to(self.root):
             raise DesktopError('Choose a JSON file outside the application data folder.')
         snapshot = self._scope(meeting)
-        latest = self.store.latest_summary(self.principal, meeting)
+        transcript_ids = self._snapshot_transcript_ids(snapshot)
+        minutes = self._saved_minutes(meeting, transcript_ids)
+        latest = minutes or self._latest_live_summary(meeting)
         refs = set(json.loads(self.store.snapshot_info(self.principal, snapshot)['refs']))
         if latest and set(latest['refs']).issubset(refs):
-            self.store.summary_put(self.principal, snapshot, latest['text'], latest['refs'])
+            with self.store.tx() as db:
+                self.store.summary_put(self.principal, snapshot, latest['text'], latest['refs'])
+                if minutes:
+                    # Keep the export's copied summary out of the live-summary list.
+                    db.execute('INSERT INTO desktop_minutes VALUES (?,?,?)',
+                               (snapshot, json.dumps(transcript_ids), json.dumps(minutes['minutes'], ensure_ascii=False)))
         else:
             self._summarize(snapshot, self.local_assistant)
         result = self.store.export(self.principal, snapshot, 'desktop-export')
+        if minutes:
+            result['minutes'] = minutes['minutes']
         temporary = None
         try:
             with tempfile.NamedTemporaryFile(mode='w', encoding='utf-8', dir=destination.parent, delete=False) as file:

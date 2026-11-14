@@ -125,3 +125,43 @@ def test_real_meeting_scope_is_explicit_and_sample_id_collision_is_safe(tmp_path
     assert replies[3]['result']['meeting']['id'] != 'demo'
     assert replies[4]['result']['title'] == 'Previous real meeting'
     assert len(replies[4]['result']['segments']) == 1
+
+
+def test_final_minutes_persist_with_sources_and_follow_transcript_revisions(tmp_path):
+    workspace = tmp_path / 'workspace'
+    export = tmp_path / 'minutes.json'
+    event = {
+        'event_id': 'closing', 'segment_id': 'closing', 'seq': 1, 'revision': 1,
+        'start_ms': 1_190_000, 'end_ms': 1_200_000,
+        'text': 'We decided to ship the final desktop build.', 'final': True,
+    }
+    store = Store(workspace / 'data' / 'evidence.db')
+    store.create('local-host', 'team', 'Team meeting')
+    source_id = store.ingest('local-host', 'team', event)
+    store.close()
+
+    request = {'meetingId': 'team', 'final': True}
+    replies = run_bridge(workspace, [('summary', request), ('summary', request)])
+    assert all(reply['ok'] for reply in replies)
+    final = replies[0]['result']
+    assert replies[1]['result'] == final
+    assert final['minutes']['mode'] == 'local'
+    sources = [source for key in ('overview', 'topics', 'decisions', 'actionItems', 'openQuestions')
+               for item in final['minutes'][key] for source in item['sources']]
+    assert sources and {source['id'] for source in sources} == {source_id}
+
+    loaded, saved = run_bridge(workspace, [('meeting', request), ('export', {**request, 'path': str(export)})])
+    assert loaded['ok'] and saved['ok']
+    assert loaded['result']['minutes'] == final['minutes']
+    data = json.loads(export.read_text(encoding='utf-8'))
+    assert data['minutes'] == final['minutes']
+    assert source_id in {row['id'] for row in data['evidence']}
+    assert not data['private']
+
+    store = Store(workspace / 'data' / 'evidence.db')
+    store.ingest('local-host', 'team', {**event, 'event_id': 'correction', 'seq': 2, 'revision': 2,
+                                        'text': 'We decided to delay the final desktop build.'})
+    store.close()
+    loaded, refreshed = run_bridge(workspace, [('meeting', request), ('summary', request)])
+    assert loaded['result']['minutes'] is None and 'ship' not in loaded['result']['summary']
+    assert refreshed['ok'] and 'delay the final desktop build' in refreshed['result']['text']

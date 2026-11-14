@@ -27,7 +27,7 @@ if [[ ! -x "$backend_root/.venv/bin/python" ]]; then
     printf 'Create .venv and install the Python application in %s first. See desktop/README.md.\n' "$backend_root" >&2
     exit 1
 fi
-for source in main.swift bridge.py ui/index.html ui/styles.css ui/app.js; do
+for source in main.swift bridge.py minutes.py ui/index.html ui/styles.css ui/app.js; do
     if [[ ! -f "$desktop_dir/$source" ]]; then
         printf 'Missing desktop source %s.\n' "$desktop_dir/$source" >&2
         exit 1
@@ -148,7 +148,7 @@ mkdir -p "$runtime_bundle/desktop"
 # Clone files where the volume supports it and preserve Python's symlinks.
 cp -cR "$backend_root/.venv" "$runtime_bundle/.venv"
 cp -cR "$backend_root/src" "$runtime_bundle/src"
-cp -X "$desktop_dir/bridge.py" "$runtime_bundle/desktop/bridge.py"
+cp -X "$desktop_dir/bridge.py" "$desktop_dir/minutes.py" "$runtime_bundle/desktop/"
 # An editable install points at the development checkout. The desktop host
 # provides the staged src directory on PYTHONPATH, including for recording.
 for editable in "$runtime_bundle"/.venv/lib/python*/site-packages/_editable_impl_meeting_copilot_prototype.pth; do

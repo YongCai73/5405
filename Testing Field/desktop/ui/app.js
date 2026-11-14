@@ -43,6 +43,8 @@ const state = {
   highlighted: null,
   recordingId: null,
   recordingErrors: new Map(),
+  endingMeetings: new Set(),
+  summaryRequests: new Map(),
   initialError: null,
 };
 
@@ -55,6 +57,13 @@ const localPrompts = [
   prompts[0],
   { question: "What did we decide?", label: "Find a decision", skill: "trace_decision" },
   { question: "What options did we compare?", label: "Compare options", skill: "compare_options" },
+];
+const minuteSections = [
+  ["overview", "Overview", "No overview available."],
+  ["topics", "Topics", "No topics identified."],
+  ["decisions", "Decisions", "No decisions recorded."],
+  ["actionItems", "Action items", "No action items recorded."],
+  ["openQuestions", "Open questions", "No open questions recorded."],
 ];
 
 let toastTimer;
@@ -169,8 +178,11 @@ function renderControls() {
   byId("import-button").title = meeting?.mode === "sample" ? "Create a meeting to import audio" : "";
   byId("import-button").lastChild.textContent = state.busy === "import" ? " Importing…" : " Import audio";
   byId("export-button").disabled = !meeting || busy;
-  byId("generate-summary").disabled = !meeting?.segments?.length || busy;
-  byId("generate-summary").lastChild.textContent = state.busy === "summary" ? " Generating…" : " Generate summary";
+  const summaryRequest = state.summaryRequests.get(meeting?.id);
+  const generate = byId("generate-summary");
+  generate.hidden = !recording && Boolean(meeting?.minutes) && !summaryRequest;
+  generate.disabled = !meeting?.segments?.length || busy || Boolean(summaryRequest?.pending);
+  generate.lastChild.textContent = summaryRequest?.pending ? " Generating…" : summaryRequest?.error ? " Retry" : " Generate summary";
   byId("transcript-search").disabled = !meeting?.segments?.length;
   updateComposer();
 }
@@ -282,10 +294,28 @@ function renderSummary() {
   const detail = state.meeting;
   const summary = byId("summary-content");
   const empty = byId("summary-empty");
+  const request = state.summaryRequests.get(detail?.id);
   summary.replaceChildren();
+  byId("summary-panel").setAttribute("aria-busy", String(Boolean(request?.pending)));
+  if (request?.pending) {
+    showEmpty(empty, request.final ? "Preparing meeting minutes…" : "Preparing a summary…", "");
+    return;
+  }
+  if (request?.error) {
+    showEmpty(empty, request.final ? "Couldn’t generate minutes" : "Couldn’t generate a summary", request.error);
+    return;
+  }
+  if (!detail?.segments?.length) {
+    showEmpty(empty, "No summary yet", "A transcript is needed before you can generate a summary.");
+    return;
+  }
+  if (!detail.recording && detail.minutes) {
+    empty.hidden = true;
+    renderMinutes(detail.minutes, summary);
+    return;
+  }
   if (!detail?.summary) {
-    if (detail?.segments?.length) showEmpty(empty, "No summary yet", "Generate a recap from this meeting’s transcript.");
-    else showEmpty(empty, "No summary yet", "A transcript is needed before you can generate a summary.");
+    showEmpty(empty, "No summary yet", "Generate a recap from this meeting’s transcript.");
     return;
   }
   empty.hidden = true;
@@ -298,6 +328,74 @@ function renderSummary() {
     appendAnswer(line, p, segmentCitations);
     summary.append(p);
   }
+}
+
+function renderMinutes(minutes, container) {
+  const header = make("div", "minutes-header");
+  header.append(make("h2", "", "Meeting minutes"));
+  container.append(header);
+  for (const [key, label, emptyText] of minuteSections) {
+    const section = make("section", "minutes-section");
+    section.append(make("h3", "", label));
+    const entries = minutes[key] || [];
+    if (!entries.length) {
+      section.append(make("p", "minutes-empty", emptyText));
+    } else {
+      const list = make("ul", "minutes-list");
+      for (const entry of entries) {
+        const item = make("li", "minutes-item");
+        item.append(make("p", "minutes-text", entry.text));
+        const details = make("div", "minutes-details");
+        if (entry.owner) details.append(make("span", "minutes-meta", "Owner · " + entry.owner));
+        if (entry.due) details.append(make("span", "minutes-meta", "Due · " + entry.due));
+        for (const source of entry.sources || []) {
+          const button = make("button", "citation minutes-source", source.label);
+          button.type = "button";
+          button.setAttribute("aria-label", "Open source " + source.label);
+          button.addEventListener("click", () => showSource(source));
+          details.append(button);
+        }
+        if (details.childElementCount) item.append(details);
+        list.append(item);
+      }
+      section.append(list);
+    }
+    container.append(section);
+  }
+}
+
+async function requestSummary(meetingId, final) {
+  const previous = state.summaryRequests.get(meetingId);
+  if (previous?.pending && (!final || previous.final)) return;
+  const request = { pending: true, final };
+  state.summaryRequests.set(meetingId, request);
+  if (state.meeting?.id === meetingId) {
+    renderSummary();
+    renderControls();
+  }
+  try {
+    const result = await bridge("summary", { meetingId, final });
+    if (state.summaryRequests.get(meetingId) !== request) return;
+    state.summaryRequests.delete(meetingId);
+    if (state.meeting?.id === meetingId) {
+      state.meeting.summary = result.text;
+      if (final) state.meeting.minutes = result.minutes ?? null;
+    }
+  } catch (error) {
+    request.pending = false;
+    request.error = error.message;
+  } finally {
+    if (state.meeting?.id === meetingId) {
+      renderSummary();
+      renderControls();
+    }
+  }
+}
+
+function finishRecording(detail) {
+  if (detail.recording || !state.endingMeetings.delete(detail.id)) return;
+  if (state.meeting?.id === detail.id) selectTab("summary", true);
+  if (detail.segments.length) void requestSummary(detail.id, true);
 }
 
 function currentTurns(meetingId = state.meeting?.id) {
@@ -481,12 +579,15 @@ async function refreshRecording() {
     const wasRecording = state.recordingId === meetingId;
     const visible = state.meeting?.id === meetingId;
     updateRecording(detail);
-    if (wasRecording && !detail.recording) renderMeetings();
+    if (wasRecording && !detail.recording) {
+      if (!detail.recordingError) state.endingMeetings.add(meetingId);
+      renderMeetings();
+    }
     if (visible) {
       const scroller = byId("transcript-scroll");
       const follow = state.tab === "transcript" && !state.query && scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight < 28;
       const changed = JSON.stringify(state.meeting.segments) !== JSON.stringify(detail.segments);
-      const summaryChanged = state.meeting.summary !== detail.summary;
+      const summaryChanged = state.meeting.summary !== detail.summary || (!detail.recording && JSON.stringify(state.meeting.minutes) !== JSON.stringify(detail.minutes));
       state.meeting = detail;
       if (changed || !detail.recording) {
         renderHeader();
@@ -496,6 +597,7 @@ async function refreshRecording() {
       if (summaryChanged) renderSummary();
       renderControls();
     }
+    finishRecording(detail);
   } catch (error) {
     toast(error.message, true);
   } finally {
@@ -572,15 +674,8 @@ document.addEventListener("keydown", (event) => {
   }
 });
 byId("generate-summary").addEventListener("click", () => {
-  const meetingId = state.meeting?.id;
-  if (!meetingId) return;
-  void action("summary", async () => {
-    const result = await bridge("summary", { meetingId });
-    if (state.meeting?.id === meetingId) {
-      state.meeting.summary = result.text;
-      renderSummary();
-    }
-  });
+  const meeting = state.meeting;
+  if (meeting?.segments.length) void requestSummary(meeting.id, !meeting.recording);
 });
 byId("import-button").addEventListener("click", () => {
   const meetingId = state.meeting?.id;
@@ -605,9 +700,11 @@ byId("record-button").addEventListener("click", () => {
   if (!meetingId) return;
   if (state.recordingId === meetingId) {
     void action("stop", async () => {
+      state.endingMeetings.add(meetingId);
       const detail = await bridge("stopRecording", { meetingId });
       useDetail(detail);
-      if (!detail.recordingError) toast("Recording saved.");
+      finishRecording(detail);
+      if (!detail.recording && !detail.recordingError) toast("Recording saved.");
     });
     return;
   }
