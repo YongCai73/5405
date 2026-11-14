@@ -4,9 +4,24 @@
 
 A privacy-conscious meeting assistant that combines continuous transcription with private, evidence-grounded Q&A, meeting memory, controlled tools, and reproducible evaluation.
 
-> **Prototype entry (this branch):** [Meeting Copilot 0.2.0 application](Testing%20Field/README.md) · [Chinese B/G/C/T/D/R handoff](Testing%20Field/handoff.md) · [Current proposal/status mapping](Testing%20Field/results/requirements-current.json). Windows source/CLI/public-recording ASR and Linux stability have measured results; real microphones, macOS and paid endpoints still need validation. Use [meeting-copilot/prototype-20261108](https://github.com/cyudaddy/5405/tree/meeting-copilot/prototype-20261108); existing tags are historical milestones.
->
-> **Historical planning status:** Proposal / research stage. The planning content below is retained; “no working pipeline” described the repository before the prototype was added.
+## Xiaolong 分支更新 · macOS 桌面版
+
+这个分支把现有 Meeting Copilot 原型接入 macOS 桌面应用。开会时可以录音、看转录和提问，结束后可以直接阅读纪要并核对原文。
+
+| 更新 | 用途 |
+|---|---|
+| **桌面工作区** | 在同一个窗口新建会议、选择麦克风录音或导入音频，并按关键词搜索带时间戳的转录。语音转写由本机的 Faster Whisper 处理。界面用正红标出主要操作和选中状态，阅读区采用浅色底。 |
+| **会后自动生成纪要** | 停止录音后，应用等转写收尾，再打开 **Summary**。有转录时会生成概览、讨论议题、决定、待办和待确认问题中有原文支持的内容。点击时间戳可以核对原文。导入音频后可在 **Summary** 点 **Generate summary**。 |
+| **带引用的会议问答和导出** | 在 **Ask Copilot** 里追问会议决定或讨论内容，点引用可查看依据。**Export** 可把会议转录和已生成的纪要保存为 JSON。 |
+| **合并 Zimo 的实时转写改进** | 录音按语音停顿切片，结合语音活动检测（VAD）识别语音，跳过纯静音切片，并记录延迟和音频丢失情况，便于排查漏转和延迟。Zimo 的 WASAPI 缓冲区调整和实验数据适用于 Windows。 |
+
+### 在 Mac 上试用
+
+检出 `Xiaolong` 后，按 [桌面版构建指南](Testing%20Field/desktop/README.md#build-and-open) 在本机生成 `Meeting Copilot.app`，需要 macOS、Python 3.11 及以上和 Xcode Command Line Tools。构建后可以在 Finder 双击打开。点 **Open sample meeting** 可查看样例转录和纪要，并试用带引用的问答，样例无需 API key。实际录音需要授予麦克风权限，首次转写可能会下载英语模型。
+
+相关资料 · [原型与 CLI](Testing%20Field/README.md) · [交接文档](Testing%20Field/handoff.md) · [需求状态](Testing%20Field/results/requirements-current.json) · [Zimo 的 ASR 实验记录](Testing%20Field/results/asr-chunking-experiment.md)
+
+> The sections below preserve the team's original project plan and proposed architecture.
 
 ## Product scenario
 
