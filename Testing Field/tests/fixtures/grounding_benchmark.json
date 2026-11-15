@@ -1,0 +1,61 @@
+
+{
+  "benchmark_version": "1.0",
+  "description": "Synthetic claim-evidence semantic grounding benchmark",
+  "cases": [
+    {
+      "id": "G01",
+      "evidence": "We have decided to use SQLite for the first release.",
+      "claim": "The team chose SQLite for the first release.",
+      "label": "supported"
+    },
+    {
+      "id": "G02",
+      "evidence": "Maya will send the draft on Friday.",
+      "claim": "Maya is responsible for sending the draft on Friday.",
+      "label": "supported"
+    },
+    {
+      "id": "G03",
+      "evidence": "The next project meeting will be online on Tuesday.",
+      "claim": "The next project meeting is scheduled online for Tuesday.",
+      "label": "supported"
+    },
+    {
+      "id": "G04",
+      "evidence": "We have not decided whether to use SQLite or PostgreSQL.",
+      "claim": "The team has finalized PostgreSQL.",
+      "label": "contradicted"
+    },
+    {
+      "id": "G05",
+      "evidence": "The release has been postponed until November.",
+      "claim": "The release is scheduled for October.",
+      "label": "contradicted"
+    },
+    {
+      "id": "G06",
+      "evidence": "No one has been assigned the migration task yet.",
+      "claim": "Maya has been assigned the migration task.",
+      "label": "contradicted"
+    },
+    {
+      "id": "G07",
+      "evidence": "We discussed AWS as a possible hosting option.",
+      "claim": "AWS was selected as the hosting provider.",
+      "label": "insufficient"
+    },
+    {
+      "id": "G08",
+      "evidence": "Jordan will investigate storage options.",
+      "claim": "The storage budget is $5,000.",
+      "label": "insufficient"
+    },
+    {
+      "id": "G09",
+      "evidence": "The team agreed to add authentication to the application.",
+      "claim": "Authentication will use OAuth 2.0.",
+      "label": "insufficient"
+    }
+  ]
+}
