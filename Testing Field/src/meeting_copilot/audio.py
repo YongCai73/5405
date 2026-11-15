@@ -127,7 +127,18 @@ class LocalASR:
         self.engine=FasterWhisperEngine(Path(root)/'models');self.model=model;self.allow_download=allow_download
         self.prompt=glossary_prompt(terms)
         # MC_FILTER_JUNK=0 turns the filter off (for experiments).
-        self.filter_junk=os.environ.get('MC_FILTER_JUNK','1').strip()!='0';self.junk_dropped=0
+        self.filter_junk=os.environ.get('MC_FILTER_JUNK','1').strip()!='0';self.junk_dropped=0;self.last_text=None
+    def _is_repeat(self,segment):
+        """A short segment (<= 3 words) that exactly repeats the previous kept one.
+
+        Whisper sometimes loops on a filler: a live run produced "All right." five times
+        in a row in the gaps between sentences.
+        """
+        import re
+        key=' '.join(re.findall(r"[a-z0-9']+",(segment.text or '').lower()))
+        repeat=bool(key) and key==self.last_text and len(key.split())<=3
+        if not repeat:self.last_text=key
+        return repeat
     def transcribe(self,path):
         from local_meeting_ai.domain.entities import TranscriptionEngineRequest
         req=TranscriptionEngineRequest(audio_path=Path(path),model=self.model,device='cpu',compute_type='int8',language='en',task='transcribe',beam_size=1,vad_filter=True,allow_model_download=self.allow_download,cpu_threads=_env_number('MC_ASR_THREADS',2,1,16,int),num_workers=1,
@@ -139,7 +150,7 @@ class LocalASR:
             condition_on_previous_text=not self.prompt)
         segments=asyncio.run(self.engine.transcribe(req,lambda *a:None,lambda:False,lambda s:None)).segments
         if not self.filter_junk:return segments
-        kept=[s for s in segments if junk_reason(s) is None]
+        kept=[s for s in segments if junk_reason(s) is None and not self._is_repeat(s)]
         self.junk_dropped+=len(segments)-len(kept)
         return kept
     def warm_up(self):

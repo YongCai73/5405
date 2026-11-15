@@ -207,7 +207,18 @@ Final code path on the same recording (warm model, filter on):
 | No glossary | 1.7 s | 13 | 0 | 2 / 3 | 3 / 6 | — |
 | **Glossary** | **3.6 s** | 15 | 8 | **3 / 3** | **6 / 6** | "Thank you.", "Good.", "Good." |
 
-**Recommendation:** use `--terms` when the meeting's key terms are known. It roughly doubles ASR time per chunk (expected live mean ≈ 3–4 s instead of 2 s; not yet measured live). A few short fillers can remain, but no invented content sentences were kept in these tests. Without `--terms`, behaviour is unchanged.
+### Live confirmation (2026-11-14)
+
+Real microphone, glossary on, no retries, filter on, script read ~3.5 times:
+
+| Run | mean / p50 / p95 latency | Processing p95 | Dropped | SQLite | Kafka |
+|---|---|---|---|---|---|
+| Glossary + filter, with retries | 8.2 / 8.8 / 12.8 s | 11.4 s | 13 | 3 / 3 | 6 / 6 |
+| **Glossary + filter, no retries** | **2.6 / 2.4 / 3.4 s** | **2.6 s** | 13 | **4 / 4** | **7 / 7** |
+
+Only one problem got through in the no-retry run: "All right." five times in a row (a Whisper repetition loop). A short segment (≤ 3 words) that exactly repeats the previous kept segment is now also dropped (unit-tested). A single "All right." is still kept.
+
+**Recommendation:** use `--terms` when the meeting's key terms are known. Live, it kept latency at 2.6 s mean / 3.4 s p95 and got every SQLite and Kafka right, with no invented content sentences. Without `--terms`, behaviour is unchanged.
 
 Remaining idea:
 - A second pass: transcribe longer windows (e.g. the last 30 s) without a glossary and store the result as a new revision. Section 7 shows full-context transcription gets the terms right without inventing text, and the evidence store already supports revisions.

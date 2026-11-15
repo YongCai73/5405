@@ -219,3 +219,29 @@ def test_local_asr_counts_dropped_junk(monkeypatch):
     assert asr.junk_dropped == 1
     monkeypatch.setenv('MC_FILTER_JUNK', '0')
     assert len(audio.LocalASR('.', 'base.en', False).transcribe('x.wav')) == 2
+
+
+def test_repeated_short_filler_is_dropped_across_chunks(monkeypatch):
+    import meeting_copilot.audio as audio
+    from types import SimpleNamespace
+    batches = [[seg('We decided to use SQLite.', 0, 2500, [0.9])],
+               [seg('All right.', 0, 900, [0.9])],
+               [seg('All right.', 0, 900, [0.9])],
+               [seg('all right', 0, 900, [0.9])],
+               [seg('Let us discuss the database choice.', 0, 2500, [0.9])],
+               [seg('All right.', 0, 900, [0.9])]]
+
+    class Engine:
+        def __init__(self, *args):
+            pass
+
+        async def transcribe(self, request, *args):
+            return SimpleNamespace(segments=batches.pop(0))
+
+    import local_meeting_ai.adapters.transcription.faster_whisper as fw
+    monkeypatch.setattr(fw, 'FasterWhisperEngine', Engine)
+    asr = audio.LocalASR('.', 'base.en', False)
+    kept = [s.text for _ in range(6) for s in asr.transcribe('x.wav')]
+    # The first "All right." and the one after a real sentence are kept; immediate repeats are not.
+    assert kept == ['We decided to use SQLite.', 'All right.', 'Let us discuss the database choice.', 'All right.']
+    assert asr.junk_dropped == 2
