@@ -70,13 +70,49 @@ class Pipeline:
                 'ingestion_lag_max_seconds':max(lags) if lags else None,'wall_seconds':time.monotonic()-self.started,
                 'lag_definition':'chunk submission to committed segment; last 10000 segments; excludes chunk accumulation'}
 
+MAX_TERMS=60
+MAX_PROMPT_CHARS=600
+
+def glossary_prompt(terms):
+    """Turn a list of technical terms into a Whisper prompt, e.g. 'Glossary: SQLite, Kafka.'
+
+    Whisper uses the prompt as preceding context, so spelled-out terms become much more
+    likely in the transcript. Duplicates are removed and the prompt is kept short, since
+    Whisper only reads the last ~224 tokens of a prompt.
+    """
+    seen=[];keys=set()
+    for raw in terms or ():
+        term=' '.join(str(raw).split()).strip(' ,;')
+        if term and term.lower() not in keys:
+            keys.add(term.lower());seen.append(term)
+        if len(seen)>=MAX_TERMS:break
+    prompt='Glossary: '
+    for term in seen:
+        piece=(', ' if prompt!='Glossary: ' else '')+term
+        if len(prompt)+len(piece)+1>MAX_PROMPT_CHARS:break
+        prompt+=piece
+    return prompt+'.' if prompt!='Glossary: ' else None
+
+def read_terms(text=None,path=None):
+    """Terms from a comma/newline separated string and/or a text file (one term per line or comma separated)."""
+    import re
+    parts=[]
+    if text:parts+=re.split(r'[,\n]',text)
+    if path:parts+=re.split(r'[,\n]',Path(path).read_text(encoding='utf-8'))
+    return [p.strip() for p in parts if p.strip() and not p.strip().startswith('#')]
+
 class LocalASR:
-    def __init__(self,root,model='tiny.en',allow_download=False):
+    def __init__(self,root,model='tiny.en',allow_download=False,terms=()):
         from local_meeting_ai.adapters.transcription.faster_whisper import FasterWhisperEngine
         self.engine=FasterWhisperEngine(Path(root)/'models');self.model=model;self.allow_download=allow_download
+        self.prompt=glossary_prompt(terms)
     def transcribe(self,path):
         from local_meeting_ai.domain.entities import TranscriptionEngineRequest
-        req=TranscriptionEngineRequest(audio_path=Path(path),model=self.model,device='cpu',compute_type='int8',language='en',task='transcribe',beam_size=1,vad_filter=True,allow_model_download=self.allow_download,cpu_threads=_env_number('MC_ASR_THREADS',2,1,16,int),num_workers=1)
+        req=TranscriptionEngineRequest(audio_path=Path(path),model=self.model,device='cpu',compute_type='int8',language='en',task='transcribe',beam_size=1,vad_filter=True,allow_model_download=self.allow_download,cpu_threads=_env_number('MC_ASR_THREADS',2,1,16,int),num_workers=1,
+            provider_options={'initial_prompt':self.prompt} if self.prompt else {},
+            # With a glossary, do not also feed earlier output back in: on long audio the
+            # combination produced invented sentences in our A/B test.
+            condition_on_previous_text=not self.prompt)
         return asyncio.run(self.engine.transcribe(req,lambda *a:None,lambda:False,lambda s:None)).segments
     def warm_up(self):
         """Load the ASR model before capture starts.
@@ -154,7 +190,7 @@ def _latency_summary(values):
 
 def microphones():return [asdict(x) for x in create_audio_capture_backend().list_sources()]
 
-def listen(store,user,meeting,root,source,seconds,consent,model='tiny.en',download=False,trace=None,on_status=None,status_interval=5):
+def listen(store,user,meeting,root,source,seconds,consent,model='tiny.en',download=False,trace=None,on_status=None,status_interval=5,terms=()):
     if not consent:raise ValueError('recording requires explicit participant consent (--consent)')
     if not 0<=seconds<=28800:raise ValueError('duration limit 0 (until Ctrl+C) or 1..28800 seconds')
     with store.lock:store._check(user,meeting,True)
@@ -247,13 +283,13 @@ def listen(store,user,meeting,root,source,seconds,consent,model='tiny.en',downlo
         raise ValueError(f"Audio source '{source}' not found. Device IDs change when Bluetooth or USB devices connect or disconnect; run mic-list again. Microphones now: {mics}")
     try:
         check_source()
-        asr=LocalASR(root,model,download)
+        asr=LocalASR(root,model,download,terms) if terms else LocalASR(root,model,download)
         warm_up=getattr(asr,'warm_up',None)
         if warm_up:warm_up()
         pipe=Pipeline(transcribe,ingest,trace)
         backend.start(session_id=meeting,source_id=source,destination=storage.new_live_capture_path(meeting));started=True
         start=time.monotonic();last_status=start;capture_t0=start;stall['last_audio']=start
-        if on_status:on_status({'event':'recording_started','source':source,'meeting':meeting,'chunk_seconds':chunk_seconds,'cut_mode':cut_mode})
+        if on_status:on_status({'event':'recording_started','source':source,'meeting':meeting,'chunk_seconds':chunk_seconds,'cut_mode':cut_mode,'glossary_terms':len(terms or ())})
         try:
             while not seconds or time.monotonic()-start<seconds:
                 time.sleep(.1);drain();check_stall()

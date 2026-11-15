@@ -130,8 +130,31 @@ With AirPods, ~2.3 s is still missing at the start; this is the Bluetooth headse
 
 Overall latency progression: ~16 s worst case (prototype settings) → 6.2 s (base.en, 5 s chunks) → 5.1 s (pause cutting, larger buffer) → **2.0 s mean, 4.1 s p95** (model warm-up).
 
+## 7. Technical terms: glossary prompt (2026-11-14)
+
+New option: `listen ... --terms "SQLite, Kafka"` or `--terms-file terms.txt` (also on `asr`). The terms become a Whisper prompt (`Glossary: SQLite, Kafka.`, max 60 terms / 600 characters). Off by default. With a glossary, `condition_on_previous_text` is turned off (see below). The one-line change in the upstream `faster_whisper.py` adapter is recorded in `docs/UPSTREAM_SOURCE.json`.
+
+Offline A/B on three earlier recordings of the SQLite/Kafka script (each read twice: SQLite said 6 times, Kafka 12 times in total), base.en, counted by hand:
+
+| Audio given to ASR | Variant | SQLite correct | Kafka correct | Side effects |
+|---|---|---|---|---|
+| 5 s chunks (like live) | no glossary | 2 / 6 | 4 / 12 | "cough cough", "half cup", "killed night" |
+| 5 s chunks | **glossary prompt** | **4 / 6** | **10 / 12** | a few words dropped at chunk edges, one "Mm." |
+| 5 s chunks | `hotwords` | 4 / 6 | 11 / 12 | junk output ("M. M. M. M…", "a bad ass") |
+| whole 60 s file | no glossary | 2 / 6 (+2 "SQL Lite") | 12 / 12 | — |
+| whole 60 s file | glossary prompt | 6 / 6 | 12 / 12 | **invented sentences** ("Kafka is a very good user", "SQLite with the framework in Mac") |
+
+Findings:
+- **Context matters more than vocabulary.** Given the whole file, base.en already gets almost every term right. The original "SQ9" / "half cup" errors came mainly from cutting audio into 3 s pieces.
+- On live-length chunks, the glossary prompt clearly helps (SQLite 2→4 of 6, Kafka 4→10 of 12) without inventing content.
+- On long audio, prompt + carry-over of earlier text made Whisper invent sentences. Those would become false meeting evidence, which is worse than a misspelling. So the glossary is opt-in, carry-over is off when a glossary is used, and it is not recommended for whole-file `asr`.
+- `hotwords` was similar for terms but produced more junk, so it is not used.
+
+Not yet done: a live microphone run with `--terms`; building the glossary automatically from an approved project folder (e.g. identifiers in README/source files).
+
 ## Not yet tested / next steps
 
+- Live run with `--terms`, and optionally build the glossary from the approved project folder.
 - Repeat the 20-minute run with phone playback and the fixes above.
 - Vocabulary prompt for technical terms.
 - macOS (`portaudio.py` backend has not been changed); needs a teammate with a Mac.

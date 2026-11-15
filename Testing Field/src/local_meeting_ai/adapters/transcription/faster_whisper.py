@@ -279,6 +279,8 @@ class FasterWhisperEngine:
                     ),
                     word_timestamps=request.word_timestamps,
                     condition_on_previous_text=request.condition_on_previous_text,
+                    # Meeting Copilot change: optional vocabulary prompt for technical terms.
+                    initial_prompt=(request.provider_options or {}).get("initial_prompt"),
                 )
                 duration = float(getattr(info, "duration", 0.0) or 0.0)
                 drafts: list[SegmentDraft] = []

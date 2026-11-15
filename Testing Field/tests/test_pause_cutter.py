@@ -150,3 +150,33 @@ def test_latency_summary():
     assert s['speech_to_ready_p50_s'] == 3.0
     assert s['speech_to_ready_max_s'] == 10.0
     assert _latency_summary([])['speech_to_ready_count'] == 0
+
+
+def test_glossary_prompt_dedupes_and_limits():
+    from meeting_copilot.audio import glossary_prompt, read_terms
+    assert glossary_prompt([]) is None
+    assert glossary_prompt(['SQLite', ' sqlite ', 'Kafka', '']) == 'Glossary: SQLite, Kafka.'
+    long = glossary_prompt([f'term{i}' for i in range(500)])
+    assert long.endswith('.') and len(long) <= 600
+    assert read_terms('SQLite, Kafka\nLangGraph') == ['SQLite', 'Kafka', 'LangGraph']
+
+
+def test_glossary_reaches_faster_whisper_request(monkeypatch):
+    import meeting_copilot.audio as audio
+    seen = {}
+
+    class Engine:
+        def __init__(self, *args):
+            pass
+
+        async def transcribe(self, request, *args):
+            seen['options'] = request.provider_options
+            from types import SimpleNamespace
+            return SimpleNamespace(segments=[])
+
+    import local_meeting_ai.adapters.transcription.faster_whisper as fw
+    monkeypatch.setattr(fw, 'FasterWhisperEngine', Engine)
+    audio.LocalASR('.', 'base.en', False, ['SQLite', 'Kafka']).transcribe('x.wav')
+    assert seen['options'] == {'initial_prompt': 'Glossary: SQLite, Kafka.'}
+    audio.LocalASR('.', 'base.en', False).transcribe('x.wav')
+    assert seen['options'] == {}

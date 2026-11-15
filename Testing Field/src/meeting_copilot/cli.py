@@ -39,7 +39,9 @@ def parser():
     c=sub.add_parser('cleanup');c.add_argument('meeting');c.add_argument('--confirm',required=True,help='must exactly match meeting ID')
     c=sub.add_parser('listen');c.add_argument('meeting');c.add_argument('--source',required=True);c.add_argument('--seconds',type=int,default=30);c.add_argument('--consent',action='store_true');c.add_argument('--download-model',action='store_true')
     c.add_argument('--summary-interval',type=float,default=15)
+    c.add_argument('--terms',help='technical terms to help ASR, comma separated, e.g. "SQLite, Kafka"');c.add_argument('--terms-file',help='text file with one term per line (or comma separated)')
     c=sub.add_parser('asr');c.add_argument('meeting');c.add_argument('audio');c.add_argument('--download-model',action='store_true')
+    c.add_argument('--terms');c.add_argument('--terms-file')
     c=sub.add_parser('mcp');c.add_argument('snapshot')
     c=sub.add_parser('trace-export');c.add_argument('output')
     c=sub.add_parser('evaluate');c.add_argument('--output',default='results/report.json');c.add_argument('--stress',action='store_true')
@@ -119,13 +121,14 @@ def run(a):
             from .audio import microphones
             output(microphones())
         elif a.command=='listen':
-            from .audio import listen
+            from .audio import listen,read_terms
+            terms=read_terms(a.terms,a.terms_file)
             if not 1<=a.summary_interval<=3600:raise ValueError('summary interval 1..3600 seconds')
             workers=Workers(assistant);summaries=LiveSummaries(workers,a.meeting,a.summary_interval)
             def status(data):
                 print(json.dumps({**data,'summary_completed':summaries.completed,'summary_failures':summaries.failures,'summary_last_error':summaries.last_error,'summary_snapshot':summaries.last_snapshot}),file=sys.stderr,flush=True)
             try:
-                result=listen(store,user,a.meeting,root,a.source,a.seconds,a.consent,c.asr_model,a.download_model,trace,on_status=status)
+                result=listen(store,user,a.meeting,root,a.source,a.seconds,a.consent,c.asr_model,a.download_model,trace,on_status=status,terms=terms)
             finally:summaries.close();workers.close()
             result['background_summary_snapshot']=summaries.last_snapshot
             result['background_summary_failures']=summaries.failures
@@ -133,13 +136,14 @@ def run(a):
             result['background_summary_last_error']=summaries.last_error
             output(result)
         elif a.command=='asr':
-            from .audio import LocalASR
+            from .audio import LocalASR,read_terms
             with store.lock:store._check(user,a.meeting,True)
-            asr=LocalASR(root,c.asr_model,a.download_model);stream=uuid.uuid4().hex
+            terms=read_terms(a.terms,a.terms_file)
+            asr=LocalASR(root,c.asr_model,a.download_model,terms);stream=uuid.uuid4().hex
             try:
                 rows=asr.transcribe(a.audio)
                 for i,s in enumerate(rows,1):store.ingest(user,a.meeting,{'event_id':stream+str(i),'stream':stream,'seq':i,'segment_id':stream+str(i),'revision':1,'start_ms':s.start_ms,'end_ms':s.end_ms,'text':s.text,'final':True})
-                output({'local_asr':True,'segments':len(rows),'model':c.asr_model,'text':' '.join(s.text for s in rows)})
+                output({'local_asr':True,'segments':len(rows),'model':c.asr_model,'glossary':getattr(asr,'prompt',None),'text':' '.join(s.text for s in rows)})
             finally:asr.close()
         elif a.command=='mcp':
             from .mcp_server import server
