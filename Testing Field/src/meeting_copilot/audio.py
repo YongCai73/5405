@@ -102,7 +102,16 @@ class PauseCutter:
         self.pause_ms=pause_ms;self.min_ms=min_seconds*1000;self.speech_rms=speech_rms
         self.noise=None;self.frames=0;self.speech_frames=0;self.reset()
     def reset(self):
-        self.speech=False;self.silence_ms=0.0;self.chunk_ms=0.0
+        self.speech=False;self.silence_ms=0.0;self.chunk_ms=0.0;self.peak=0.0
+    def is_silent(self,silence_rms):
+        """True when the current chunk never got louder than near-silence.
+
+        Deliberately separate from the speech threshold: quiet or distant speech may never
+        reach speech_rms, but it must still be transcribed rather than skipped.
+        """
+        # Noise is not used here: if recording starts mid-sentence, the noise estimate
+        # begins at speech level and would make real speech look like silence.
+        return self.peak<silence_rms
     def diagnostics(self):
         return {'noise_rms':round(self.noise or 0,1),'speech_threshold_rms':round(max(self.speech_rms,3*(self.noise or 0)),1),
                 'speech_frame_ratio':round(self.speech_frames/self.frames,2) if self.frames else None}
@@ -117,7 +126,7 @@ class PauseCutter:
             if self.noise is None:self.noise=rms
             elif rms<self.noise:self.noise=.7*self.noise+.3*rms
             else:self.noise=self.noise*1.001+.01
-            self.chunk_ms+=len(frame)*1000/(rate*channels);self.frames+=1
+            self.chunk_ms+=len(frame)*1000/(rate*channels);self.frames+=1;self.peak=max(self.peak,rms)
             if rms>=max(self.speech_rms,3*self.noise):
                 self.speech=True;self.silence_ms=0.0;self.speech_frames+=1
             else:
@@ -146,12 +155,19 @@ def listen(store,user,meeting,root,source,seconds,consent,model='tiny.en',downlo
     cut_mode=os.environ.get('MC_CUT_MODE','pause').strip() or 'pause'
     if cut_mode not in ('pause','fixed'):raise ValueError("MC_CUT_MODE must be 'pause' or 'fixed'")
     cutter=PauseCutter(_env_number('MC_PAUSE_MS',500,100,3000),1.0,_env_number('MC_SPEECH_RMS',100,1,30000))
-    silent_skipped=0;cuts={'pause_cuts':0,'max_length_cuts':0}
+    silence_rms=_env_number('MC_SILENCE_RMS',50,1,30000)
+    # Warn when the device stops delivering audio (e.g. a Bluetooth headset was disconnected).
+    stall_seconds=_env_number('MC_STALL_SECONDS',3,1,60)
+    silent_skipped=0;quiet_sent=0;cuts={'pause_cuts':0,'max_length_cuts':0}
+    stall={'active':False,'count':0,'longest':0.0,'last_audio':None}
+    def stall_stats():
+        current=time.monotonic()-stall['last_audio'] if stall['active'] and stall['last_audio'] else 0.0
+        return {'capture_stalls':stall['count'],'longest_stall_seconds':round(max(stall['longest'],current),2)}
     def cut_stats():
         # captured_audio_seconds should track elapsed recording time; a gap means clock drift.
         audio_s=round(last_end/rate,2) if rate else None
         wall_s=round((capture_stop or time.monotonic())-capture_t0,2) if capture_t0 is not None else None
-        return {'silent_chunks_skipped':silent_skipped,**cuts,**cutter.diagnostics(),'captured_audio_seconds':audio_s,'capture_wall_seconds':wall_s,
+        return {'silent_chunks_skipped':silent_skipped,'quiet_chunks_sent':quiet_sent,'silence_threshold_rms':silence_rms,**cuts,**cutter.diagnostics(),**stall_stats(),'captured_audio_seconds':audio_s,'capture_wall_seconds':wall_s,
                 'capture_missing_seconds':round(wall_s-audio_s,2) if audio_s is not None and wall_s is not None else None,
                 'input_overflows':getattr(backend,'input_overflows',getattr(getattr(backend,'native',None),'input_overflows',None))}
     # capture_t0 = clock time when recording began; segment end_ms is relative to it.
@@ -168,12 +184,13 @@ def listen(store,user,meeting,root,source,seconds,consent,model='tiny.en',downlo
         for s in asr.transcribe(item['path']):
             seq+=1;yield {'event_id':stream+str(seq),'stream':stream,'seq':seq,'segment_id':stream+str(seq),'revision':1,'start_ms':item['start_ms']+s.start_ms,'end_ms':item['start_ms']+s.end_ms,'text':s.text,'final':True}
     def flush(final=False):
-        nonlocal pcm,chunk_start,silent_skipped
+        nonlocal pcm,chunk_start,silent_skipped,quiet_sent
         if not pcm:return
-        heard_speech=cutter.speech;cutter.reset()
-        if cut_mode=='pause' and not heard_speech and not final:
-            # Only background noise in this chunk: skip ASR (saves time, avoids hallucinations).
+        heard_speech=cutter.speech;silent=cutter.is_silent(silence_rms);cutter.reset()
+        if cut_mode=='pause' and silent and not final:
+            # Near-silence only: skip ASR (saves time, avoids hallucinations).
             silent_skipped+=1;pcm=bytearray();chunk_start=None;return
+        if not heard_speech:quiet_sent+=1  # quieter than speech_rms but not silent: still transcribe
         path=storage.new_realtime_chunk_path(meeting)
         with wave.open(str(path),'wb') as f:
             f.setnchannels(channels);f.setsampwidth(2);f.setframerate(rate);f.writeframes(bytes(pcm))
@@ -183,6 +200,12 @@ def listen(store,user,meeting,root,source,seconds,consent,model='tiny.en',downlo
         nonlocal rate,channels,last_end,chunk_start
         batch=backend.drain_frames()
         if batch:
+            now=time.monotonic()
+            if stall['active']:
+                gap=now-stall['last_audio'];stall['longest']=max(stall['longest'],gap);stall['active']=False
+                if on_status:on_status({'event':'capture_resumed','seconds_without_audio':round(gap,1)})
+                if trace:trace.emit('capture_resumed',seconds_without_audio=round(gap,1))
+            stall['last_audio']=now
             if pcm and (batch.sample_rate!=rate or batch.channels!=channels or batch.start_frame!=last_end):flush()
             rate=batch.sample_rate;channels=batch.channels
             if batch.start_frame>last_end:
@@ -194,15 +217,32 @@ def listen(store,user,meeting,root,source,seconds,consent,model='tiny.en',downlo
             pause=cutter.update(batch.pcm_s16le,rate,channels)
             if cut_mode=='pause' and pause:cuts['pause_cuts']+=1;flush()
             elif len(pcm)>=rate*channels*2*chunk_seconds:cuts['max_length_cuts']+=1;flush()
+    def check_stall():
+        if stall['active'] or stall['last_audio'] is None:return
+        gap=time.monotonic()-stall['last_audio']
+        if gap<stall_seconds:return
+        stall['active']=True;stall['count']+=1
+        flush()  # transcribe what was captured before the device went quiet
+        warning=f'No audio received for {gap:.0f} s. The microphone may be disconnected; recording continues and will resume if audio returns.'
+        if on_status:on_status({'event':'capture_stalled','seconds_without_audio':round(gap,1),'warning':warning})
+        if trace:trace.emit('capture_stalled',seconds_without_audio=round(gap,1))
+    def check_source():
+        lister=getattr(backend,'list_sources',None)
+        if lister is None:return
+        sources=lister()
+        if any(s.id==source for s in sources):return
+        mics=', '.join(f'{s.id} ({s.name})' for s in sources if getattr(s,'kind','')=='microphone') or 'none'
+        raise ValueError(f"Audio source '{source}' not found. Device IDs change when Bluetooth or USB devices connect or disconnect; run mic-list again. Microphones now: {mics}")
     try:
+        check_source()
         asr=LocalASR(root,model,download)
         pipe=Pipeline(transcribe,ingest,trace)
         backend.start(session_id=meeting,source_id=source,destination=storage.new_live_capture_path(meeting));started=True
-        start=time.monotonic();last_status=start;capture_t0=start
+        start=time.monotonic();last_status=start;capture_t0=start;stall['last_audio']=start
         if on_status:on_status({'event':'recording_started','source':source,'meeting':meeting,'chunk_seconds':chunk_seconds,'cut_mode':cut_mode})
         try:
             while not seconds or time.monotonic()-start<seconds:
-                time.sleep(.1);drain()
+                time.sleep(.1);drain();check_stall()
                 if on_status and time.monotonic()-last_status>=status_interval:
                     on_status({'event':'recording_status',**pipe.stats(),**latency(),**cut_stats()});last_status=time.monotonic()
         except KeyboardInterrupt:

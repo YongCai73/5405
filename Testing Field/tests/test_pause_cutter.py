@@ -58,6 +58,92 @@ def test_reset_starts_a_new_chunk_but_keeps_noise_estimate():
     assert cutter.speech is False and cutter.chunk_ms == 0 and cutter.noise == noise
 
 
+def test_quiet_speech_is_not_treated_as_silence():
+    # Speech at RMS ~210 never reaches the 400 speech threshold, but must not be skipped.
+    cutter = PauseCutter(speech_rms=400)
+    feed(cutter, quiet(0.5) + tone(2.0, 300))
+    assert cutter.speech is False
+    assert cutter.is_silent(50) is False
+
+
+def test_near_silence_is_skippable():
+    cutter = PauseCutter(speech_rms=400)
+    feed(cutter, quiet(2.0, 20))
+    assert cutter.is_silent(50) is True
+
+
+class FakeClock:
+    def __init__(self):
+        self.now = 1000.0
+
+    def monotonic(self):
+        return self.now
+
+    def sleep(self, seconds):
+        self.now += seconds
+
+
+def fake_capture(monkeypatch, audio_module, batches, sources=('sounddevice:7',)):
+    """Patch capture/ASR: the backend returns `batches` in order, then no more audio."""
+    from types import SimpleNamespace
+    pending = list(batches)
+
+    class Backend:
+        def list_sources(self):
+            return [SimpleNamespace(id=s, kind='microphone', name='Fake mic') for s in sources]
+
+        def start(self, **kwargs):
+            pass
+
+        def drain_frames(self):
+            return pending.pop(0) if pending else None
+
+        def stop(self):
+            pass
+
+        def shutdown(self):
+            pass
+
+    class ASR:
+        def __init__(self, *args):
+            pass
+
+        def transcribe(self, path):
+            return [SimpleNamespace(text='Before the headset dropped.', start_ms=0, end_ms=500)]
+
+        def close(self):
+            pass
+
+    clock = FakeClock()
+    monkeypatch.setattr(audio_module, 'create_audio_capture_backend', Backend)
+    monkeypatch.setattr(audio_module, 'LocalASR', ASR)
+    monkeypatch.setattr(audio_module.time, 'monotonic', clock.monotonic)
+    monkeypatch.setattr(audio_module.time, 'sleep', clock.sleep)
+
+
+def test_unknown_device_id_gives_a_clear_error(monkeypatch, store):
+    import pytest
+    import meeting_copilot.audio as audio
+    fake_capture(monkeypatch, audio, [], sources=('sounddevice:7',))
+    with pytest.raises(ValueError, match="'sounddevice:99' not found.*mic-list.*sounddevice:7"):
+        audio.listen(store, 'alice', 'm', store.root, 'sounddevice:99', 5, True)
+
+
+def test_disconnect_is_reported_and_earlier_speech_is_kept(monkeypatch, store):
+    from types import SimpleNamespace
+    import meeting_copilot.audio as audio
+    speech = tone(1.0, 3000)
+    batch = SimpleNamespace(sample_rate=RATE, channels=1, start_frame=0, end_frame=RATE, pcm_s16le=speech)
+    fake_capture(monkeypatch, audio, [batch])
+    events = []
+    result = audio.listen(store, 'alice', 'm', store.root, 'sounddevice:7', 10, True,
+                          on_status=events.append, status_interval=100)
+    stalled = [e for e in events if e.get('event') == 'capture_stalled']
+    assert len(stalled) == 1 and 'disconnected' in stalled[0]['warning']
+    assert result['capture_stalls'] == 1 and result['longest_stall_seconds'] >= 3
+    assert result["processed"] == 1, result
+
+
 def test_latency_summary():
     s = _latency_summary([1.0, 2.0, 3.0, 4.0, 10.0])
     assert s['speech_to_ready_mean_s'] == 4.0
