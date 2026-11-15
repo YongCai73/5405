@@ -150,7 +150,27 @@ Findings:
 - On long audio, prompt + carry-over of earlier text made Whisper invent sentences. Those would become false meeting evidence, which is worse than a misspelling. So the glossary is opt-in, carry-over is off when a glossary is used, and it is not recommended for whole-file `asr`.
 - `hotwords` was similar for terms but produced more junk, so it is not used.
 
-Not yet done: a live microphone run with `--terms`; building the glossary automatically from an approved project folder (e.g. identifiers in README/source files).
+### Live microphone run with `--terms` (2026-11-14)
+
+The SQLite/Kafka script was read three times (SQLite 3×, Kafka 6×) with the glossary on. The saved recording was then re-transcribed offline with the same pause-based chunking (15 chunks), with and without the glossary, so both use identical audio.
+
+| | Segments | Junk / invented segments | SQLite correct | Kafka correct |
+|---|---|---|---|---|
+| Without glossary | 15 | 0 | 1 / 3 ("SQ light", "QL eyes") | 3 / 6 ("cough call", "cough cotton") |
+| With glossary (offline) | 31 | **16** | 3 / 3 | 6 / 6 |
+| With glossary (the live run) | 29 | ~15 | 2 / 3 ("adsqlite") | 6 / 6 |
+
+Junk with the glossary included fillers ("Okay.", "call.", "Mhm.") and **invented sentences**: "And I love you boys.", "I will see you in the next one.", "I have to say, this isn't a problem."
+
+The live run was also slower: mean latency 10.0 s, p95 14.1 s. There were twice as many segments, and processing fell behind (the queue took 13 s to drain after stopping).
+
+**Conclusion: the glossary fixes the terms but makes Whisper invent speech in the short gaps between sentences.** Invented sentences become false meeting evidence, so the glossary stays **off by default** and is not recommended for real meetings yet.
+
+Options to keep the benefit without the junk (not implemented):
+1. Drop segments Whisper itself marks as unlikely speech (`no_speech_prob` / `avg_logprob`); the adapter would need to pass these through.
+2. A second pass: transcribe longer windows (e.g. the last 30 s) without a glossary and store the result as a new revision. Section 7 shows full-context transcription gets the terms right without inventing text, and the evidence store already supports revisions.
+
+Not yet done: building the glossary automatically from an approved project folder.
 
 ## Not yet tested / next steps
 
