@@ -78,6 +78,18 @@ class LocalASR:
         from local_meeting_ai.domain.entities import TranscriptionEngineRequest
         req=TranscriptionEngineRequest(audio_path=Path(path),model=self.model,device='cpu',compute_type='int8',language='en',task='transcribe',beam_size=1,vad_filter=True,allow_model_download=self.allow_download,cpu_threads=_env_number('MC_ASR_THREADS',2,1,16,int),num_workers=1)
         return asyncio.run(self.engine.transcribe(req,lambda *a:None,lambda:False,lambda s:None)).segments
+    def warm_up(self):
+        """Load the ASR model before capture starts.
+
+        The model otherwise loads on the first chunk; that burst of CPU work starved the
+        microphone callback and lost ~3 s of audio at the start of every recording.
+        """
+        import tempfile
+        with tempfile.TemporaryDirectory() as folder:
+            path=Path(folder)/'warmup.wav'
+            with wave.open(str(path),'wb') as f:
+                f.setnchannels(1);f.setsampwidth(2);f.setframerate(16000);f.writeframes(b'\0\0'*16000)
+            self.transcribe(path)
     def close(self):self.engine.shutdown()
 
 def _env_number(name,default,low,high,kind=float):
@@ -236,6 +248,8 @@ def listen(store,user,meeting,root,source,seconds,consent,model='tiny.en',downlo
     try:
         check_source()
         asr=LocalASR(root,model,download)
+        warm_up=getattr(asr,'warm_up',None)
+        if warm_up:warm_up()
         pipe=Pipeline(transcribe,ingest,trace)
         backend.start(session_id=meeting,source_id=source,destination=storage.new_live_capture_path(meeting));started=True
         start=time.monotonic();last_status=start;capture_t0=start;stall['last_audio']=start
