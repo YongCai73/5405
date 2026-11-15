@@ -166,9 +166,30 @@ The live run was also slower: mean latency 10.0 s, p95 14.1 s. There were twice 
 
 **Conclusion: the glossary fixes the terms but makes Whisper invent speech in the short gaps between sentences.** Invented sentences become false meeting evidence, so the glossary stays **off by default** and is not recommended for real meetings yet.
 
-Options to keep the benefit without the junk (not implemented):
-1. Drop segments Whisper itself marks as unlikely speech (`no_speech_prob` / `avg_logprob`); the adapter would need to pass these through.
-2. A second pass: transcribe longer windows (e.g. the last 30 s) without a glossary and store the result as a new revision. Section 7 shows full-context transcription gets the terms right without inventing text, and the evidence store already supports revisions.
+### Junk filter (implemented 2026-11-14)
+
+Whisper's own scores separate real speech from invented fragments in this recording:
+
+| | Duration | Mean word probability | `no_speech_prob` |
+|---|---|---|---|
+| Real segments (both variants) | 1.7 – 7.0 s | 0.40 – 0.95 | ≤ 0.04 |
+| Invented fragments (glossary) | ≤ 0.3 s | 0.01 – 0.52 | 0.08 – 0.54 |
+
+A segment is now dropped (`junk_segments_dropped`; `MC_FILTER_JUNK=0` disables it) if it has no letters or digits, or is **shorter than 0.5 s with mean word probability < 0.6**, or has `no_speech_prob > 0.6` and `avg_logprob < -1.0` (Whisper's standard silence rule). A short but confident "Yes." is kept.
+
+Same recording, same chunking, filter on:
+
+| | Kept | Dropped | Invented text kept | SQLite | Kafka |
+|---|---|---|---|---|---|
+| No glossary | 15 | 0 | 0 | 1 / 3 | 3 / 6 |
+| **Glossary + filter** | **15** | **13** | **0** | **3 / 3** | **6 / 6** |
+
+False-drop check on a 60 s lecture recording (phone playback, no glossary): 20 segments kept, 2 dropped ("Thanks.", "Yeah."). Both are fillers we cannot confirm were spoken, and all content sentences were kept.
+
+Still to check: the live run with the glossary was slow (mean 10 s). The filter removes junk after decoding, so it does not make ASR faster. A live run with glossary + filter is needed to see whether latency stays acceptable.
+
+Remaining idea:
+- A second pass: transcribe longer windows (e.g. the last 30 s) without a glossary and store the result as a new revision. Section 7 shows full-context transcription gets the terms right without inventing text, and the evidence store already supports revisions.
 
 Not yet done: building the glossary automatically from an approved project folder.
 

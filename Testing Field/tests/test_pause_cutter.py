@@ -180,3 +180,42 @@ def test_glossary_reaches_faster_whisper_request(monkeypatch):
     assert seen['options'] == {'initial_prompt': 'Glossary: SQLite, Kafka.'}
     audio.LocalASR('.', 'base.en', False).transcribe('x.wav')
     assert seen['options'] == {}
+
+
+def seg(text, start, end, words=(), no_speech=0.0, logprob=-0.3):
+    from types import SimpleNamespace
+    return SimpleNamespace(text=text, start_ms=start, end_ms=end,
+                           metadata={'words': [{'probability': p} for p in words],
+                                     'no_speech_prob': no_speech, 'avg_logprob': logprob})
+
+
+def test_junk_filter_drops_invented_fragments_and_keeps_real_speech():
+    from meeting_copilot.audio import junk_reason
+    # Real segments from the measured recording: long, or short but confident.
+    assert junk_reason(seg('We decided to use SQLite instead of Kafka.', 0, 3800, [0.9, 0.1, 0.8])) is None
+    assert junk_reason(seg('Yes.', 0, 400, [0.95])) is None
+    # Invented fragments: very short with low word confidence, or no words at all.
+    assert junk_reason(seg('call.', 0, 200, [0.48])) == 'short_low_confidence'
+    assert junk_reason(seg('I will see you in the next one.', 0, 300, [0.1, 0.2, 0.1])) == 'short_low_confidence'
+    assert junk_reason(seg('.', 0, 100, [0.5])) == 'no_words'
+    assert junk_reason(seg('Thanks.', 0, 2000, [0.4], no_speech=0.8, logprob=-1.5)) == 'no_speech'
+
+
+def test_local_asr_counts_dropped_junk(monkeypatch):
+    import meeting_copilot.audio as audio
+    from types import SimpleNamespace
+
+    class Engine:
+        def __init__(self, *args):
+            pass
+
+        async def transcribe(self, request, *args):
+            return SimpleNamespace(segments=[seg('Real sentence here.', 0, 2500, [0.9]), seg('Okay.', 0, 100, [0.08])])
+
+    import local_meeting_ai.adapters.transcription.faster_whisper as fw
+    monkeypatch.setattr(fw, 'FasterWhisperEngine', Engine)
+    asr = audio.LocalASR('.', 'base.en', False)
+    assert [s.text for s in asr.transcribe('x.wav')] == ['Real sentence here.']
+    assert asr.junk_dropped == 1
+    monkeypatch.setenv('MC_FILTER_JUNK', '0')
+    assert len(audio.LocalASR('.', 'base.en', False).transcribe('x.wav')) == 2

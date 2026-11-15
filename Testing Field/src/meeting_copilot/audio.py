@@ -101,11 +101,33 @@ def read_terms(text=None,path=None):
     if path:parts+=re.split(r'[,\n]',Path(path).read_text(encoding='utf-8'))
     return [p.strip() for p in parts if p.strip() and not p.strip().startswith('#')]
 
+def junk_reason(segment):
+    """Why a Whisper segment looks invented rather than spoken, or None to keep it.
+
+    Measured on a real recording: every invented segment ("Okay.", "call.", "I will see
+    you in the next one.") was under 0.3 s long with mean word probability <= 0.52, while
+    every real segment was at least 1.7 s long. The rules are deliberately conservative so
+    a short but confidently heard "Yes." is kept.
+    """
+    import re
+    text=getattr(segment,'text','') or ''
+    if not re.search(r'[A-Za-z0-9]',text):return 'no_words'
+    md=getattr(segment,'metadata',None) or {}
+    words=[w.get('probability') for w in (md.get('words') or []) if isinstance(w,dict) and w.get('probability') is not None]
+    mean_word=sum(words)/len(words) if words else None
+    seconds=(segment.end_ms-segment.start_ms)/1000
+    if seconds<0.5 and mean_word is not None and mean_word<0.6:return 'short_low_confidence'
+    no_speech=md.get('no_speech_prob');logprob=md.get('avg_logprob')
+    if no_speech is not None and logprob is not None and no_speech>0.6 and logprob<-1.0:return 'no_speech'
+    return None
+
 class LocalASR:
     def __init__(self,root,model='tiny.en',allow_download=False,terms=()):
         from local_meeting_ai.adapters.transcription.faster_whisper import FasterWhisperEngine
         self.engine=FasterWhisperEngine(Path(root)/'models');self.model=model;self.allow_download=allow_download
         self.prompt=glossary_prompt(terms)
+        # MC_FILTER_JUNK=0 turns the filter off (for experiments).
+        self.filter_junk=os.environ.get('MC_FILTER_JUNK','1').strip()!='0';self.junk_dropped=0
     def transcribe(self,path):
         from local_meeting_ai.domain.entities import TranscriptionEngineRequest
         req=TranscriptionEngineRequest(audio_path=Path(path),model=self.model,device='cpu',compute_type='int8',language='en',task='transcribe',beam_size=1,vad_filter=True,allow_model_download=self.allow_download,cpu_threads=_env_number('MC_ASR_THREADS',2,1,16,int),num_workers=1,
@@ -113,7 +135,11 @@ class LocalASR:
             # With a glossary, do not also feed earlier output back in: on long audio the
             # combination produced invented sentences in our A/B test.
             condition_on_previous_text=not self.prompt)
-        return asyncio.run(self.engine.transcribe(req,lambda *a:None,lambda:False,lambda s:None)).segments
+        segments=asyncio.run(self.engine.transcribe(req,lambda *a:None,lambda:False,lambda s:None)).segments
+        if not self.filter_junk:return segments
+        kept=[s for s in segments if junk_reason(s) is None]
+        self.junk_dropped+=len(segments)-len(kept)
+        return kept
     def warm_up(self):
         """Load the ASR model before capture starts.
 
@@ -215,7 +241,7 @@ def listen(store,user,meeting,root,source,seconds,consent,model='tiny.en',downlo
         # captured_audio_seconds should track elapsed recording time; a gap means clock drift.
         audio_s=round(last_end/rate,2) if rate else None
         wall_s=round((capture_stop or time.monotonic())-capture_t0,2) if capture_t0 is not None else None
-        return {'silent_chunks_skipped':silent_skipped,'quiet_chunks_sent':quiet_sent,'silence_threshold_rms':silence_rms,**cuts,**cutter.diagnostics(),**stall_stats(),'captured_audio_seconds':audio_s,'capture_wall_seconds':wall_s,
+        return {'silent_chunks_skipped':silent_skipped,'quiet_chunks_sent':quiet_sent,'junk_segments_dropped':getattr(asr,'junk_dropped',0),'silence_threshold_rms':silence_rms,**cuts,**cutter.diagnostics(),**stall_stats(),'captured_audio_seconds':audio_s,'capture_wall_seconds':wall_s,
                 'capture_missing_seconds':round(wall_s-audio_s,2) if audio_s is not None and wall_s is not None else None,
                 'input_overflows':getattr(backend,'input_overflows',getattr(getattr(backend,'native',None),'input_overflows',None))}
     # capture_t0 = clock time when recording began; segment end_ms is relative to it.
