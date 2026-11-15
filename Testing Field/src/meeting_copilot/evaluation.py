@@ -9,6 +9,7 @@ import tracemalloc
 import uuid
 from dataclasses import replace
 from pathlib import Path
+from collections import Counter
 from .assistant import Assistant
 from .config import Config
 from .provider import Provider
@@ -16,6 +17,7 @@ from .replay import events,fixture
 from .service import EvidenceService
 from .store import Store,Denied
 from .trace import Trace, evaluation_trace_context
+from .diagnostics import diagnose_case
 
 def percentile(values,p):return sorted(values)[max(0,math.ceil(len(values)*p)-1)] if values else None
 
@@ -133,8 +135,27 @@ def evaluate(output,work,stress=False,config=None):
                 supported=all(c['quote'] in store.raw(user,sid,c['source_id'])['text'] for c in result['claims'])
                 leakage=any(store.raw(user,sid,c['source_id'])['id']>watermarks[q['id']] for c in result['claims'])
                 cases.append({'id':q['id'],'at_event':q['at'],'asked_at_ms':question_times[q['id']],'total_graph_latency_ms':round(total_graph_latency,3),'correct':correct,'citation_supported':supported,'abstained':result['abstained'],'future_evidence_leakage':leakage,'latency_ms':round(latency,3),'source_ids':[c['source_id'] for c in result['claims']],'usage':result['usage']})
+                cases[-1]['diagnosis'] = diagnose_case(
+                    q,
+                    result,
+                    citation_supported=supported,
+                    future_evidence_leakage=leakage,
+                )
             lat=[c['latency_ms'] for c in cases]
             runs[variant]={'total':len(cases),'correct':sum(c['correct'] for c in cases),'supported_answer_cases':sum(c['citation_supported'] for c in cases),'future_leakage_cases':sum(c['future_evidence_leakage'] for c in cases),'p50_ms':round(statistics.median(lat),3),'p95_ms':round(percentile(lat,.95),3),'cases':cases,'same_retrieval_context_as_skills':variant in ('skills','direct'),'latency_definition':'p50/p95 are answer-node generation/validation only; total_graph_latency_ms includes retrieval/persistence (direct reuses frozen retrieval)'}
+            failure_counts = Counter(
+                code
+                for case in cases
+                for code in case['diagnosis']['failure_codes']
+            )
+
+            runs[variant]['diagnosis_summary'] = {
+                'cases_with_failures': sum(
+                    not case['diagnosis']['passed']
+                    for case in cases
+                ),
+                'failure_counts': dict(sorted(failure_counts.items())),
+            }
         # Executed ablation on the same isolated synthetic store, never a production option.
         store.create('synthetic-other-user','private-fixture','Synthetic private meeting')
         secret_event={'event_id':'secret','seq':1,'segment_id':'secret','revision':1,'start_ms':0,'end_ms':1,'text':'The secret codename is SYNTHETIC-PRIVATE-CANARY.'}

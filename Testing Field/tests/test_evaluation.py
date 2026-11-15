@@ -54,6 +54,41 @@ def test_frozen_runner_controls_and_synthetic_ablations(tmp_path):
             assert row["case_id"] in case_ids
             assert row["variant"] in expected_variants
 
+    # Verify diagnosis is included in actual evaluation reports.
+    for variant in ("skills", "direct", "no_snapshots", "no_folder"):
+        run = r["configurations"][variant]
+
+        assert "diagnosis_summary" in run
+
+        summary = run["diagnosis_summary"]
+        cases = run["cases"]
+
+        assert summary["cases_with_failures"] == sum(
+            not case["diagnosis"]["passed"]
+            for case in cases
+        )
+
+        for case in cases:
+            diagnosis = case["diagnosis"]
+
+            assert diagnosis["failure_count"] == len(
+                diagnosis["failure_codes"]
+            )
+            assert diagnosis["passed"] == (
+                    diagnosis["failure_count"] == 0
+            )
+
+    # Temporal leakage findings must be reflected in diagnosis.
+    no_snapshots = r["configurations"]["no_snapshots"]
+
+    diagnosed_leakage = sum(
+        "temporal_leakage" in case["diagnosis"]["failure_codes"]
+        for case in no_snapshots["cases"]
+    )
+
+    assert diagnosed_leakage == no_snapshots["future_leakage_cases"]
+    assert diagnosed_leakage > 0
+
 
 def test_evaluation_trace_correlation(tmp_path):
     import asyncio
