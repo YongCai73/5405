@@ -177,7 +177,7 @@ def test_glossary_reaches_faster_whisper_request(monkeypatch):
     import local_meeting_ai.adapters.transcription.faster_whisper as fw
     monkeypatch.setattr(fw, 'FasterWhisperEngine', Engine)
     audio.LocalASR('.', 'base.en', False, ['SQLite', 'Kafka']).transcribe('x.wav')
-    assert seen['options'] == {'initial_prompt': 'Glossary: SQLite, Kafka.'}
+    assert seen['options'] == {'initial_prompt': 'Glossary: SQLite, Kafka.', 'temperature': 0.0}
     audio.LocalASR('.', 'base.en', False).transcribe('x.wav')
     assert seen['options'] == {}
 

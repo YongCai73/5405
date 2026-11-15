@@ -186,7 +186,28 @@ Same recording, same chunking, filter on:
 
 False-drop check on a 60 s lecture recording (phone playback, no glossary): 20 segments kept, 2 dropped ("Thanks.", "Yeah."). Both are fillers we cannot confirm were spoken, and all content sentences were kept.
 
-Still to check: the live run with the glossary was slow (mean 10 s). The filter removes junk after decoding, so it does not make ASR faster. A live run with glossary + filter is needed to see whether latency stays acceptable.
+### Glossary speed: temperature fallback (2026-11-14)
+
+A live run with glossary + filter had clean text (SQLite 3/3, Kafka 6/6, 13 fragments dropped, nothing invented kept) but was still slow: mean 8.2 s, p95 12.8 s, and about 11 s to process each chunk.
+
+Cause: when a decode looks unreliable, Whisper retries at higher temperatures (0.2 … 1.0). With a glossary this happened on many chunks. Same 12 chunks, offline:
+
+| Variant | Time per chunk | Segments before filter |
+|---|---|---|
+| No glossary | 1.8 s | 13 |
+| Glossary, default retries | 8.0 s | 24 |
+| Glossary, `temperature=0` (no retries) | 3.0 s | 23 |
+
+With a glossary, `temperature` is now fixed at 0 (passed through `provider_options`; the upstream adapter change is recorded in `UPSTREAM_SOURCE.json`).
+
+Final code path on the same recording (warm model, filter on):
+
+| | Time per chunk | Kept | Dropped | SQLite | Kafka | Fillers that got through |
+|---|---|---|---|---|---|---|
+| No glossary | 1.7 s | 13 | 0 | 2 / 3 | 3 / 6 | — |
+| **Glossary** | **3.6 s** | 15 | 8 | **3 / 3** | **6 / 6** | "Thank you.", "Good.", "Good." |
+
+**Recommendation:** use `--terms` when the meeting's key terms are known. It roughly doubles ASR time per chunk (expected live mean ≈ 3–4 s instead of 2 s; not yet measured live). A few short fillers can remain, but no invented content sentences were kept in these tests. Without `--terms`, behaviour is unchanged.
 
 Remaining idea:
 - A second pass: transcribe longer windows (e.g. the last 30 s) without a glossary and store the result as a new revision. Section 7 shows full-context transcription gets the terms right without inventing text, and the evidence store already supports revisions.

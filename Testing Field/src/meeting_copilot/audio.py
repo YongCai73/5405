@@ -131,7 +131,9 @@ class LocalASR:
     def transcribe(self,path):
         from local_meeting_ai.domain.entities import TranscriptionEngineRequest
         req=TranscriptionEngineRequest(audio_path=Path(path),model=self.model,device='cpu',compute_type='int8',language='en',task='transcribe',beam_size=1,vad_filter=True,allow_model_download=self.allow_download,cpu_threads=_env_number('MC_ASR_THREADS',2,1,16,int),num_workers=1,
-            provider_options={'initial_prompt':self.prompt} if self.prompt else {},
+            # temperature 0 = no retries at higher temperatures. With a glossary those retries
+            # made decoding 4.4x slower (8.0 vs 3.0 s per chunk) and invented more text.
+            provider_options={'initial_prompt':self.prompt,'temperature':0.0} if self.prompt else {},
             # With a glossary, do not also feed earlier output back in: on long audio the
             # combination produced invented sentences in our A/B test.
             condition_on_previous_text=not self.prompt)
