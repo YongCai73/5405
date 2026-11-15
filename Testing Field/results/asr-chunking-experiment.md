@@ -80,10 +80,30 @@ Findings:
 
 Proposed fix (not implemented yet): use separate thresholds for cutting (keep ~400) and for skipping silence (much lower, e.g. 50), so quiet speech is still transcribed.
 
+## 5. Microphone disconnect test (2026-11-14)
+
+Setup: AirPods used as the microphone (`pyaudio:14`, Bluetooth hands-free), 120 s run. After reading the script (~43 s), the AirPods were put back in their case. Recording was stopped with Ctrl+C at 66 s.
+
+| Time (s) | Audio received (s) | Missing (s) |
+|---|---|---|
+| 41 | 36.9 | 4.2 |
+| 46 | 38.9 | 7.3 |
+| 51 | 38.9 | 12.3 |
+| 61 | 38.9 | 22.3 |
+| 66 (Ctrl+C) | 38.9 | 27.3 |
+
+Findings:
+- **No crash**: `errors` 0. Segments transcribed before the disconnect (5) were kept, and Ctrl+C shut down cleanly with full stats.
+- **Disconnect is not detected**: after the device disappeared, no new audio arrived but the program kept "recording" silently with no error or warning. A user would not know that later speech is being lost. `capture_missing_seconds` shows it, but nothing acts on it.
+- **Device IDs change** whenever a Bluetooth device connects or disconnects (the built-in mic moved between `pyaudio:9`, `12` and `15`). Run `mic-list` right before each recording. A wrong ID gives a generic `ValidationError` ("Operation failed") that does not say the device was not found.
+- Bluetooth hands-free mic: about 1–2 s of audio is missing at the start while the AirPods switch profile.
+
+Proposed fixes (not implemented yet): warn when no new audio has arrived for a few seconds ("microphone may be disconnected"), and show the real reason when the selected device does not exist.
+
 ## Not yet tested / next steps
 
+- Warn when the microphone stops delivering audio, and show a clear error for an unknown device ID (see section 5).
 - Separate the cut threshold from the skip-silence threshold (see section 4).
 - Run ASR in a separate process so it cannot starve audio capture.
 - Vocabulary prompt for technical terms.
-- Microphone unplug test (planned with AirPods: put them back in the case mid-recording).
 - macOS (`portaudio.py` backend has not been changed); needs a teammate with a Mac.
