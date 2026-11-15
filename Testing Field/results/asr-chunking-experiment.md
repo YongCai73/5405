@@ -100,10 +100,38 @@ Findings:
 
 Proposed fixes (not implemented yet): warn when no new audio has arrived for a few seconds ("microphone may be disconnected"), and show the real reason when the selected device does not exist.
 
+## 6. Fixes for sections 3–5 and verification (2026-11-14)
+
+### Fixes
+1. **Quiet speech kept**: a chunk is skipped only if it never exceeds `MC_SILENCE_RMS` (default 50), separate from the speech threshold used for cutting (`MC_SPEECH_RMS`). New stat `quiet_chunks_sent`. The noise estimate is not used for skipping, because if recording starts mid-sentence it begins at speech level and hid real speech (found by a unit test).
+2. **Disconnect warning**: if no audio arrives for `MC_STALL_SECONDS` (default 3), the CLI prints a `capture_stalled` event with a warning, pending audio is transcribed immediately, and `capture_resumed` is printed if audio returns. New stats `capture_stalls`, `longest_stall_seconds`.
+3. **Clear error for a wrong device ID**: `listen` checks `--source` first and lists the current microphones, instead of the generic "Operation failed".
+4. **ASR model loaded before capture starts**: the model used to load on the first chunk (6.6 s of CPU on this laptop), starving the microphone callback. This, not general CPU load, was the cause of the lost audio in section 3: about 3 s was lost once per recording, whether it lasted 1 or 20 minutes.
+
+### Finding: the laptop microphone cancels its own speaker output
+The built-in microphone applies echo cancellation, so a video played from the same laptop's speakers barely reaches it. This explains most of the 94 skipped chunks in section 4.
+
+| Playback (60 s, built-in mic) | Segments | Speech frames | Pause / max cuts | Mean latency |
+|---|---|---|---|---|
+| Laptop speakers | 2 | 1% | 2 / 5 | 9.0 s |
+| Phone next to the laptop | 19 | 49% | 14 / 0 | 5.1 s |
+
+Use a separate device for played-back test audio.
+
+### Verification (real devices)
+
+| Run | Audio missing | Stalls | mean / p50 / p95 latency | Notes |
+|---|---|---|---|---|
+| Phone playback, before warm-up | 3.45 s | 1 (3.7 s) | 5.1 / 4.5 / 9.1 s | the startup loss shows up as a stall |
+| **Phone playback, with warm-up** | **0.41 s** | **0** | **2.0 / 1.5 / 4.1 s** | 17 segments, 1 quiet chunk kept |
+| AirPods, put in case at ~25 s | 2.3 s at start, then stop | 1 | 3.6 s | `capture_stalled` warning printed ~3 s after audio stopped; 5 segments from before the disconnect kept |
+
+With AirPods, ~2.3 s is still missing at the start; this is the Bluetooth headset switching to hands-free mode, not the ASR model (built-in mic: 0.1 s).
+
+Overall latency progression: ~16 s worst case (prototype settings) → 6.2 s (base.en, 5 s chunks) → 5.1 s (pause cutting, larger buffer) → **2.0 s mean, 4.1 s p95** (model warm-up).
+
 ## Not yet tested / next steps
 
-- Warn when the microphone stops delivering audio, and show a clear error for an unknown device ID (see section 5).
-- Separate the cut threshold from the skip-silence threshold (see section 4).
-- Run ASR in a separate process so it cannot starve audio capture.
+- Repeat the 20-minute run with phone playback and the fixes above.
 - Vocabulary prompt for technical terms.
 - macOS (`portaudio.py` backend has not been changed); needs a teammate with a Mac.
