@@ -1,0 +1,25 @@
+
+{
+  "benchmark_version": "1.0-causality-probe",
+  "description": "Post-hoc diagnostic cases for causal inference classification.",
+  "cases": [
+    {
+      "id": "P01",
+      "evidence": "A code update was deployed at 14:00. The integration test passed at 14:15.",
+      "claim": "The code update caused the integration test to pass.",
+      "label": "insufficient"
+    },
+    {
+      "id": "P02",
+      "evidence": "The investigation confirmed that the integration test passed because the CI configuration was corrected. The code update had no effect on the test outcome.",
+      "claim": "The code update caused the integration test to pass.",
+      "label": "contradicted"
+    },
+    {
+      "id": "P03",
+      "evidence": "The team conducted a controlled comparison with identical test conditions. The test failed without the code update and passed with it. The team confirmed that the update fixed the failing test.",
+      "claim": "The team confirmed that the code update fixed the failing integration test.",
+      "label": "supported"
+    }
+  ]
+}
