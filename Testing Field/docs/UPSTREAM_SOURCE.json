@@ -40,7 +40,8 @@
     {
       "path": "src/local_meeting_ai/adapters/transcription/faster_whisper.py",
       "upstream_path": "src/local_meeting_ai/adapters/transcription/faster_whisper.py",
-      "upstream_sha256": "24e8c583ba4c195215b825725f5a15bc55364fe7225fdb48e20f1834f9b21790"
+      "upstream_sha256": "24e8c583ba4c195215b825725f5a15bc55364fe7225fdb48e20f1834f9b21790",
+      "adaptation": "Modified (Zimo Li, 2026-11-14): passes provider_options initial_prompt (vocabulary prompt for technical terms) and temperature (0 disables retry fallback) to faster-whisper. No longer byte-identical to upstream."
     },
     {
       "path": "src/local_meeting_ai/application/transcription_config.py",
@@ -85,7 +86,8 @@
     {
       "path": "src/local_meeting_ai/adapters/audio_capture/windows_wasapi.py",
       "upstream_path": "src/local_meeting_ai/adapters/audio_capture/windows_wasapi.py",
-      "upstream_sha256": "960ba2c0f9b366d36c85ad3de755bf57f11a244b5fd69a1527e1bc3c43174d3e"
+      "upstream_sha256": "960ba2c0f9b366d36c85ad3de755bf57f11a244b5fd69a1527e1bc3c43174d3e",
+      "adaptation": "Modified (Zimo Li, 2026-11-12): counts PortAudio input overflows (input_overflows) and makes the callback buffer size configurable via MC_CAPTURE_BUFFER_FRAMES (default raised from upstream 1024 to 8192 after real-mic tests). No longer byte-identical to upstream."
     },
     {
       "path": "src/meeting_copilot/mcp_server.py",
