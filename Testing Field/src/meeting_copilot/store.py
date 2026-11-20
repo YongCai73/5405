@@ -9,6 +9,7 @@ import time
 import uuid
 from contextlib import contextmanager
 from pathlib import Path
+from .private_files import private_directory, private_file
 
 class Denied(PermissionError): pass
 
@@ -20,7 +21,13 @@ def tokens(text):
 
 class Store:
     def __init__(self, path):
-        Path(path).parent.mkdir(parents=True, exist_ok=True)
+        private_directory(Path(path).parent)
+        private_file(path)
+        # Existing sidecars can contain the same private data as the main DB.
+        for suffix in ('-wal', '-shm'):
+            sidecar = Path(str(path) + suffix)
+            if sidecar.exists() or sidecar.is_symlink():
+                private_file(sidecar)
         self.root = Path(path).resolve().parent
         self.db = sqlite3.connect(path, check_same_thread=False, timeout=30)
         self.db.row_factory = sqlite3.Row

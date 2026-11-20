@@ -80,3 +80,9 @@ We are evaluating [Meet2Notes](https://github.com/estebanstifli/Meet2Notes) as a
 ## License
 
 No license has been chosen for the team's original code yet. Decide this before making the project public or accepting external contributions. Third-party components retain their respective licenses.
+
+## Security hardening
+
+See [Yong's Security and Guardrails handoff](Testing%20Field/docs/SECURITY.md) for
+private local artifacts, pre-retention credential exclusion, permission/recovery
+regressions, retention and deletion limits, and teammate integration guidance.
