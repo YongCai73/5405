@@ -40,7 +40,8 @@
     {
       "path": "src/local_meeting_ai/adapters/transcription/faster_whisper.py",
       "upstream_path": "src/local_meeting_ai/adapters/transcription/faster_whisper.py",
-      "upstream_sha256": "24e8c583ba4c195215b825725f5a15bc55364fe7225fdb48e20f1834f9b21790"
+      "upstream_sha256": "24e8c583ba4c195215b825725f5a15bc55364fe7225fdb48e20f1834f9b21790",
+      "adaptation": "Modified (Zimo Li, 2026-11-14): passes provider_options initial_prompt (vocabulary prompt for technical terms) and temperature (0 disables retry fallback) to faster-whisper. No longer byte-identical to upstream."
     },
     {
       "path": "src/local_meeting_ai/application/transcription_config.py",

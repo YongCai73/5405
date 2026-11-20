@@ -1,3 +1,4 @@
+import pytest
 import numpy as np
 
 from meeting_copilot.audio import PauseCutter, _latency_summary
@@ -58,9 +59,213 @@ def test_reset_starts_a_new_chunk_but_keeps_noise_estimate():
     assert cutter.speech is False and cutter.chunk_ms == 0 and cutter.noise == noise
 
 
+def test_quiet_speech_is_not_treated_as_silence():
+    # Speech at RMS ~210 never reaches the 400 speech threshold, but must not be skipped.
+    cutter = PauseCutter(speech_rms=400)
+    feed(cutter, quiet(0.5) + tone(2.0, 300))
+    assert cutter.speech is False
+    assert cutter.is_silent(50) is False
+
+
+def test_near_silence_is_skippable():
+    cutter = PauseCutter(speech_rms=400)
+    feed(cutter, quiet(2.0, 20))
+    assert cutter.is_silent(50) is True
+
+
+class FakeClock:
+    def __init__(self):
+        self.now = 1000.0
+
+    def monotonic(self):
+        return self.now
+
+    def sleep(self, seconds):
+        self.now += seconds
+
+
+def fake_capture(monkeypatch, audio_module, batches, sources=('sounddevice:7',)):
+    """Patch capture/ASR: the backend returns `batches` in order, then no more audio."""
+    from types import SimpleNamespace
+    pending = list(batches)
+
+    class Backend:
+        def list_sources(self):
+            return [SimpleNamespace(id=s, kind='microphone', name='Fake mic') for s in sources]
+
+        def start(self, **kwargs):
+            pass
+
+        def drain_frames(self):
+            return pending.pop(0) if pending else None
+
+        def stop(self):
+            pass
+
+        def shutdown(self):
+            pass
+
+    class ASR:
+        def __init__(self, *args):
+            pass
+
+        def transcribe(self, path):
+            return [SimpleNamespace(text='Before the headset dropped.', start_ms=0, end_ms=500)]
+
+        def close(self):
+            pass
+
+    clock = FakeClock()
+    monkeypatch.setattr(audio_module, 'create_audio_capture_backend', Backend)
+    monkeypatch.setattr(audio_module, 'LocalASR', ASR)
+    monkeypatch.setattr(audio_module.time, 'monotonic', clock.monotonic)
+    monkeypatch.setattr(audio_module.time, 'sleep', clock.sleep)
+
+
+def test_unknown_device_id_gives_a_clear_error(monkeypatch, store):
+    import pytest
+    import meeting_copilot.audio as audio
+    fake_capture(monkeypatch, audio, [], sources=('sounddevice:7',))
+    with pytest.raises(ValueError, match="'sounddevice:99' not found.*mic-list.*sounddevice:7"):
+        audio.listen(store, 'alice', 'm', store.root, 'sounddevice:99', 5, True)
+
+
+def test_disconnect_is_reported_and_earlier_speech_is_kept(monkeypatch, store):
+    from types import SimpleNamespace
+    import meeting_copilot.audio as audio
+    speech = tone(1.0, 3000)
+    batch = SimpleNamespace(sample_rate=RATE, channels=1, start_frame=0, end_frame=RATE, pcm_s16le=speech)
+    fake_capture(monkeypatch, audio, [batch])
+    events = []
+    result = audio.listen(store, 'alice', 'm', store.root, 'sounddevice:7', 10, True,
+                          on_status=events.append, status_interval=100)
+    stalled = [e for e in events if e.get('event') == 'capture_stalled']
+    assert len(stalled) == 1 and 'disconnected' in stalled[0]['warning']
+    assert result['capture_stalls'] == 1 and result['longest_stall_seconds'] >= 3
+    assert result["processed"] == 1, result
+
+
 def test_latency_summary():
     s = _latency_summary([1.0, 2.0, 3.0, 4.0, 10.0])
     assert s['speech_to_ready_mean_s'] == 4.0
     assert s['speech_to_ready_p50_s'] == 3.0
     assert s['speech_to_ready_max_s'] == 10.0
     assert _latency_summary([])['speech_to_ready_count'] == 0
+
+
+def test_glossary_prompt_dedupes_and_limits():
+    from meeting_copilot.audio import glossary_prompt, read_terms
+    assert glossary_prompt([]) is None
+    assert glossary_prompt(['SQLite', ' sqlite ', 'Kafka', '']) == 'Glossary: SQLite, Kafka.'
+    long = glossary_prompt([f'term{i}' for i in range(500)])
+    assert long.endswith('.') and len(long) <= 600
+    assert read_terms('SQLite, Kafka\nLangGraph') == ['SQLite', 'Kafka', 'LangGraph']
+
+
+def test_glossary_reaches_faster_whisper_request(monkeypatch):
+    import meeting_copilot.audio as audio
+    seen = {}
+
+    class Engine:
+        def __init__(self, *args):
+            pass
+
+        async def transcribe(self, request, *args):
+            seen['options'] = request.provider_options
+            from types import SimpleNamespace
+            return SimpleNamespace(segments=[])
+
+    import local_meeting_ai.adapters.transcription.faster_whisper as fw
+    monkeypatch.setattr(fw, 'FasterWhisperEngine', Engine)
+    audio.LocalASR('.', 'base.en', False, ['SQLite', 'Kafka']).transcribe('x.wav')
+    assert seen['options'] == {'initial_prompt': 'Glossary: SQLite, Kafka.', 'temperature': 0.0}
+    audio.LocalASR('.', 'base.en', False).transcribe('x.wav')
+    assert seen['options'] == {}
+
+
+def seg(text, start, end, words=(), no_speech=0.0, logprob=-0.3):
+    from types import SimpleNamespace
+    return SimpleNamespace(text=text, start_ms=start, end_ms=end,
+                           metadata={'words': [{'probability': p} for p in words],
+                                     'no_speech_prob': no_speech, 'avg_logprob': logprob})
+
+
+def test_junk_filter_drops_invented_fragments_and_keeps_real_speech():
+    from meeting_copilot.audio import junk_reason
+    # Real segments from the measured recording: long, or short but confident.
+    assert junk_reason(seg('We decided to use SQLite instead of Kafka.', 0, 3800, [0.9, 0.1, 0.8])) is None
+    assert junk_reason(seg('Yes.', 0, 400, [0.95])) is None
+    # Invented fragments: very short with low word confidence, or no words at all.
+    assert junk_reason(seg('call.', 0, 200, [0.48])) == 'short_low_confidence'
+    assert junk_reason(seg('I will see you in the next one.', 0, 300, [0.1, 0.2, 0.1])) == 'short_low_confidence'
+    assert junk_reason(seg('.', 0, 100, [0.5])) == 'no_words'
+    assert junk_reason(seg('Thanks.', 0, 2000, [0.4], no_speech=0.8, logprob=-1.5)) == 'no_speech'
+
+
+def test_local_asr_counts_dropped_junk(monkeypatch):
+    import meeting_copilot.audio as audio
+    from types import SimpleNamespace
+
+    class Engine:
+        def __init__(self, *args):
+            pass
+
+        async def transcribe(self, request, *args):
+            return SimpleNamespace(segments=[seg('Real sentence here.', 0, 2500, [0.9]), seg('Okay.', 0, 100, [0.08])])
+
+    import local_meeting_ai.adapters.transcription.faster_whisper as fw
+    monkeypatch.setattr(fw, 'FasterWhisperEngine', Engine)
+    asr = audio.LocalASR('.', 'base.en', False)
+    assert [s.text for s in asr.transcribe('x.wav')] == ['Real sentence here.']
+    assert asr.junk_dropped == 1
+    monkeypatch.setenv('MC_FILTER_JUNK', '0')
+    assert len(audio.LocalASR('.', 'base.en', False).transcribe('x.wav')) == 2
+
+
+def test_repeated_short_filler_is_dropped_across_chunks(monkeypatch):
+    import meeting_copilot.audio as audio
+    from types import SimpleNamespace
+    batches = [[seg('We decided to use SQLite.', 0, 2500, [0.9])],
+               [seg('All right.', 0, 900, [0.9])],
+               [seg('All right.', 0, 900, [0.9])],
+               [seg('all right', 0, 900, [0.9])],
+               [seg('Let us discuss the database choice.', 0, 2500, [0.9])],
+               [seg('All right.', 0, 900, [0.9])]]
+
+    class Engine:
+        def __init__(self, *args):
+            pass
+
+        async def transcribe(self, request, *args):
+            return SimpleNamespace(segments=batches.pop(0))
+
+    import local_meeting_ai.adapters.transcription.faster_whisper as fw
+    monkeypatch.setattr(fw, 'FasterWhisperEngine', Engine)
+    asr = audio.LocalASR('.', 'base.en', False)
+    kept = [s.text for _ in range(6) for s in asr.transcribe('x.wav')]
+    # The first "All right." and the one after a real sentence are kept; immediate repeats are not.
+    assert kept == ['We decided to use SQLite.', 'All right.', 'Let us discuss the database choice.', 'All right.']
+    assert asr.junk_dropped == 2
+
+
+@pytest.mark.parametrize('low_latency,threads,pause', [(False, 2, 500), (True, 4, 300)])
+def test_low_latency_preset_is_opt_in(monkeypatch, store, low_latency, threads, pause):
+    from types import SimpleNamespace
+    import meeting_copilot.audio as audio
+    monkeypatch.delenv('MC_ASR_THREADS', raising=False)
+    monkeypatch.delenv('MC_PAUSE_MS', raising=False)
+    batch = SimpleNamespace(sample_rate=RATE, channels=1, start_frame=0, end_frame=RATE, pcm_s16le=tone(1.0, 3000))
+    fake_capture(monkeypatch, audio, [batch])
+    result = audio.listen(store, 'alice', 'm', store.root, 'sounddevice:7', 5, True, low_latency=low_latency)
+    assert result['preset'] == ('low-latency' if low_latency else 'default')
+    assert (result['asr_threads'], result['pause_ms']) == (threads, pause)
+
+
+def test_environment_still_overrides_the_preset(monkeypatch, store):
+    from types import SimpleNamespace
+    import meeting_copilot.audio as audio
+    monkeypatch.setenv('MC_ASR_THREADS', '3')
+    batch = SimpleNamespace(sample_rate=RATE, channels=1, start_frame=0, end_frame=RATE, pcm_s16le=tone(1.0, 3000))
+    fake_capture(monkeypatch, audio, [batch])
+    result = audio.listen(store, 'alice', 'm', store.root, 'sounddevice:7', 5, True, low_latency=True)
+    assert result['asr_threads'] == 3 and result['pause_ms'] == 300
