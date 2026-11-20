@@ -101,6 +101,9 @@ def run(a):
         elif a.command=='ask':
             sid=a.snapshot or store.snapshot(user,a.meeting,previous=a.previous,folders=a.folder)
             if store.snapshot_info(user,sid)['meeting']!=a.meeting:raise ValueError('snapshot meeting mismatch')
+            # Printed before the answer runs so a crashed ask can be resumed with --snapshot.
+            print(json.dumps({'event':'ask_started','snapshot_id':sid,'conversation':a.conversation,
+                              'resume':f'ask {a.meeting} "<same question>" --snapshot {sid} --conversation {a.conversation}'}),file=sys.stderr,flush=True)
             output(asyncio.run(assistant.ask(sid,a.question,a.conversation,a.skill)))
         elif a.command=='summary':output(asyncio.run(assistant.summary_graph.ainvoke({'snapshot':a.snapshot}))['result'])
         elif a.command=='history':output(store.conversation_history(user,a.snapshot,a.conversation) if a.across_snapshots else store.private_get(user,a.snapshot,a.conversation))
