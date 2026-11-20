@@ -32,10 +32,15 @@
           <span id="sample-label" class="sample-label" hidden>Sample</span>
         </div>
         <p class="meeting-meta" id="meeting-meta"></p>
+        <p class="recording-settings" id="recording-settings" role="status" hidden></p>
         <div class="meeting-actions" aria-label="Meeting actions">
           <button type="button" id="record-button" class="button button-primary" disabled><span class="record-dot" aria-hidden="true"></span><span id="record-label">Record</span></button>
           <button type="button" id="import-button" class="button button-outline" disabled><span class="action-symbol" aria-hidden="true">↑</span> Import audio</button>
           <button type="button" id="export-button" class="button button-outline" disabled><span class="action-symbol" aria-hidden="true">↓</span> Export</button>
+        </div>
+        <div class="recording-warning" id="recording-warning" role="status" hidden>
+          <strong>No microphone audio received</strong>
+          <p>Check your microphone connection. Recording will resume when audio returns.</p>
         </div>
       </header>
 
@@ -112,6 +117,8 @@
       <div class="dialog-header"><h2 id="record-title">Start recording</h2><button type="button" class="close-button" data-close="record-dialog" aria-label="Close">×</button></div>
       <label for="device-select">Microphone</label>
       <select id="device-select" name="device" required></select>
+      <label class="record-option" for="record-low-latency"><input id="record-low-latency" type="checkbox" aria-describedby="low-latency-hint"> Low latency</label>
+      <p class="dialog-hint record-option-hint" id="low-latency-hint">Experimental on Mac. Uses more CPU to shorten transcription delay.</p>
       <label class="consent" for="record-consent"><input id="record-consent" type="checkbox" required> Everyone in this meeting has agreed to be recorded.</label>
       <p class="dialog-hint">The recording stays on this Mac. Local transcription uses an English model and may need a first-time download.</p>
       <div class="dialog-actions"><button type="button" class="button button-outline" data-close="record-dialog">Cancel</button><button type="submit" class="button button-primary" id="start-recording"><span class="record-dot" aria-hidden="true"></span> Start recording</button></div>

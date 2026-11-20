@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import math
 import os
 from pathlib import Path
 import signal
@@ -20,6 +21,7 @@ SAMPLE_ID = 'demo'
 SAMPLE_SOURCE_TITLE = 'Atlas technical design (SIMULATED REPLAY)'
 SKILLS = {'catch_up', 'trace_decision', 'compare_options', 'direct'}
 MAX_REQUEST_BYTES = 64 * 1024
+CAPTURE_START_TIMEOUT_SECONDS = 60
 PROVIDER_LABELS = {'demo': 'Local extractive', 'openai': 'OpenAI-compatible', 'anthropic': 'Anthropic'}
 PROVIDER_MESSAGES = {
     'evidence_upload_not_enabled': 'Enable send_evidence in the desktop configuration to use the configured API.',
@@ -88,16 +90,28 @@ def minutes_text(minutes):
 
 
 class Capture:
-    def __init__(self, root, meeting, device, offset, principal, model):
+    def __init__(self, root, meeting, device, offset, principal, model, *, low_latency=False):
         self.meeting = meeting
         self.ready = threading.Event()
         self.finished = threading.Event()
         self.started = False
         self.error = None
         self.stop_requested = False
+        self._status_lock = threading.Lock()
+        self._recording_status = {
+            'preset': 'low-latency' if low_latency else 'default',
+            'asrThreads': 4 if low_latency else 2,
+            'pauseMs': 300 if low_latency else 500,
+            'stalled': False,
+            'secondsWithoutAudio': 0,
+            'warning': '',
+        }
+        command = [sys.executable, '-u', str(Path(__file__).resolve()), '--data-dir', str(root),
+                   '--capture', meeting, device, str(offset), str(os.getpid()), principal, model]
+        if low_latency:
+            command.append('--low-latency')
         self.process = subprocess.Popen(
-            [sys.executable, '-u', str(Path(__file__).resolve()), '--data-dir', str(root),
-             '--capture', meeting, device, str(offset), str(os.getpid()), principal, model],
+            command,
             stdin=subprocess.DEVNULL,
             stdout=subprocess.PIPE,
             start_new_session=True,
@@ -107,11 +121,44 @@ class Capture:
         self.reader = threading.Thread(target=self.read_status, name='desktop-capture-status', daemon=True)
         self.reader.start()
 
+    @property
+    def recording_status(self):
+        with self._status_lock:
+            return dict(self._recording_status)
+
+    def _update_status(self, status):
+        with self._status_lock:
+            current = dict(self._recording_status)
+            event = status.get('event')
+            if event == 'started':
+                if status.get('preset') in ('default', 'low-latency'):
+                    current['preset'] = status['preset']
+                threads, pause = status.get('asr_threads'), status.get('pause_ms')
+                if type(threads) is int and 1 <= threads <= 16:
+                    current['asrThreads'] = threads
+                if type(pause) in (int, float) and math.isfinite(pause) and 100 <= pause <= 3000:
+                    current['pauseMs'] = pause
+            elif event in ('capture_stalled', 'capture_resumed'):
+                seconds = status.get('seconds_without_audio', 0)
+                current['secondsWithoutAudio'] = (
+                    seconds if type(seconds) in (int, float) and math.isfinite(seconds) and seconds >= 0 else 0
+                )
+                current['stalled'] = event == 'capture_stalled'
+                warning = status.get('warning')
+                current['warning'] = (
+                    warning[:1000] if isinstance(warning, str) and warning
+                    else 'No microphone audio is arriving. Check the connection; recording will resume when audio returns.'
+                ) if current['stalled'] else ''
+            self._recording_status = current
+
     def read_status(self):
         try:
             with self.process.stdout as stream:
                 for line in stream:
                     status = json.loads(line)
+                    if not isinstance(status, dict):
+                        raise ValueError('Invalid recording status.')
+                    self._update_status(status)
                     if status.get('event') == 'started':
                         self.started = True
                         self.ready.set()
@@ -168,7 +215,7 @@ def configure_cache(root):
     os.environ['HF_HUB_DISABLE_IMPLICIT_TOKEN'] = '1'
 
 
-def capture_audio(root, stream, meeting, device, offset, parent_pid, principal, model):
+def capture_audio(root, stream, meeting, device, offset, parent_pid, principal, model, *, low_latency=False):
     from meeting_copilot.audio import listen
     from meeting_copilot.store import Store
     from meeting_copilot.trace import Trace
@@ -179,13 +226,16 @@ def capture_audio(root, stream, meeting, device, offset, parent_pid, principal, 
         if os.getppid() != parent_pid:
             raise KeyboardInterrupt
         if status['event'] == 'recording_started':
-            write_json(stream, {'event': 'started'})
+            write_json(stream, {**status, 'event': 'started'})
+        elif status['event'] in ('capture_stalled', 'capture_resumed'):
+            write_json(stream, status)
 
     try:
         if os.getppid() != parent_pid:
             return 0
         result = listen(OffsetStore(store, offset), principal, meeting, root, device, 28800, True,
-                        model=model, download=True, trace=Trace(root / 'traces.jsonl'), on_status=on_status)
+                        model=model, download=True, trace=Trace(root / 'traces.jsonl'), on_status=on_status,
+                        low_latency=low_latency)
         if result['errors'] or result['dropped_segments']:
             write_json(stream, {'error': 'Some audio could not be transcribed. Review the transcript for gaps.'})
         return 0
@@ -340,6 +390,8 @@ class DesktopBridge:
             'minutes': minutes['minutes'] if minutes else None,
             'recording': recording,
         }
+        if recording:
+            detail['recordingStatus'] = capture.recording_status
         if meeting in self.recording_errors:
             detail['recordingError'] = self.recording_errors[meeting]
         return detail
@@ -554,19 +606,24 @@ class DesktopBridge:
 
         meeting = required_text(payload, 'meetingId', 80)
         device = required_text(payload, 'deviceId', 300)
+        low_latency = payload.get('lowLatency', False)
+        if type(low_latency) is not bool:
+            raise DesktopError('Choose a valid low-latency setting.')
         if meeting == self.sample_id:
             raise DesktopError('Create a new meeting to record audio.')
         if self._current_capture():
             raise DesktopError('A meeting is already recording.')
         offset = self._offset(meeting)
         self.recording_errors.pop(meeting, None)
-        self.capture = Capture(self.root, meeting, device, offset, self.principal, self.config.asr_model)
-        self.capture.ready.wait(8)
+        self.capture = Capture(self.root, meeting, device, offset, self.principal, self.config.asr_model,
+                               low_latency=low_latency)
+        # The ASR model is warmed before capture starts; a cold start can exceed 8 seconds.
+        self.capture.ready.wait(CAPTURE_START_TIMEOUT_SECONDS)
         if not self.capture.started:
             capture = self.capture
             capture.stop(closing=True)
             self._current_capture()
-            raise DesktopError(capture.error or 'Microphone recording did not start.')
+            raise DesktopError(capture.error or 'Preparing transcription took too long. Try starting the recording again.')
         self.live_summaries = LiveSummaries(self.workers, meeting)
         return self._detail(meeting)
 
@@ -626,6 +683,7 @@ def main():
     parser.add_argument('--data-dir', type=Path, required=True)
     parser.add_argument('--config', type=Path, help='Trusted configuration file using the existing Meeting Copilot schema.')
     parser.add_argument('--capture', nargs=6, help=argparse.SUPPRESS)
+    parser.add_argument('--low-latency', action='store_true', help=argparse.SUPPRESS)
     args = parser.parse_args()
     workspace = args.data_dir.resolve()
     config = None
@@ -650,7 +708,8 @@ def main():
         if args.capture:
             signal.signal(signal.SIGINT, signal.default_int_handler)
             meeting, device, offset, parent_pid, principal, model = args.capture
-            return capture_audio(root, protocol, meeting, device, int(offset), int(parent_pid), principal, model)
+            return capture_audio(root, protocol, meeting, device, int(offset), int(parent_pid), principal, model,
+                                 low_latency=args.low_latency)
         bridge = DesktopBridge(config)
 
         def terminate(_signum, _frame):

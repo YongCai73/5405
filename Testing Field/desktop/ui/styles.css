@@ -123,6 +123,10 @@ button { -webkit-tap-highlight-color: transparent; }
 h1 { font-size: 31px; line-height: 1.17; font-weight: 730; letter-spacing: -.045em; overflow-wrap: anywhere; }
 .sample-label { display: inline-flex; border-radius: 5px; background: var(--wash-strong); color: var(--accent-dark); padding: 4px 6px; font-size: 10px; font-weight: 700; letter-spacing: .015em; }
 .meeting-meta { color: var(--muted); margin-top: 8px; font-size: 12px; line-height: 1.4; }
+.recording-settings { color: var(--secondary); margin-top: 5px; font-size: 11px; line-height: 1.4; }
+.recording-warning { margin-top: 14px; padding: 10px 12px; border: 1px solid var(--border-strong); border-radius: 8px; background: var(--wash); color: var(--secondary); font-size: 12px; line-height: 1.45; }
+.recording-warning strong { color: var(--accent-dark); font-weight: 650; }
+.recording-warning p { margin-top: 3px; }
 .meeting-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 19px; }
 .record-dot { display: inline-block; border-radius: 50%; width: 7px; height: 7px; background: currentColor; }
 .is-recording .record-dot { border-radius: 2px; }
@@ -248,6 +252,9 @@ dialog label { display: block; font-size: 12px; margin-bottom: 6px; font-weight:
 dialog input:not([type="checkbox"]), dialog select { width: 100%; border: 1px solid var(--line); background: var(--subtle-surface); border-radius: 7px; padding: 8px; margin-bottom: 12px; }
 dialog .consent { display: flex; align-items: flex-start; gap: 6px; font-weight: 500; line-height: 1.45; margin: 6px 0 9px; }
 .consent input { margin: 2px 0 0; accent-color: var(--accent); }
+dialog .record-option { display: flex; align-items: center; gap: 6px; font-weight: 610; margin: 3px 0 4px; }
+.record-option input { margin: 0; accent-color: var(--accent); }
+.record-option-hint { margin: 0 0 16px 20px; }
 .dialog-actions { display: flex; justify-content: flex-end; gap: 7px; margin-top: 16px; }
 .dialog-hint, .source-label { font-size: 12px; color: var(--muted); line-height: 1.45; }
 blockquote { margin: 10px 0 0; padding: 6px 0 6px 12px; border-left: 3px solid var(--border-strong); line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; max-height: 45vh; overflow: auto; }

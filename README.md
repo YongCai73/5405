@@ -14,10 +14,11 @@ A privacy-conscious meeting assistant that combines continuous transcription wit
 | **会后自动生成纪要** | 停止录音后，应用等转写收尾，再打开 **Summary**。有转录时会生成概览、讨论议题、决定、待办和待确认问题中有原文支持的内容。点击时间戳可以核对原文。导入音频后可在 **Summary** 点 **Generate summary**。 |
 | **带引用的会议问答和导出** | 在 **Ask Copilot** 里追问会议决定或讨论内容，点引用可查看依据。**Export** 可把会议转录和已生成的纪要保存为 JSON。 |
 | **合并 Zimo 的实时转写改进** | 录音按语音停顿切片，结合语音活动检测（VAD）识别语音，跳过纯静音切片，并记录延迟和音频丢失情况，便于排查漏转和延迟。Zimo 的 WASAPI 缓冲区调整和实验数据适用于 Windows。 |
+| **可选低延迟与音频状态提示** | 录音前可勾选 **Low latency**，默认关闭；录音中显示实际生效的预设、线程数和停顿时间。暂时收不到麦克风音频时持续提示，音频恢复后清除，等待期间仍可停止录音。Mac 上的延迟改善仍需实测。 |
 
 ### 在 Mac 上试用
 
-检出 `xiaolong/macos-desktop` 后，按 [桌面版构建指南](Testing%20Field/desktop/README.md#build-and-open) 在本机生成 `Meeting Copilot.app`，需要 macOS、Python 3.11 及以上和 Xcode Command Line Tools。构建后可以在 Finder 双击打开。点 **Open sample meeting** 可查看样例转录和纪要，并试用带引用的问答，样例无需 API key。实际录音需要授予麦克风权限，首次转写可能会下载英语模型。
+检出当前桌面分支后，按 [桌面版构建指南](Testing%20Field/desktop/README.md#build-and-open) 在本机生成 `Meeting Copilot.app`，需要 macOS、Python 3.11 及以上和 Xcode Command Line Tools。构建后可以在 Finder 双击打开。点 **Open sample meeting** 可查看样例转录和纪要，并试用带引用的问答，样例无需 API key。实际录音需要授予麦克风权限，首次转写可能会下载英语模型。
 
 相关资料 · [原型与 CLI](Testing%20Field/README.md) · [交接文档](Testing%20Field/handoff.md) · [需求状态](Testing%20Field/results/requirements-current.json) · [Zimo 的 ASR 实验记录](Testing%20Field/results/asr-chunking-experiment.md)
 

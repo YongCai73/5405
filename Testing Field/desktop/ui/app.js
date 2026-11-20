@@ -43,6 +43,7 @@ const state = {
   highlighted: null,
   recordingId: null,
   recordingErrors: new Map(),
+  recordingStatuses: new Map(),
   endingMeetings: new Set(),
   summaryRequests: new Map(),
   initialError: null,
@@ -98,16 +99,26 @@ function titleFor(meeting) {
 }
 
 function updateRecording(detail) {
+  const wasRecording = state.recordingId === detail.id;
+  const previous = state.recordingStatuses.get(detail.id);
   if (detail.recording) {
     state.recordingId = detail.id;
     state.recordingErrors.delete(detail.id);
+    if (detail.recordingStatus) {
+      const status = { ...detail.recordingStatus };
+      state.recordingStatuses.set(detail.id, status);
+      if (previous?.stalled === true && status.stalled === false) toast("Microphone audio resumed.");
+    } else state.recordingStatuses.delete(detail.id);
   } else if (state.recordingId === detail.id) {
     state.recordingId = null;
   }
+  if (!detail.recording) state.recordingStatuses.delete(detail.id);
   if (detail.recordingError && state.recordingErrors.get(detail.id) !== detail.recordingError) {
     state.recordingErrors.set(detail.id, detail.recordingError);
     toast(detail.recordingError, true);
   }
+  return wasRecording !== Boolean(detail.recording)
+    || JSON.stringify(previous) !== JSON.stringify(state.recordingStatuses.get(detail.id));
 }
 
 function applyCollection(result) {
@@ -151,7 +162,9 @@ function renderMeetings() {
     icon.setAttribute("aria-hidden", "true");
     icon.append(make("span", "icon icon-note"));
     const info = make("span", "meeting-item-info");
-    const status = state.recordingId === meeting.id ? "Recording" : (meeting.mode === "sample" ? "Sample meeting" : "Local meeting");
+    const status = state.recordingId === meeting.id
+      ? (state.recordingStatuses.get(meeting.id)?.stalled ? "Waiting for audio" : "Recording")
+      : (meeting.mode === "sample" ? "Sample meeting" : "Local meeting");
     info.append(make("span", "meeting-item-name", titleFor(meeting)), make("span", "meeting-item-type", status));
     item.append(icon, info);
     fragment.append(item);
@@ -174,6 +187,7 @@ function renderControls() {
   byId("record-button").title = meeting?.mode === "sample" ? "Create a meeting to record audio" : "";
   byId("record-button").classList.toggle("is-recording", Boolean(recording));
   byId("record-label").textContent = state.busy === "record" ? "Starting…" : state.busy === "stop" ? "Stopping…" : recording ? "Stop recording" : "Record";
+  byId("record-low-latency").disabled = busy || state.recordingId !== null;
   byId("import-button").disabled = !meeting || meeting.mode === "sample" || busy || state.recordingId !== null;
   byId("import-button").title = meeting?.mode === "sample" ? "Create a meeting to import audio" : "";
   byId("import-button").lastChild.textContent = state.busy === "import" ? " Importing…" : " Import audio";
@@ -199,9 +213,30 @@ function renderHeader() {
     const count = segments.length;
     const segmentLabel = count + (count === 1 ? " transcript segment" : " transcript segments");
     const detail = count ? duration(segments[segments.length - 1].endMs) + " · " + segmentLabel : "No transcript yet";
-    meta = (state.recordingId === meeting.id ? "Recording · " : "") + detail;
+    const waiting = state.recordingStatuses.get(meeting.id)?.stalled;
+    meta = (state.recordingId === meeting.id ? (waiting ? "Waiting for microphone audio · " : "Recording · ") : "") + detail;
   }
   byId("meeting-meta").textContent = state.loading ? "" : meta;
+  renderRecordingStatus();
+}
+
+function renderRecordingStatus() {
+  const recording = state.meeting && state.recordingId === state.meeting.id;
+  const status = recording ? state.recordingStatuses.get(state.meeting.id) : null;
+  const settings = byId("recording-settings");
+  settings.hidden = !status;
+  if (status) {
+    const parts = [status.preset === "low-latency" ? "Low latency" : "Standard"];
+    if (Number.isFinite(status.asrThreads)) parts.push(status.asrThreads + " threads");
+    if (Number.isFinite(status.pauseMs)) parts.push(status.pauseMs + " ms pauses");
+    const label = parts.join(" · ");
+    if (settings.textContent !== label) settings.textContent = label;
+    settings.title = "preset: " + (status.preset || "default");
+  } else {
+    settings.textContent = "";
+    settings.title = "";
+  }
+  byId("recording-warning").hidden = !status?.stalled;
 }
 
 function renderTabs() {
@@ -265,7 +300,10 @@ function renderTranscript() {
   else if (query) showEmpty(empty, "No matching segments", "Try a different search.");
   else if (state.meeting) {
     if (state.busy === "import") showEmpty(empty, "Transcribing audio…", "The text will appear here when transcription finishes.");
-    else if (state.recordingId === state.meeting.id) showEmpty(empty, "Listening for speech…", "Transcript segments appear here as they’re ready.");
+    else if (state.recordingId === state.meeting.id) {
+      if (state.recordingStatuses.get(state.meeting.id)?.stalled) showEmpty(empty, "Waiting for microphone audio", "Check your microphone connection. You can stop recording or wait for audio to return.");
+      else showEmpty(empty, "Listening for speech…", "Transcript segments appear here as they’re ready.");
+    }
     else showEmpty(empty, "No transcript yet", "Record this meeting or import an audio file to get started.");
   } else showEmpty(empty, "No meeting selected", "Open a meeting to view its transcript.");
   scroll.scrollTop = position;
@@ -578,19 +616,19 @@ async function refreshRecording() {
     if (state.recordingId !== meetingId) return;
     const wasRecording = state.recordingId === meetingId;
     const visible = state.meeting?.id === meetingId;
-    updateRecording(detail);
+    const statusChanged = updateRecording(detail);
     if (wasRecording && !detail.recording) {
       if (!detail.recordingError) state.endingMeetings.add(meetingId);
-      renderMeetings();
     }
+    if (statusChanged) renderMeetings();
     if (visible) {
       const scroller = byId("transcript-scroll");
       const follow = state.tab === "transcript" && !state.query && scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight < 28;
       const changed = JSON.stringify(state.meeting.segments) !== JSON.stringify(detail.segments);
       const summaryChanged = state.meeting.summary !== detail.summary || (!detail.recording && JSON.stringify(state.meeting.minutes) !== JSON.stringify(detail.minutes));
       state.meeting = detail;
-      if (changed || !detail.recording) {
-        renderHeader();
+      renderHeader();
+      if (changed || !detail.recording || statusChanged) {
         renderTranscript();
         if (changed && follow) scroller.scrollTop = scroller.scrollHeight;
       }
@@ -717,6 +755,7 @@ byId("record-button").addEventListener("click", () => {
     const dialog = byId("record-dialog");
     dialog.dataset.meetingId = meetingId;
     byId("record-consent").checked = false;
+    byId("record-low-latency").checked = false;
     const select = byId("device-select");
     select.replaceChildren(...devices.map((device) => {
       const option = make("option", "", device.name);
@@ -732,9 +771,10 @@ byId("record-form").addEventListener("submit", (event) => {
   const dialog = byId("record-dialog");
   const meetingId = dialog.dataset.meetingId;
   const deviceId = byId("device-select").value;
-  if (!meetingId || !deviceId || !byId("record-consent").checked) return;
+  const lowLatency = byId("record-low-latency").checked;
+  if (!meetingId || !deviceId || !byId("record-consent").checked || state.recordingId !== null || state.busy) return;
   dialog.close();
-  void action("record", async () => { useDetail(await bridge("startRecording", { meetingId, deviceId })); });
+  void action("record", async () => { useDetail(await bridge("startRecording", { meetingId, deviceId, lowLatency })); });
 });
 byId("question").addEventListener("input", updateComposer);
 byId("question").addEventListener("keydown", (event) => {
