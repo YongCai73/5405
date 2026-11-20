@@ -146,9 +146,44 @@ async def test_different_question_starts_fresh(store, sid, tmp_path):
     assert store.checkpoint_get('alice', sid, 'c')['question'] == 'What was chosen for simplicity?'
 
 
-async def test_old_format_checkpoint_is_ignored(store, sid, tmp_path):
+async def test_old_format_checkpoint_resumes_as_answered(store, sid, tmp_path):
+    # The old code wrote a result-only checkpoint right before saving the turn, so the store
+    # reads it as 'answered' (docs/RECOVERY_STORAGE.md): save it, do not call the model.
     a = Counting(store, 'alice', tmp_path)
     store.checkpoint_put('alice', sid, 'c', {'snapshot': sid, 'question': QUESTION, 'skill': 'trace_decision',
                                             'source_ids': [], 'result': {'text': 'old'}, 'next': []})
     result = await a.ask(sid, QUESTION, 'c')
-    assert result['text'] != 'old' and a.calls == {'retrieve': 1, 'answer': 1}
+    assert result['text'] == 'old' and a.calls == {'retrieve': 0, 'answer': 0}
+    assert turns(store, sid) == 1 and step(store, sid) == 'saved'
+
+
+async def test_crash_after_turn_written_does_not_duplicate(store, sid, tmp_path, monkeypatch):
+    # Crash between private_put and the 'saved' checkpoint: the retry must reuse the turn.
+    a = Counting(store, 'alice', tmp_path, crash='before_saved_checkpoint')
+    original = a._checkpoint
+
+    def crash_on_saved(state, step, evidence, result=None, turn_id=None):
+        if step == 'saved' and a.crash == 'before_saved_checkpoint':
+            a.crash = None
+            raise Crash('before_saved_checkpoint')
+        return original(state, step, evidence, result, turn_id)
+
+    monkeypatch.setattr(a, '_checkpoint', crash_on_saved)
+    with pytest.raises(Crash):
+        await a.ask(sid, QUESTION, 'c')
+    assert turns(store, sid) == 1 and step(store, sid) == 'answered'
+    again = await a.ask(sid, QUESTION, 'c')
+    assert again['resumed_from_checkpoint'] == 'saved'
+    assert a.calls == {'retrieve': 1, 'answer': 1}
+    assert turns(store, sid) == 1 and step(store, sid) == 'saved'
+
+
+async def test_same_question_other_skill_needs_new_conversation(store, sid, tmp_path):
+    # Agreed store rule: the stored answer is keyed by question, not skill.
+    a = Counting(store, 'alice', tmp_path)
+    first = await a.ask(sid, 'SQLite', 'c', skill='catch_up')
+    same = await a.ask(sid, 'SQLite', 'c', skill='trace_decision')
+    assert same['contract']['name'] == 'catch_up' and same['text'] == first['text']
+    other = await a.ask(sid, 'SQLite', 'c-trace', skill='trace_decision')
+    assert other['contract']['name'] == 'trace_decision'
+    assert a.calls['answer'] == 2

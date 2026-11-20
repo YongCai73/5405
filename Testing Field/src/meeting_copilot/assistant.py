@@ -136,6 +136,11 @@ class Assistant:
         if state.get('conversation'):self._checkpoint(state,'answered',evidence,result)
         return {'result':result,'evidence':evidence}
 
+    def _evidence_for(self,snapshot,result):
+        """Retained rows for every source an answer cites (used when no evidence was stored)."""
+        ids={c['source_id'] for c in result.get('claims',[])}|{i for inf in result.get('inferences',[]) for i in inf.get('source_ids',[])}
+        return [self.store.raw(self.user,snapshot,rid) for rid in sorted(ids)]
+
     def resume_point(self,snapshot,question,conversation,skill):
         """The checkpoint to resume from, or None to start fresh.
 
@@ -153,12 +158,22 @@ class Assistant:
         saved=self.resume_point(snapshot,question,conversation,skill)
         state={'snapshot':snapshot,'question':question,'skill':skill,'conversation':conversation}
         if saved:self.trace.emit('ask_resumed',snapshot_id=snapshot,step=saved['step'])
-        if saved and saved['step']=='saved':  # C4: already answered and stored
-            self.validate_evidence(snapshot,saved['evidence'])
+        committed=self.store.private_get(self.user,snapshot,conversation,question)
+        if committed:
+            # C4, or a crash after the turn was written: the store keeps the first committed
+            # answer per (snapshot, conversation, question), so never answer twice.
+            # (Skill is not part of that key; another skill needs a new snapshot or conversation.)
+            result=committed[0]['answer']
+            evidence=saved['evidence'] if saved and saved.get('evidence') is not None else self._evidence_for(snapshot,result)
+            self.validate_evidence(snapshot,evidence)
+            if not saved or saved['step']!='saved':
+                self._checkpoint(state,'saved',evidence,result,self.store.private_put(self.user,snapshot,conversation,question,result))
             # No model call happened now, so report no new usage (keeps cost accounting honest).
-            return {**saved['result'],'usage':{'input_tokens':0,'output_tokens':0,'estimated_cost_usd':0.0},'resumed_from_checkpoint':'saved'}
+            return {**result,'usage':{'input_tokens':0,'output_tokens':0,'estimated_cost_usd':0.0},'resumed_from_checkpoint':'saved'}
         if saved and saved['step']=='answered':  # C3: answer stored, turn not yet saved
-            result,evidence=saved['result'],saved['evidence']
+            result=saved['result']
+            # Old-format checkpoints (before steps existed) have a result but no evidence.
+            evidence=saved['evidence'] if saved.get('evidence') is not None else self._evidence_for(snapshot,result)
             self.validate_evidence(snapshot,evidence)  # re-check provenance and current access
         else:
             history=self.store.conversation_history(self.user,snapshot,conversation)
