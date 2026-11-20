@@ -33,13 +33,20 @@ class State(TypedDict,total=False):
     evidence: list
     result: dict
     history: list
+    conversation: str
+
+# Crash recovery (docs/CRASH_RECOVERY.md): progress is checkpointed after each step and
+# a re-run of the same ask resumes from the last step that was written successfully.
+STEPS=('retrieved','answered','saved')
 
 class Assistant:
     def __init__(self,store,user,provider,trace):
         os.environ['LANGSMITH_TRACING']='false';os.environ['LANGCHAIN_TRACING_V2']='false'
         self.store=store;self.user=user;self.provider=provider;self.trace=trace
         graph=StateGraph(State);graph.add_node('retrieve',self.retrieve);graph.add_node('answer',self.answer)
-        graph.add_edge(START,'retrieve');graph.add_edge('retrieve','answer');graph.add_edge('answer',END);self.graph=graph.compile()
+        # Resume (C1/C2): evidence restored from a 'retrieved' checkpoint skips retrieval.
+        graph.add_conditional_edges(START,lambda s:'answer' if s.get('evidence') is not None else 'retrieve',['retrieve','answer'])
+        graph.add_edge('retrieve','answer');graph.add_edge('answer',END);self.graph=graph.compile()
         summary=StateGraph(State);summary.add_node('summarize',self.summarize);summary.add_edge(START,'summarize');summary.add_edge('summarize',END);self.summary_graph=summary.compile()
 
     def validate_evidence(self,snapshot,evidence):
@@ -70,7 +77,16 @@ class Assistant:
             selected.append(e);size+=len(e['text'])
             if len(selected)>=16:break
         self.trace.emit('retrieval',snapshot_id=state['snapshot'],source_ids=[e['id'] for e in selected],policy='allow')
+        if state.get('conversation'):self._checkpoint(state,'retrieved',selected)
         return {'evidence':selected}
+
+    def _checkpoint(self,state,step,evidence,result=None,turn_id=None):
+        """Write progress for (snapshot, user, conversation); see docs/CRASH_RECOVERY.md."""
+        data={'version':1,'snapshot':state['snapshot'],'question':state['question'],'skill':state['skill'],'step':step,
+              'source_ids':[e['id'] for e in evidence],'evidence':evidence,'updated':time.time()}
+        if result is not None:data['result']=result
+        if turn_id is not None:data['turn_id']=turn_id
+        self.store.checkpoint_put(self.user,state['snapshot'],state['conversation'],data)
 
     async def answer(self,state):
         start=time.perf_counter();evidence=state['evidence'];usage={'input_tokens':0,'output_tokens':0,'estimated_cost_usd':0.0};inferences=[];tool_events=[]
@@ -117,16 +133,56 @@ class Assistant:
             result['fields']={'evidence':claims}
         self.trace.emit('answer',snapshot_id=state['snapshot'],source_ids=[c['source_id'] for c in claims],latency_ms=result['latency_ms'],mode=result['mode'],**usage)
         result['inferred_fields']={name:[i for i in inferences if i['field']==name] for name in result['contract']['output_fields']}
+        if state.get('conversation'):self._checkpoint(state,'answered',evidence,result)
         return {'result':result,'evidence':evidence}
+
+    def _evidence_for(self,snapshot,result):
+        """Retained rows for every source an answer cites (used when no evidence was stored)."""
+        ids={c['source_id'] for c in result.get('claims',[])}|{i for inf in result.get('inferences',[]) for i in inf.get('source_ids',[])}
+        return [self.store.raw(self.user,snapshot,rid) for rid in sorted(ids)]
+
+    def resume_point(self,snapshot,question,conversation,skill):
+        """The checkpoint to resume from, or None to start fresh.
+
+        A checkpoint only applies to the same question and skill; a different question in
+        the same conversation starts over and overwrites it.
+        """
+        saved=self.store.checkpoint_get(self.user,snapshot,conversation)
+        if not saved or saved.get('question')!=question or saved.get('skill')!=skill or saved.get('step') not in STEPS:return None
+        return saved
 
     async def ask(self,snapshot,question,conversation='default',skill='trace_decision'):
         if not question or len(question)>4000 or not conversation or len(conversation)>100:raise ValueError('question/conversation limit')
+        # Authorization first: a checkpoint never grants access after revocation.
         self.store.snapshot_info(self.user,snapshot)
-        history=self.store.conversation_history(self.user,snapshot,conversation)
-        state=await self.graph.ainvoke({'snapshot':snapshot,'question':question,'skill':skill,'history':history})
-        result=state['result']
-        self.store.checkpoint_put(self.user,snapshot,conversation,{'snapshot':snapshot,'question':question,'skill':skill,'source_ids':[e['id'] for e in state['evidence']],'result':result,'next':[]})
-        self.store.private_put(self.user,snapshot,conversation,question,result)
+        saved=self.resume_point(snapshot,question,conversation,skill)
+        state={'snapshot':snapshot,'question':question,'skill':skill,'conversation':conversation}
+        if saved:self.trace.emit('ask_resumed',snapshot_id=snapshot,step=saved['step'])
+        committed=self.store.private_get(self.user,snapshot,conversation,question)
+        if committed:
+            # C4, or a crash after the turn was written: the store keeps the first committed
+            # answer per (snapshot, conversation, question), so never answer twice.
+            # (Skill is not part of that key; another skill needs a new snapshot or conversation.)
+            result=committed[0]['answer']
+            evidence=saved['evidence'] if saved and saved.get('evidence') is not None else self._evidence_for(snapshot,result)
+            self.validate_evidence(snapshot,evidence)
+            if not saved or saved['step']!='saved':
+                self._checkpoint(state,'saved',evidence,result,self.store.private_put(self.user,snapshot,conversation,question,result))
+            # No model call happened now, so report no new usage (keeps cost accounting honest).
+            return {**result,'usage':{'input_tokens':0,'output_tokens':0,'estimated_cost_usd':0.0},'resumed_from_checkpoint':'saved'}
+        if saved and saved['step']=='answered':  # C3: answer stored, turn not yet saved
+            result=saved['result']
+            # Old-format checkpoints (before steps existed) have a result but no evidence.
+            evidence=saved['evidence'] if saved.get('evidence') is not None else self._evidence_for(snapshot,result)
+            self.validate_evidence(snapshot,evidence)  # re-check provenance and current access
+        else:
+            history=self.store.conversation_history(self.user,snapshot,conversation)
+            start={**state,'history':history}
+            if saved:start['evidence']=saved['evidence']  # C1/C2: skip retrieval, re-checked in answer
+            out=await self.graph.ainvoke(start)
+            result,evidence=out['result'],out['evidence']
+        turn_id=self.store.private_put(self.user,snapshot,conversation,question,result)
+        self._checkpoint(state,'saved',evidence,result,turn_id)
         return result
 
     async def summarize(self,state):

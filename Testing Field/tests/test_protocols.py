@@ -229,8 +229,11 @@ def test_opt_in_api_evaluator_runs_same_fixture_variants(fake_http,monkeypatch,t
     target=tmp_path/'api-evaluation.json'
     evaluate(target,tmp_path/'eval',config=p.config)
     result=json.loads(target.read_text())
-    assert len(fake_http['requests'])==88
-    assert result['api_usage']=={'input_tokens':88*17,'output_tokens':88*11,'estimated_cost_usd':pytest.approx(88*39/1e6)}
+    # 87, not 88: in the no_snapshots ablation q17 and q18 ask the same question on the same
+    # final snapshot and conversation, so the second ask returns the stored answer (crash
+    # recovery case C4, docs/CRASH_RECOVERY.md) and reports zero new usage.
+    assert len(fake_http['requests'])==87
+    assert result['api_usage']=={'input_tokens':87*17,'output_tokens':87*11,'estimated_cost_usd':pytest.approx(87*39/1e6)}
     assert result['mode'].startswith('API evaluation')
     assert result['configurations']['no_policy']['unauthorized_disclosures']==3
     assert result['native_meet2notes_baseline']['status']=='not measured'
