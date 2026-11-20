@@ -1,4 +1,4 @@
-# Crash recovery for private Q&A — interface agreement (draft v0.1)
+# Crash recovery for private Q&A — interface agreement (v0.2, agreed 2026-11-20)
 
 Owners: Zimo Li (orchestration, `assistant.py`, CLI) · Xiaolong Lin (memory, `store.py`)
 Decision (meeting 2026-11-20): **Option B**. Extend the existing `checkpoints` table and `checkpoint_put` / `checkpoint_get`, which already enforce snapshot scope. LangGraph's built-in checkpointer is not used.
@@ -16,7 +16,8 @@ Timeline: interface agreed **11/24**, done and tested **12/1**.
 
 | # | Crash happens | Expected after re-running the same `ask` |
 |---|---|---|
-| C1 | during / after `retrieve`, before the provider call | retrieval is not repeated; the provider is called once |
+| C1 | after the `retrieved` checkpoint has been **written**, before the provider call | retrieval is not repeated; the provider is called once |
+| C0 | during `retrieve`, before the `retrieved` checkpoint is written | no usable progress: retrieval runs again from the start |
 | C2 | during the provider call (network drop, timeout, Ctrl+C) | provider is called again with the **same** stored evidence |
 | C3 | after the answer, before the turn is saved | **no** new provider call; the stored answer is saved once |
 | C4 | after everything is saved (user re-submits) | stored answer returned; **no** new turn, **no** provider call |
@@ -76,7 +77,7 @@ On `ask(snapshot, question, conversation, skill)`:
 
 ## Tests (each side writes its own; one shared end-to-end test)
 
-- Zimo: inject an exception after `retrieve` (C1), inside the provider (C2) and between answer and save (C3), then re-run `ask` and assert:
+- Zimo: inject an exception during `retrieve` (C0), after the `retrieved` checkpoint (C1), inside the provider (C2) and between answer and save (C3), then re-run `ask` and assert:
   - the provider call count is as expected
   - the result is the same
   - exactly one turn exists
@@ -84,8 +85,10 @@ On `ask(snapshot, question, conversation, skill)`:
 - Xiaolong: `private_put` twice → one row, same `turn_id`; the migration removes existing duplicates; invalid `step` is rejected.
 - Shared: real CLI with `--snapshot`, kill the process during the provider call, re-run, check `history`.
 
-## Open questions
+## Decisions (meeting 2026-11-20, Zimo & Xiaolong)
 
-1. Should a resumed C2 call reuse the stored evidence, or re-retrieve if new transcript arrived? Proposal: **reuse**. The snapshot is fixed, so the evidence is too.
-2. Should the `ask_started` line be added to the `Workers.submit` path (live use) too? Proposal: yes, via the returned `sid`.
-3. How long are checkpoints kept? Proposal: deleted with the snapshot (existing `ON DELETE CASCADE`); covered by Cai Yong's retention task.
+1. **A resumed call reuses the stored evidence** and does not re-retrieve. The snapshot pins what may be used, so the evidence is the same. To include newer transcript, ask again, which creates a new snapshot.
+2. **Live questions also expose the snapshot id up front.** The `Workers.submit` path returns `sid` before the answer runs, so the user can resume with `--snapshot`.
+3. **Retention: checkpoints are deleted with their snapshot / meeting** (existing `ON DELETE CASCADE`). No separate checkpoint retention period; retention is set by Cai Yong's retention policy.
+4. **Revocation**: after access to a snapshot, meeting or folder is revoked, its checkpoint can no longer be read or resumed. `snapshot_info` runs first, and `validate_evidence` re-checks evidence.
+5. **C1 boundary**: resume skips retrieval only if the `retrieved` checkpoint was written successfully. A crash before that (C0) restarts retrieval.
