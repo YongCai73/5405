@@ -128,6 +128,7 @@ class LocalASR:
         self.prompt=glossary_prompt(terms)
         # MC_FILTER_JUNK=0 turns the filter off (for experiments).
         self.filter_junk=os.environ.get('MC_FILTER_JUNK','1').strip()!='0';self.junk_dropped=0;self.last_text=None
+        self.cpu_threads=None  # set by listen() from its preset; None = MC_ASR_THREADS or 2
     def _is_repeat(self,segment):
         """A short segment (<= 3 words) that exactly repeats the previous kept one.
 
@@ -141,7 +142,7 @@ class LocalASR:
         return repeat
     def transcribe(self,path):
         from local_meeting_ai.domain.entities import TranscriptionEngineRequest
-        req=TranscriptionEngineRequest(audio_path=Path(path),model=self.model,device='cpu',compute_type='int8',language='en',task='transcribe',beam_size=1,vad_filter=True,allow_model_download=self.allow_download,cpu_threads=_env_number('MC_ASR_THREADS',2,1,16,int),num_workers=1,
+        req=TranscriptionEngineRequest(audio_path=Path(path),model=self.model,device='cpu',compute_type='int8',language='en',task='transcribe',beam_size=1,vad_filter=True,allow_model_download=self.allow_download,cpu_threads=self.cpu_threads or _env_number('MC_ASR_THREADS',2,1,16,int),num_workers=1,
             # temperature 0 = no retries at higher temperatures. With a glossary those retries
             # made decoding 4.4x slower (8.0 vs 3.0 s per chunk) and invented more text.
             provider_options={'initial_prompt':self.prompt,'temperature':0.0} if self.prompt else {},
@@ -229,7 +230,12 @@ def _latency_summary(values):
 
 def microphones():return [asdict(x) for x in create_audio_capture_backend().list_sources()]
 
-def listen(store,user,meeting,root,source,seconds,consent,model='tiny.en',download=False,trace=None,on_status=None,status_interval=5,terms=()):
+# Opt-in settings measured on Windows (results/asr-chunking-experiment.md): 4 ASR threads and
+# a 300 ms pause cut. Not the default until they are also checked on macOS. The speech
+# loudness threshold is unchanged because it depends on the microphone and speaker.
+PRESETS={'default':{'asr_threads':2,'pause_ms':500},'low-latency':{'asr_threads':4,'pause_ms':300}}
+
+def listen(store,user,meeting,root,source,seconds,consent,model='tiny.en',download=False,trace=None,on_status=None,status_interval=5,terms=(),low_latency=False):
     if not consent:raise ValueError('recording requires explicit participant consent (--consent)')
     if not 0<=seconds<=28800:raise ValueError('duration limit 0 (until Ctrl+C) or 1..28800 seconds')
     with store.lock:store._check(user,meeting,True)
@@ -241,7 +247,11 @@ def listen(store,user,meeting,root,source,seconds,consent,model='tiny.en',downlo
     # 'pause' = cut at pauses (chunk_seconds is then the maximum); 'fixed' = cut every chunk_seconds.
     cut_mode=os.environ.get('MC_CUT_MODE','pause').strip() or 'pause'
     if cut_mode not in ('pause','fixed'):raise ValueError("MC_CUT_MODE must be 'pause' or 'fixed'")
-    cutter=PauseCutter(_env_number('MC_PAUSE_MS',500,100,3000),1.0,_env_number('MC_SPEECH_RMS',100,1,30000))
+    preset_name='low-latency' if low_latency else 'default';preset=PRESETS[preset_name]
+    # Explicit MC_* environment variables still override the preset (for experiments).
+    asr_threads=_env_number('MC_ASR_THREADS',preset['asr_threads'],1,16,int)
+    pause_ms=_env_number('MC_PAUSE_MS',preset['pause_ms'],100,3000)
+    cutter=PauseCutter(pause_ms,1.0,_env_number('MC_SPEECH_RMS',100,1,30000))
     silence_rms=_env_number('MC_SILENCE_RMS',50,1,30000)
     # Warn when the device stops delivering audio (e.g. a Bluetooth headset was disconnected).
     stall_seconds=_env_number('MC_STALL_SECONDS',3,1,60)
@@ -323,12 +333,13 @@ def listen(store,user,meeting,root,source,seconds,consent,model='tiny.en',downlo
     try:
         check_source()
         asr=LocalASR(root,model,download,terms) if terms else LocalASR(root,model,download)
+        asr.cpu_threads=asr_threads
         warm_up=getattr(asr,'warm_up',None)
         if warm_up:warm_up()
         pipe=Pipeline(transcribe,ingest,trace)
         backend.start(session_id=meeting,source_id=source,destination=storage.new_live_capture_path(meeting));started=True
         start=time.monotonic();last_status=start;capture_t0=start;stall['last_audio']=start
-        if on_status:on_status({'event':'recording_started','source':source,'meeting':meeting,'chunk_seconds':chunk_seconds,'cut_mode':cut_mode,'glossary_terms':len(terms or ())})
+        if on_status:on_status({'event':'recording_started','source':source,'meeting':meeting,'chunk_seconds':chunk_seconds,'cut_mode':cut_mode,'glossary_terms':len(terms or ()),'preset':preset_name,'asr_threads':asr_threads,'pause_ms':pause_ms})
         try:
             while not seconds or time.monotonic()-start<seconds:
                 time.sleep(.1);drain();check_stall()
@@ -346,4 +357,4 @@ def listen(store,user,meeting,root,source,seconds,consent,model='tiny.en',downlo
             try:result=pipe.close() if pipe else {'errors':1}
             finally:
                 if asr:asr.close()
-    return {**result,**latency(),'chunk_seconds':chunk_seconds,'cut_mode':cut_mode,**cut_stats(),'interrupted':interrupted,'source':source,'mode':'microphone / local ASR'}
+    return {**result,**latency(),'chunk_seconds':chunk_seconds,'cut_mode':cut_mode,'preset':preset_name,'asr_threads':asr_threads,'pause_ms':pause_ms,**cut_stats(),'interrupted':interrupted,'source':source,'mode':'microphone / local ASR'}

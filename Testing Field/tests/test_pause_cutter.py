@@ -1,3 +1,4 @@
+import pytest
 import numpy as np
 
 from meeting_copilot.audio import PauseCutter, _latency_summary
@@ -245,3 +246,26 @@ def test_repeated_short_filler_is_dropped_across_chunks(monkeypatch):
     # The first "All right." and the one after a real sentence are kept; immediate repeats are not.
     assert kept == ['We decided to use SQLite.', 'All right.', 'Let us discuss the database choice.', 'All right.']
     assert asr.junk_dropped == 2
+
+
+@pytest.mark.parametrize('low_latency,threads,pause', [(False, 2, 500), (True, 4, 300)])
+def test_low_latency_preset_is_opt_in(monkeypatch, store, low_latency, threads, pause):
+    from types import SimpleNamespace
+    import meeting_copilot.audio as audio
+    monkeypatch.delenv('MC_ASR_THREADS', raising=False)
+    monkeypatch.delenv('MC_PAUSE_MS', raising=False)
+    batch = SimpleNamespace(sample_rate=RATE, channels=1, start_frame=0, end_frame=RATE, pcm_s16le=tone(1.0, 3000))
+    fake_capture(monkeypatch, audio, [batch])
+    result = audio.listen(store, 'alice', 'm', store.root, 'sounddevice:7', 5, True, low_latency=low_latency)
+    assert result['preset'] == ('low-latency' if low_latency else 'default')
+    assert (result['asr_threads'], result['pause_ms']) == (threads, pause)
+
+
+def test_environment_still_overrides_the_preset(monkeypatch, store):
+    from types import SimpleNamespace
+    import meeting_copilot.audio as audio
+    monkeypatch.setenv('MC_ASR_THREADS', '3')
+    batch = SimpleNamespace(sample_rate=RATE, channels=1, start_frame=0, end_frame=RATE, pcm_s16le=tone(1.0, 3000))
+    fake_capture(monkeypatch, audio, [batch])
+    result = audio.listen(store, 'alice', 'm', store.root, 'sounddevice:7', 5, True, low_latency=True)
+    assert result['asr_threads'] == 3 and result['pause_ms'] == 300

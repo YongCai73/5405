@@ -42,6 +42,7 @@ Technical terms (SQLite, Kafka) were misrecognized in every 3 s run with both mo
 - Fixed 3 s chunks were slower than 5 s: each chunk has a fixed processing overhead.
 - Pause cutting works once the loudness threshold is above breath/echo noise: with threshold 100 only 5 of 8 cuts were at pauses; with 400 every cut was (18 / 0).
 - With threshold 400 and 300 ms pauses, set `MC_SPEECH_RMS=400` and `MC_PAUSE_MS=300`. These are not yet the defaults; a quieter speaker may need a lower threshold.
+- **Opt-in preset (2026-11-20):** `listen ... --low-latency` uses 4 ASR threads and a 300 ms pause cut. It is not the default until it is checked on macOS (team decision with Xiaolong). The speech threshold stays at the default 100, because 400 was tuned for one laptop microphone. Explicit `MC_*` variables still override the preset.
 
 ## 3. Bug found: audio lost while ASR is busy
 

@@ -40,6 +40,7 @@ def parser():
     c=sub.add_parser('listen');c.add_argument('meeting');c.add_argument('--source',required=True);c.add_argument('--seconds',type=int,default=30);c.add_argument('--consent',action='store_true');c.add_argument('--download-model',action='store_true')
     c.add_argument('--summary-interval',type=float,default=15)
     c.add_argument('--terms',help='technical terms to help ASR, comma separated, e.g. "SQLite, Kafka"');c.add_argument('--terms-file',help='text file with one term per line (or comma separated)')
+    c.add_argument('--low-latency',action='store_true',help='opt-in preset measured on Windows: 4 ASR threads, 300 ms pause cut')
     c=sub.add_parser('asr');c.add_argument('meeting');c.add_argument('audio');c.add_argument('--download-model',action='store_true')
     c.add_argument('--terms');c.add_argument('--terms-file')
     c=sub.add_parser('mcp');c.add_argument('snapshot')
@@ -128,7 +129,7 @@ def run(a):
             def status(data):
                 print(json.dumps({**data,'summary_completed':summaries.completed,'summary_failures':summaries.failures,'summary_last_error':summaries.last_error,'summary_snapshot':summaries.last_snapshot}),file=sys.stderr,flush=True)
             try:
-                result=listen(store,user,a.meeting,root,a.source,a.seconds,a.consent,c.asr_model,a.download_model,trace,on_status=status,terms=terms)
+                result=listen(store,user,a.meeting,root,a.source,a.seconds,a.consent,c.asr_model,a.download_model,trace,on_status=status,terms=terms,low_latency=a.low_latency)
             finally:summaries.close();workers.close()
             result['background_summary_snapshot']=summaries.last_snapshot
             result['background_summary_failures']=summaries.failures
