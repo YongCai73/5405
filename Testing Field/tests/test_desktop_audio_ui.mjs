@@ -85,6 +85,7 @@ async function application() {
   const responses = new Map([
     ['bootstrap', { meetings: [], meeting: null }],
     ['devices', { devices: [{ id: 'mic', name: 'Test microphone', isDefault: true }] }],
+    ['questionHistory', { turns: [] }],
   ]);
   let timerWrites = 0;
   const window = {
@@ -129,6 +130,40 @@ async function openRecorder(app) {
   app.nodes.get('device-select').value = 'mic';
   app.nodes.get('record-consent').checked = true;
 }
+
+test('desktop submits a private question to the background and polls its state', async () => {
+  const app = await application();
+  app.install(detail(false, null, { segments: [{ id: 1, text: 'SQLite is local.', startMs: 0, endMs: 1000 }] }));
+  app.responses.set('beginQuestion', { id: 'snapshot-1' });
+  app.responses.set('questionHistory', { turns: [{ id: 'snapshot-1', question: 'Why SQLite?', pending: true }] });
+  await app.evaluate('ask("Why SQLite?")');
+  assert.equal(app.requests.find((request) => request.action === 'beginQuestion').payload.question, 'Why SQLite?');
+  assert.equal(app.nodes.get('question').disabled, true);
+  app.responses.set('questionHistory', { turns: [{
+    id: 'snapshot-1', question: 'Why SQLite?', answer: { text: 'SQLite is local.', citations: [] },
+  }] });
+  await app.evaluate('refreshQuestions("m")');
+  assert.equal(app.nodes.get('question').disabled, false);
+  assert.equal(app.evaluate('currentTurns()[0].answer.text'), 'SQLite is local.');
+});
+
+test('resuming sends the original question ID and a fresh history can remove an inaccessible turn', async () => {
+  const app = await application();
+  app.install(detail(false, null, { segments: [{ id: 1, text: 'SQLite is local.', startMs: 0, endMs: 1000 }] }));
+  app.responses.set('questionHistory', { turns: [{ id: 'saved-snapshot', question: 'Unfinished question', resumable: true }] });
+  await app.evaluate('refreshQuestions("m")');
+  const resume = app.nodes.get('conversation').querySelectorAll('button')[0];
+  assert.equal(resume.textContent, 'Continue question');
+  app.evaluate('showSource({ kind: "file", id: 1, label: "Private file", quote: "Private excerpt" })');
+  app.responses.set('resumeQuestion', { id: 'saved-snapshot' });
+  app.responses.set('questionHistory', { turns: [] });
+  resume.dispatch('click');
+  await flush();
+  assert.equal(app.requests.find((request) => request.action === 'resumeQuestion').payload.questionId, 'saved-snapshot');
+  assert.equal(app.nodes.get('conversation').children.length, 0);
+  assert.equal(app.nodes.get('source-dialog').open, false);
+  assert.equal(app.nodes.get('source-quote').textContent, '');
+});
 
 for (const enabled of [false, true]) {
   test(`recording submits lowLatency=${enabled} and reflects actual capture settings`, async () => {

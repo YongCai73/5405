@@ -40,6 +40,7 @@ const state = {
   tab: "transcript",
   query: "",
   conversations: new Map(),
+  questionSubmissions: new Set(),
   highlighted: null,
   recordingId: null,
   recordingErrors: new Map(),
@@ -130,6 +131,7 @@ function applyCollection(result) {
   if (state.meeting) updateRecording(state.meeting);
   resetContent();
   render();
+  if (state.meeting) void refreshQuestions(state.meeting.id);
 }
 
 function resetContent() {
@@ -140,6 +142,7 @@ function resetContent() {
   byId("transcript-scroll").scrollTop = 0;
   byId("summary-scroll").scrollTop = 0;
   byId("question").value = "";
+  clearSourceDialog();
 }
 
 function showEmpty(node, heading, message) {
@@ -468,6 +471,15 @@ function renderConversation(scrollToEnd = false) {
     answer.append(make("p", "answer-title", "Copilot"));
     if (turn.pending) {
       answer.append(make("p", "answer-pending", "Finding meeting evidence…"));
+    } else if (turn.resumable) {
+      answer.append(make("p", "answer-error", turn.error || "This question is unfinished."));
+      const resume = make("button", "prompt", "Continue question");
+      resume.type = "button";
+      resume.disabled = state.questionSubmissions.has(state.meeting.id) || turns.some((item) => item.pending);
+      resume.addEventListener("click", () => {
+        void submitQuestion("resumeQuestion", { meetingId: state.meeting.id, questionId: turn.id });
+      });
+      answer.append(resume);
     } else if (turn.error) {
       answer.append(make("p", "answer-error", turn.error));
     } else if (turn.answer) {
@@ -507,7 +519,9 @@ function updateComposer() {
   const modeLabel = mode === "api" ? (state.meeting.providerLabel || "Configured model") + " API" : mode === "local" ? "Local excerpt answers" : "";
   byId("composer-mode-label").textContent = modeLabel;
   byId("composer-mode").hidden = !modeLabel;
-  const enabled = Boolean(state.meeting?.segments?.length) && !currentTurns().some((turn) => turn.pending);
+  const enabled = Boolean(state.meeting?.segments?.length)
+    && !state.questionSubmissions.has(state.meeting?.id)
+    && !currentTurns().some((turn) => turn.pending);
   field.disabled = !enabled;
   byId("send-question").disabled = !enabled || !field.value.trim();
   byId("prompt-list").querySelectorAll("button").forEach((button) => { button.disabled = !enabled; });
@@ -544,6 +558,13 @@ function showSource(citation) {
   byId("source-dialog").showModal();
 }
 
+function clearSourceDialog() {
+  const dialog = byId("source-dialog");
+  if (dialog.open) dialog.close();
+  byId("source-label").textContent = "";
+  byId("source-quote").textContent = "";
+}
+
 async function selectMeeting(meetingId) {
   if (state.selectedId === meetingId && !state.loading) return;
   const selection = ++state.selection;
@@ -557,6 +578,7 @@ async function selectMeeting(meetingId) {
     if (selection !== state.selection) return;
     state.meeting = detail;
     updateRecording(detail);
+    void refreshQuestions(meetingId);
   } catch (error) {
     if (selection !== state.selection) return;
     state.selectedId = null;
@@ -585,26 +607,56 @@ async function action(name, work) {
   }
 }
 
-async function ask(question, skill = "trace_decision") {
-  const meetingId = state.meeting?.id;
-  if (!question || !meetingId || !state.meeting.segments.length || currentTurns().some((turn) => turn.pending)) return;
-  const turns = currentTurns();
-  state.conversations.set(meetingId, turns);
-  const turn = { question, pending: true };
-  turns.push(turn);
-  byId("question").value = "";
-  renderConversation(true);
+const questionRefreshes = new Map();
+
+function refreshQuestions(meetingId) {
+  if (questionRefreshes.has(meetingId)) return questionRefreshes.get(meetingId);
+  const refresh = (async () => {
+    const previous = currentTurns(meetingId);
+    let turns = [];
+    try {
+      turns = (await bridge("questionHistory", { meetingId })).turns;
+    } catch {
+      // A failed authorization or backend connection cannot keep cached answers visible.
+    }
+    state.conversations.set(meetingId, turns);
+    if (state.meeting?.id === meetingId && JSON.stringify(previous) !== JSON.stringify(turns)) {
+      const visibleIds = new Set(turns.map((turn) => turn.id));
+      if (previous.some((turn) => !visibleIds.has(turn.id))) clearSourceDialog();
+      renderConversation(turns.length > previous.length || previous.some((turn) => turn.pending));
+    }
+  })().finally(() => questionRefreshes.delete(meetingId));
+  questionRefreshes.set(meetingId, refresh);
+  return refresh;
+}
+
+async function submitQuestion(action, payload) {
+  const { meetingId } = payload;
+  if (state.questionSubmissions.has(meetingId) || currentTurns(meetingId).some((turn) => turn.pending)) return;
+  state.questionSubmissions.add(meetingId);
+  renderConversation();
   try {
-    turn.answer = await bridge("ask", { meetingId, question, skill });
+    await bridge(action, payload);
+    if (action === "beginQuestion" && state.meeting?.id === meetingId) byId("question").value = "";
+    // Finish a poll started before submission, then fetch the newly created turn.
+    await questionRefreshes.get(meetingId);
+    await refreshQuestions(meetingId);
   } catch (error) {
-    turn.error = error.message;
+    await refreshQuestions(meetingId);
+    if (state.meeting?.id === meetingId) toast(error.message, true);
   } finally {
-    turn.pending = false;
+    state.questionSubmissions.delete(meetingId);
     if (state.meeting?.id === meetingId) {
       renderConversation(true);
-      byId("question").focus();
+      if (!byId("question").disabled) byId("question").focus();
     }
   }
+}
+
+async function ask(question, skill = "trace_decision") {
+  const meetingId = state.meeting?.id;
+  if (!question || !meetingId || !state.meeting.segments.length) return;
+  await submitQuestion("beginQuestion", { meetingId, question, skill });
 }
 
 async function refreshRecording() {
@@ -801,3 +853,6 @@ async function boot() {
 }
 void boot();
 window.setInterval(() => { void refreshRecording(); }, 1500);
+window.setInterval(() => {
+  if (state.meeting) void refreshQuestions(state.meeting.id);
+}, 1500);

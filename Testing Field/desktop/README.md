@@ -17,6 +17,13 @@ Pass an output directory to `build-macos.sh` to place the bundle elsewhere. Afte
 
 ## Work with local meetings
 
+Private questions run in the background, so the transcript and recording controls
+remain available while the model responds. After reopening the app, select the
+meeting to see its recent private questions. Choose **Continue question** on an
+unfinished one to reuse the evidence from when it was submitted. The app checks
+current meeting and source access before showing or continuing a saved question.
+Private questions are kept out of shared meeting notes and desktop exports.
+
 Create a meeting to import an audio file or record from a microphone. Choose your input and start recording after participants agree. macOS asks for microphone permission on first use. Transcription runs in English with the local Faster Whisper model. The first audio operation may need to download the model.
 
 ### Recording presets and input status

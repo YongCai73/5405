@@ -15,6 +15,8 @@ import tempfile
 import threading
 import uuid
 
+from meeting_copilot.desktop_questions import DesktopQuestions, QueueFull
+
 
 CONVERSATION = 'desktop-private'
 SAMPLE_ID = 'demo'
@@ -280,6 +282,7 @@ class DesktopBridge:
             reserved = db.execute('SELECT title, owner FROM meetings WHERE id=?', (SAMPLE_ID,)).fetchone()
             if reserved and (reserved['title'] != SAMPLE_SOURCE_TITLE or reserved['owner'] != self.principal):
                 self.sample_id = f'desktop-sample-{uuid.uuid5(uuid.NAMESPACE_OID, self.principal).hex}'
+        self.questions = DesktopQuestions(self.store, self.principal, CONVERSATION, self._assistant_for)
 
     def close(self):
         try:
@@ -287,8 +290,11 @@ class DesktopBridge:
             if self.capture and not self.capture.finished.is_set():
                 self.capture.stop(closing=True)
         finally:
-            self.workers.close()
-            self.store.close()
+            try:
+                self.questions.close()
+            finally:
+                self.workers.close()
+                self.store.close()
 
     def run(self, action, payload):
         handlers = {
@@ -297,6 +303,9 @@ class DesktopBridge:
             'create': self.create,
             'meeting': self.meeting,
             'ask': self.ask,
+            'beginQuestion': self.begin_question,
+            'resumeQuestion': self.resume_question,
+            'questionHistory': self.question_history,
             'summary': self.summary,
             'export': self.export,
             'importAudio': self.import_audio,
@@ -306,7 +315,10 @@ class DesktopBridge:
         }
         if not isinstance(action, str) or action not in handlers:
             raise DesktopError('Unknown desktop action.')
-        return handlers[action](payload)
+        try:
+            return handlers[action](payload)
+        except QueueFull:
+            raise DesktopError('The question queue is full. Wait for an answer before trying again.') from None
 
     def _meetings(self):
         with self.store.read() as db:
@@ -422,18 +434,52 @@ class DesktopBridge:
     def meeting(self, payload):
         return self._detail(required_text(payload, 'meetingId', 80))
 
-    def ask(self, payload):
+    def _assistant_for(self, meeting):
+        return self.local_assistant if meeting == self.sample_id else self.assistant
+
+    def _new_question(self, payload):
         meeting = required_text(payload, 'meetingId', 80)
         question = required_text(payload, 'question', 4000)
         skill = payload.get('skill', 'trace_decision')
         if not isinstance(skill, str) or skill not in SKILLS:
             raise DesktopError('Choose a supported question type.')
-        snapshot = self._scope(meeting, payload)
-        assistant = self.local_assistant if meeting == self.sample_id else self.assistant
+        with self.store.tx():
+            snapshot = self._scope(meeting, payload)
+            self.questions.remember(snapshot, question, skill)
+        return meeting, snapshot, question, skill
+
+    def begin_question(self, payload):
+        self.questions.ensure_capacity()
+        meeting, snapshot, _, _ = self._new_question(payload)
+        self.questions.start(meeting, snapshot)
+        return {'id': snapshot}
+
+    def resume_question(self, payload):
+        meeting = required_text(payload, 'meetingId', 80)
+        snapshot = required_text(payload, 'questionId', 80)
+        self.questions.start(meeting, snapshot)
+        return {'id': snapshot}
+
+    def question_history(self, payload):
+        meeting = required_text(payload, 'meetingId', 80)
+        turns = self.questions.history(meeting)
+        for turn in turns:
+            if 'answer' in turn:
+                turn['answer'] = self._desktop_answer(meeting, turn['answer'])
+            failure = turn.pop('failure', None)
+            if failure:
+                turn['error'] = PROVIDER_MESSAGES.get(failure, 'The question could not finish. You can try to continue it.')
+        return {'turns': turns}
+
+    def ask(self, payload):
+        meeting, snapshot, question, skill = self._new_question(payload)
+        assistant = self._assistant_for(meeting)
         answer = asyncio.run(assistant.ask(snapshot, question, conversation=CONVERSATION, skill=skill))
-        quotes = {claim['source_id']: claim['quote'] for claim in answer['claims']}
+        return self._desktop_answer(meeting, answer)
+
+    def _desktop_answer(self, meeting, answer):
         citations = []
-        for source in answer['citations']:
+        for source, claim in zip(answer['citations'], answer['claims']):
             source_id = source['source_id']
             if source['kind'] == 'file':
                 label = f"{source['path']} · line {source['line_start']}"
@@ -441,7 +487,7 @@ class DesktopBridge:
                 label = timestamp(source.get('start_ms'))
             citations.append({
                 'id': source_id, 'kind': source['kind'], 'label': label,
-                'quote': quotes[source_id], 'meetingId': source['meeting'],
+                'quote': claim['quote'], 'meetingId': source['meeting'],
             })
         return {'text': answer['text'], 'citations': citations, 'mode': answer['mode'], **self._answer_mode(meeting)}
 
