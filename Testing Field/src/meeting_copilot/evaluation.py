@@ -9,13 +9,15 @@ import tracemalloc
 import uuid
 from dataclasses import replace
 from pathlib import Path
+from collections import Counter
 from .assistant import Assistant
 from .config import Config
 from .provider import Provider
 from .replay import events,fixture
 from .service import EvidenceService
 from .store import Store,Denied
-from .trace import Trace
+from .trace import Trace, evaluation_trace_context
+from .diagnostics import diagnose_case
 
 def percentile(values,p):return sorted(values)[max(0,math.ceil(len(values)*p)-1)] if values else None
 
@@ -97,18 +99,63 @@ def evaluate(output,work,stress=False,config=None):
                         old=store._snapshot(user,sid);new=uuid.uuid4().hex
                         refs=[i for i in json.loads(old['refs']) if store.raw(user,sid,i)['kind']!='file']
                         db.execute('INSERT INTO snapshots VALUES(?,?,?,?,?,?,?,?)',(new,user,meeting,old['watermark'],old['meetings'],'[]',json.dumps(refs),time.time()));sid=new
-                skill='direct' if variant=='direct' else q['skill'];start=time.perf_counter()
-                runner=direct if variant=='direct' else assistant
-                result=asyncio.run(runner.ask(sid,q['question'],'evaluation-'+variant,skill))
-                total_graph_latency=(time.perf_counter()-start)*1000
-                if variant=='skills':same_evidence[sid]=asyncio.run(assistant.retrieve({'snapshot':sid,'question':q['question'],'skill':skill}))['evidence']
+                skill = 'direct' if variant == 'direct' else q['skill']
+                runner = direct if variant == 'direct' else assistant
+
+                start = time.perf_counter()
+
+                with evaluation_trace_context(
+                        run_id=work.name,
+                        case_id=q['id'],
+                        variant=variant,
+                ):
+                    result = asyncio.run(
+                        runner.ask(
+                            sid,
+                            q['question'],
+                            'evaluation-' + variant,
+                            skill,
+                        )
+                    )
+
+                    total_graph_latency = (
+                                                  time.perf_counter() - start
+                                          ) * 1000
+
+                    if variant == 'skills':
+                        same_evidence[sid] = asyncio.run(
+                            assistant.retrieve({
+                                'snapshot': sid,
+                                'question': q['question'],
+                                'skill': skill,
+                            })
+                        )['evidence']
                 latency=result['latency_ms']
                 correct=result['abstained']==q.get('abstain',False) and all(term.lower() in result['text'].lower() for term in q['expected'])
                 supported=all(c['quote'] in store.raw(user,sid,c['source_id'])['text'] for c in result['claims'])
                 leakage=any(store.raw(user,sid,c['source_id'])['id']>watermarks[q['id']] for c in result['claims'])
                 cases.append({'id':q['id'],'at_event':q['at'],'asked_at_ms':question_times[q['id']],'total_graph_latency_ms':round(total_graph_latency,3),'correct':correct,'citation_supported':supported,'abstained':result['abstained'],'future_evidence_leakage':leakage,'latency_ms':round(latency,3),'source_ids':[c['source_id'] for c in result['claims']],'usage':result['usage']})
+                cases[-1]['diagnosis'] = diagnose_case(
+                    q,
+                    result,
+                    citation_supported=supported,
+                    future_evidence_leakage=leakage,
+                )
             lat=[c['latency_ms'] for c in cases]
             runs[variant]={'total':len(cases),'correct':sum(c['correct'] for c in cases),'supported_answer_cases':sum(c['citation_supported'] for c in cases),'future_leakage_cases':sum(c['future_evidence_leakage'] for c in cases),'p50_ms':round(statistics.median(lat),3),'p95_ms':round(percentile(lat,.95),3),'cases':cases,'same_retrieval_context_as_skills':variant in ('skills','direct'),'latency_definition':'p50/p95 are answer-node generation/validation only; total_graph_latency_ms includes retrieval/persistence (direct reuses frozen retrieval)'}
+            failure_counts = Counter(
+                code
+                for case in cases
+                for code in case['diagnosis']['failure_codes']
+            )
+
+            runs[variant]['diagnosis_summary'] = {
+                'cases_with_failures': sum(
+                    not case['diagnosis']['passed']
+                    for case in cases
+                ),
+                'failure_counts': dict(sorted(failure_counts.items())),
+            }
         # Executed ablation on the same isolated synthetic store, never a production option.
         store.create('synthetic-other-user','private-fixture','Synthetic private meeting')
         secret_event={'event_id':'secret','seq':1,'segment_id':'secret','revision':1,'start_ms':0,'end_ms':1,'text':'The secret codename is SYNTHETIC-PRIVATE-CANARY.'}
@@ -151,6 +198,7 @@ def evaluate(output,work,stress=False,config=None):
         usages=[case['usage'] for variant in ('skills','direct','no_snapshots','no_folder') for case in runs[variant]['cases']]
         totals={key:sum(u[key] for u in usages) if all(u[key] is not None for u in usages) else None for key in ('input_tokens','output_tokens','estimated_cost_usd')}
         report={'created_at_utc':time.strftime('%Y-%m-%dT%H:%M:%SZ',time.gmtime()),'mode':('API evaluation / synthetic transcript fixtures; expected-term and exact-quote checks are not semantic quality assessment' if api else 'SIMULATED deterministic extractive; no paid API or ASR quality measurement'),'provider':selected_config.provider,'model':selected_config.model,'tool_rounds':0,'fixture_sha256':__import__('hashlib').sha256(__import__('importlib').resources.files('meeting_copilot').joinpath('fixtures.json').read_bytes()).hexdigest(),'qa_questions':len(questions),'configurations':runs,'security':security,'native_meet2notes_baseline':{'status':'not measured','reason':'run native-baseline separately with the same provider/model; fake HTTP harness tests are not live native quality measurement'},'api_usage':totals,'stress':stress_capture() if stress else {'status':'not requested'},'scoring_limits':'Correct means expected substring checks plus abstention match. citation_supported means exact quotation membership only. Neither establishes semantic entailment of model inferences. All ablations use isolated synthetic data; unsafe policy ablation always uses demo generation.'}
+        report['run_id'] = work.name
     finally:store.close()
     output=Path(output);output.parent.mkdir(parents=True,exist_ok=True);output.write_text(json.dumps(report,indent=2),encoding='utf-8')
     return {'report':str(output),'qa_questions':report['qa_questions'],'skills_correct':runs['skills']['correct'],'future_leakage':runs['skills']['future_leakage_cases'],'security_passed':security['passed'],'security_total':security['total'],'mode':report['mode']}
