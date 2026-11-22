@@ -1,16 +1,16 @@
-# Crash recovery for private Q&A — interface agreement (v0.2, agreed 2026-11-20)
+# Crash recovery for private Q&A — contract and integration status (v0.2)
 
 Owners: Zimo Li (orchestration, `assistant.py`, CLI) · Xiaolong Lin (memory, `store.py`)
 Decision (meeting 2026-11-20): **Option B**. Extend the existing `checkpoints` table and `checkpoint_put` / `checkpoint_get`, which already enforce snapshot scope. LangGraph's built-in checkpointer is not used.
-Timeline: interface agreed **11/24**, done and tested **12/1**.
+Integration status (2026-11-21): the replay-safe storage and orchestration path are merged into `experiment/eval-integration`. The deterministic evaluator executes C0–C4 through the real `Assistant` and `Store` state machine; see [EVALUATION_STATUS.md](EVALUATION_STATUS.md). A real process kill and a paid-provider retry remain separate target-environment validation work.
 
-## Problem today
+## Failure modes and current behavior
 
-`Assistant.ask()` runs `retrieve → answer`, then calls `checkpoint_put` and `private_put` once at the end.
+Without the checkpoint sequence below, `Assistant.ask()` would run `retrieve → answer` and save only at the end. The integrated path writes `retrieved`, `answered`, then `saved` checkpoints around the same guarded storage operations. Its boundaries are:
 
-1. A crash during `retrieve` or the provider call loses all progress; the paid model call is wasted.
-2. `private_put` always inserts a new row in `conversation_turns`. A retry after a crash between `checkpoint_put` and `private_put`, or a double submit, creates a **duplicate turn** that later appears in conversation history.
-3. The snapshot id is printed only in the final result. After a crash the user does not know which snapshot to resume.
+1. A crash during `retrieve` **before** the `retrieved` checkpoint (C0) has no durable progress and starts retrieval again. After that checkpoint, a provider failure (C2) resumes with the same validated evidence, though a provider invocation may still need to be repeated.
+2. `private_put` is idempotent for `(snapshot, user, conversation, question)`, so C3 and a duplicate submission cannot add a second conversation turn. This does not guarantee exactly one external provider charge before the answer reaches durable storage.
+3. The CLI writes the pinned snapshot ID before running `ask`, so a caller can reuse it for the same conversation after a failure.
 
 ## Crash points covered
 
@@ -75,7 +75,15 @@ On `ask(snapshot, question, conversation, skill)`:
 2. `checkpoint_put`: accept the fields above and validate `step` ∈ {retrieved, answered, saved}. Keep the existing scope check.
 3. Optional: reject a `step` that goes backwards for the same question.
 
-## Tests (each side writes its own; one shared end-to-end test)
+## Tests and current evidence
+
+The integration evaluator deterministically injects the five boundaries below
+through the real `Assistant` and `Store`, and requires exactly one final turn for
+each case. The fresh current report records C0–C4 as 5/5 passing. It is not a
+process-kill or paid-provider test.
+
+The following original ownership checklist remains useful for target-platform
+validation:
 
 - Zimo: inject an exception during `retrieve` (C0), after the `retrieved` checkpoint (C1), inside the provider (C2) and between answer and save (C3), then re-run `ask` and assert:
   - the provider call count is as expected

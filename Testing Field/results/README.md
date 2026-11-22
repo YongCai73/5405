@@ -1,9 +1,10 @@
 # Evidence index and time boundaries
 
-Current handoff: [../handoff.md](../handoff.md). Current feature status: [requirements-current.json](requirements-current.json). Portable server audit/repair summary: [server-delivery.json](server-delivery.json). These survive collection without depending on build-root files.
+Current handoff: [../handoff.md](../handoff.md). Current feature status: [requirements-current.json](requirements-current.json). Current integration/evaluation status: [../docs/EVALUATION_STATUS.md](../docs/EVALUATION_STATUS.md). Portable server audit/repair summary: [server-delivery.json](server-delivery.json). These survive collection without depending on build-root files.
 
 | Record | Scope |
 |---|---|
+| [integration-evaluation-2026-11-21.json](integration-evaluation-2026-11-21.json) | Current `experiment/eval-integration` deterministic release gate: 22/22 fixture cases, zero guarded future leakage, 10/10 security and 5/5 recovery. Synthetic/local only; not a live ASR or model-quality result. |
 | [windows-validation.json](windows-validation.json), [full JUnit](tests-windows.xml), [stdout](tests-windows.stdout.log) | Actual Windows repair3 c763c14: 85 cases, 84 passed, one symlink-permission skip, no failures/errors. Pytest stdout 411.50s; JUnit 411.535s; launcher 434.89s. |
 | [concurrency JUnit](tests-windows-concurrency.xml), [stdout](tests-windows-concurrency.stdout.log) | Separate actual Windows concurrency rerun: one passed. Pytest stdout 72.25s, JUnit 71.993s. |
 | [windows-prepared.json](windows-prepared.json), [environment](windows-environment.txt), [source manifest](windows-source-manifest.json), [junction](windows-junction.json) | Actual Windows CLI, three enumerated sources, tiny.en public-recording ASR (two segments), 54 runtime + ten test hashes, native junction checks. No mic recording or paid endpoint. Environment is an observation, not a dependency constraint. |

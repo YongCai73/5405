@@ -1,10 +1,12 @@
 # Private Q&A recovery: storage interface
 
-This implements Xiaolong's storage portion of option B, following
-[Zimo's draft agreement](https://github.com/YongCai73/5405/blob/zimo/crash-recovery/Testing%20Field/docs/CRASH_RECOVERY.md).
-Zimo owns the intermediate save points, resume routing, early snapshot ID output,
-and C1–C4 orchestration tests in `assistant.py` and the CLI. Those changes are not
-part of this storage branch.
+This records Xiaolong's storage portion of option B, following
+[Zimo's draft agreement](CRASH_RECOVERY.md). The intermediate save points, resume
+routing and early snapshot ID output are now integrated with the storage contract
+on `experiment/eval-integration`. Deterministic C0–C4 fault injection runs
+through the real `Assistant` and `Store`; see [EVALUATION_STATUS.md](EVALUATION_STATUS.md).
+The original ownership split remains useful context, but the statement that
+orchestration is outside this branch is historical.
 
 ## Identity and idempotency
 

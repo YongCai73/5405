@@ -213,7 +213,7 @@ $liveAnswer.text
 <summary>可选：运行无付费 API 的评测和完整测试</summary>
 
 ```powershell
-& $py -m meeting_copilot evaluate --output results/local-report.json --stress
+& $py -m meeting_copilot evaluate --output results/local-report.json --stress --strict
 & $py -m pytest --basetemp data/test-temp -q
 ```
 
@@ -421,7 +421,7 @@ printf '%s' "$live_answer" | "$py" -c 'import json,sys; print(json.load(sys.stdi
 <summary>可选：运行无付费 API 的评测和完整测试</summary>
 
 ```bash
-"$py" -m meeting_copilot evaluate --output results/local-report.json --stress
+"$py" -m meeting_copilot evaluate --output results/local-report.json --stress --strict
 "$py" -m pytest --basetemp data/test-temp -q
 ```
 
