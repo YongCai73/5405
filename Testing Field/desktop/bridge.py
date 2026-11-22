@@ -33,6 +33,17 @@ MINUTES_SECTIONS = {
     'overview': 'Overview', 'topics': 'Discussion topics', 'decisions': 'Decisions',
     'actionItems': 'Action items', 'openQuestions': 'Open questions',
 }
+SESSION_HEALTH_COUNTS = {
+    'processed', 'dropped_segments', 'errors', 'speech_to_ready_count', 'capture_stalls',
+    'input_overflows', 'junk_segments_dropped', 'silent_chunks_skipped', 'quiet_chunks_sent',
+}
+SESSION_HEALTH_SECONDS = {
+    'speech_to_ready_mean_s', 'speech_to_ready_p50_s', 'speech_to_ready_p95_s', 'speech_to_ready_max_s',
+    'ingestion_lag_p95_seconds', 'ingestion_lag_max_seconds', 'wall_seconds', 'captured_audio_seconds',
+    'capture_wall_seconds', 'capture_missing_seconds', 'longest_stall_seconds', 'chunk_seconds',
+}
+MAX_SESSION_HEALTH_COUNT = 10_000_000
+MAX_SESSION_HEALTH_SECONDS = 31 * 24 * 60 * 60
 
 
 class DesktopError(Exception):
@@ -74,6 +85,23 @@ def write_json(stream, value):
     print(json.dumps(value, ensure_ascii=True, separators=(',', ':')), file=stream, flush=True)
 
 
+def session_health(payload):
+    """Return the non-content, bounded metrics that may leave a capture process."""
+    if not isinstance(payload, dict):
+        return {}
+    health = {}
+    for key in SESSION_HEALTH_COUNTS:
+        value = payload.get(key)
+        if type(value) is int and 0 <= value <= MAX_SESSION_HEALTH_COUNT:
+            health[key] = value
+    for key in SESSION_HEALTH_SECONDS:
+        value = payload.get(key)
+        if (type(value) in (int, float) and math.isfinite(value)
+                and 0 <= value <= MAX_SESSION_HEALTH_SECONDS):
+            health[key] = round(value, 3)
+    return health
+
+
 def minutes_text(minutes):
     sections = []
     for key, heading in MINUTES_SECTIONS.items():
@@ -96,6 +124,7 @@ class Capture:
         self.finished = threading.Event()
         self.started = False
         self.error = None
+        self.health = None
         self.stop_requested = False
         self._status_lock = threading.Lock()
         self._recording_status = {
@@ -149,6 +178,8 @@ class Capture:
                     warning[:1000] if isinstance(warning, str) and warning
                     else 'No microphone audio is arriving. Check the connection; recording will resume when audio returns.'
                 ) if current['stalled'] else ''
+            elif event == 'recording_finished':
+                self.health = session_health(status.get('health'))
             self._recording_status = current
 
     def read_status(self):
@@ -236,6 +267,7 @@ def capture_audio(root, stream, meeting, device, offset, parent_pid, principal, 
         result = listen(OffsetStore(store, offset), principal, meeting, root, device, 28800, True,
                         model=model, download=True, trace=Trace(root / 'traces.jsonl'), on_status=on_status,
                         low_latency=low_latency)
+        write_json(stream, {'event': 'recording_finished', 'health': session_health(result)})
         if result['errors'] or result['dropped_segments']:
             write_json(stream, {'error': 'Some audio could not be transcribed. Review the transcript for gaps.'})
         return 0
@@ -264,6 +296,10 @@ class DesktopBridge:
             db.execute('''CREATE TABLE IF NOT EXISTS desktop_minutes (
                 snapshot TEXT PRIMARY KEY REFERENCES snapshots(id) ON DELETE CASCADE,
                 transcript_refs TEXT NOT NULL,
+                content TEXT NOT NULL
+            )''')
+            db.execute('''CREATE TABLE IF NOT EXISTS desktop_session_health (
+                meeting TEXT PRIMARY KEY REFERENCES meetings(id) ON DELETE CASCADE,
                 content TEXT NOT NULL
             )''')
         self.trace = Trace(self.root / 'traces.jsonl')
@@ -367,6 +403,15 @@ class DesktopBridge:
             self._stop_live_summaries()
             if capture.error:
                 self.recording_errors[capture.meeting] = capture.error
+            if getattr(capture, 'health', None) is not None:
+                status = capture.recording_status
+                health = {
+                    **capture.health,
+                    'preset': status['preset'],
+                    'asrThreads': status['asrThreads'],
+                    'pauseMs': status['pauseMs'],
+                }
+                self._save_session_health(capture.meeting, health)
             self.capture = None
         return self.capture
 
@@ -374,6 +419,33 @@ class DesktopBridge:
         if self.live_summaries:
             self.live_summaries.close()
             self.live_summaries = None
+
+    def _save_session_health(self, meeting, health):
+        with self.store.tx() as db:
+            self.store.metadata(self.principal, meeting)
+            db.execute('''INSERT INTO desktop_session_health(meeting, content) VALUES (?, ?)
+                          ON CONFLICT(meeting) DO UPDATE SET content=excluded.content''',
+                       (meeting, json.dumps(health, ensure_ascii=False, allow_nan=False)))
+
+    def _saved_session_health(self, meeting):
+        with self.store.read() as db:
+            self.store.metadata(self.principal, meeting)
+            row = db.execute('SELECT content FROM desktop_session_health WHERE meeting=?', (meeting,)).fetchone()
+        if row is None:
+            return None
+        try:
+            stored = json.loads(row['content'])
+        except (TypeError, json.JSONDecodeError):
+            return None
+        health = session_health(stored)
+        if isinstance(stored, dict) and stored.get('preset') in ('default', 'low-latency'):
+            health['preset'] = stored['preset']
+        if isinstance(stored, dict) and type(stored.get('asrThreads')) is int and 1 <= stored['asrThreads'] <= 16:
+            health['asrThreads'] = stored['asrThreads']
+        if (isinstance(stored, dict) and type(stored.get('pauseMs')) in (int, float)
+                and math.isfinite(stored['pauseMs']) and 100 <= stored['pauseMs'] <= 3000):
+            health['pauseMs'] = stored['pauseMs']
+        return health or None
 
     def _detail(self, meeting):
         capture = self._current_capture()
@@ -394,6 +466,9 @@ class DesktopBridge:
             detail['recordingStatus'] = capture.recording_status
         if meeting in self.recording_errors:
             detail['recordingError'] = self.recording_errors[meeting]
+        health = None if recording else self._saved_session_health(meeting)
+        if health:
+            detail['sessionHealth'] = health
         return detail
 
     def _selection(self, meeting):
@@ -543,6 +618,9 @@ class DesktopBridge:
         result = self.store.export(self.principal, snapshot, 'desktop-export')
         if minutes:
             result['minutes'] = minutes['minutes']
+        health = self._saved_session_health(meeting)
+        if health:
+            result['sessionHealth'] = health
         temporary = None
         try:
             with tempfile.NamedTemporaryFile(mode='w', encoding='utf-8', dir=destination.parent, delete=False) as file:

@@ -56,6 +56,7 @@ class FakeCapture:
         self.finished = threading.Event()
         self.ready = ReadyAfterWarmup(self)
         self.error = None
+        self.health = None
         self.recording_status = {
             'preset': 'low-latency' if low_latency else 'default',
             'asrThreads': 4 if low_latency else 2,
@@ -194,7 +195,11 @@ def test_capture_child_passes_preset_to_listen_and_forwards_audio_status(tmp_pat
         notify({'event': 'capture_stalled', 'seconds_without_audio': 3.5, 'warning': 'No audio received.'})
         notify({'event': 'capture_resumed', 'seconds_without_audio': 4.5})
         notify({'event': 'recording_status', 'audio_seconds': 10})
-        return {'errors': 0, 'dropped_segments': 0}
+        return {
+            'errors': 0, 'dropped_segments': 0, 'processed': 3,
+            'speech_to_ready_p95_s': 1.23456, 'capture_missing_seconds': 2.5,
+            'ignored': 'transcript content must not leave the capture process',
+        }
 
     monkeypatch.setattr(audio, 'listen', listen)
     monkeypatch.setattr(BRIDGE.os, 'getppid', lambda: 123)
@@ -203,10 +208,14 @@ def test_capture_child_passes_preset_to_listen_and_forwards_audio_status(tmp_pat
                                 low_latency=low_latency) == 0
     assert received == [low_latency]
     statuses = [json.loads(line) for line in output.getvalue().splitlines()]
-    assert [status['event'] for status in statuses] == ['started', 'capture_stalled', 'capture_resumed']
+    assert [status['event'] for status in statuses] == ['started', 'capture_stalled', 'capture_resumed', 'recording_finished']
     assert statuses[0]['preset'] == ('low-latency' if low_latency else 'default')
     assert statuses[0]['asr_threads'] == 5 and statuses[0]['pause_ms'] == 350
     assert statuses[1]['seconds_without_audio'] == 3.5 and statuses[2]['seconds_without_audio'] == 4.5
+    assert statuses[3]['health'] == {
+        'errors': 0, 'dropped_segments': 0, 'processed': 3,
+        'speech_to_ready_p95_s': 1.235, 'capture_missing_seconds': 2.5,
+    }
 
 
 def test_capture_child_default_keeps_standard_preset(tmp_path, monkeypatch):
@@ -233,6 +242,25 @@ def test_finished_stalled_capture_clears_status_but_retains_fatal_error(desktop,
     detail = desktop._detail('m')
     assert not detail['recording'] and 'recordingStatus' not in detail
     assert detail['recordingError'] == 'Recording stopped unexpectedly.'
+
+
+def test_finished_capture_persists_allowlisted_session_health(desktop):
+    capture = FakeCapture(desktop.root, 'm', 'mic', 0, 'alice', 'base.en', low_latency=True)
+    capture.health = {
+        'processed': 8, 'dropped_segments': 1, 'capture_stalls': 2,
+        'speech_to_ready_p95_s': 1.357, 'unexpected': 'never persist transcript-like fields',
+    }
+    capture.finished.set()
+    desktop.capture = capture
+
+    detail = desktop._detail('m')
+
+    assert not detail['recording']
+    assert detail['sessionHealth'] == {
+        'processed': 8, 'dropped_segments': 1, 'capture_stalls': 2,
+        'speech_to_ready_p95_s': 1.357,
+        'preset': 'low-latency', 'asrThreads': 4, 'pauseMs': 300,
+    }
 
 
 def test_recording_status_is_only_visible_for_the_active_meeting(desktop):

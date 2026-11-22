@@ -96,6 +96,30 @@ def test_trusted_config_and_local_sample_export(tmp_path, monkeypatch):
     assert 'TEST_DESKTOP_MISSING_KEY' not in reply['error']
 
 
+def test_export_includes_allowlisted_session_health_without_content(tmp_path):
+    workspace = tmp_path / 'Meeting Copilot'
+    data = workspace / 'data'
+    export = tmp_path / 'health.json'
+    store = Store(data / 'evidence.db')
+    store.create('local-host', 'team', 'Team meeting')
+    with store.tx() as db:
+        db.execute('CREATE TABLE desktop_session_health (meeting TEXT PRIMARY KEY, content TEXT NOT NULL)')
+        db.execute('INSERT INTO desktop_session_health VALUES (?, ?)', ('team', json.dumps({
+            'processed': 5, 'errors': 0, 'capture_missing_seconds': 1.25,
+            'preset': 'default', 'asrThreads': 2, 'pauseMs': 500,
+            'rawTranscript': 'must not be exported',
+        })))
+    store.close()
+
+    reply, = run_bridge(workspace, [('export', {'meetingId': 'team', 'path': str(export)})])
+
+    assert reply['ok']
+    assert json.loads(export.read_text(encoding='utf-8'))['sessionHealth'] == {
+        'processed': 5, 'errors': 0, 'capture_missing_seconds': 1.25,
+        'preset': 'default', 'asrThreads': 2, 'pauseMs': 500,
+    }
+
+
 def test_real_meeting_scope_is_explicit_and_sample_id_collision_is_safe(tmp_path):
     workspace = tmp_path / 'workspace'
     store = Store(workspace / 'data' / 'evidence.db')
