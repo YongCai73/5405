@@ -58,6 +58,23 @@ class Store:
                     AND t.user=p.user AND t.conversation=p.conversation AND t.question=p.question)
                     ORDER BY s.created,p.rowid''')
                 db.execute("INSERT INTO app_meta VALUES('private_turn_backfill','1')")
+            if not db.execute("SELECT 1 FROM app_meta WHERE key='private_turn_dedupe_v1'").fetchone():
+                # Keep IDs and creation times: existing snapshots pin a turn watermark.
+                db.execute('''DELETE FROM conversation_turns WHERE id NOT IN (
+                    SELECT MIN(id) FROM conversation_turns
+                    GROUP BY snapshot,user,conversation,question)''')
+                db.execute('''UPDATE private SET answer=(
+                    SELECT t.answer FROM conversation_turns t
+                    WHERE t.snapshot=private.snapshot AND t.user=private.user
+                    AND t.conversation=private.conversation AND t.question=private.question)
+                    WHERE EXISTS(SELECT 1 FROM conversation_turns t
+                    WHERE t.snapshot=private.snapshot AND t.user=private.user
+                    AND t.conversation=private.conversation AND t.question=private.question)''')
+                db.execute('''INSERT OR IGNORE INTO private(snapshot,user,conversation,question,answer)
+                    SELECT snapshot,user,conversation,question,answer FROM conversation_turns''')
+                db.execute("INSERT INTO app_meta VALUES('private_turn_dedupe_v1','1')")
+            db.execute('''CREATE UNIQUE INDEX IF NOT EXISTS conversation_turn_identity
+                ON conversation_turns(snapshot,user,conversation,question)''')
 
     @contextmanager
     def tx(self):
@@ -252,10 +269,28 @@ class Store:
             return dict(r)
 
     def private_put(self,user,sid,conversation,question,answer):
+        """Save a question once within its pinned scope, returning its stable turn ID.
+
+        A retry keeps the first committed answer, even if a later model response
+        differs. A new snapshot or conversation permits a new answer.
+        """
         with self.tx() as db:
             self._snapshot(user,sid)
-            db.execute('INSERT OR REPLACE INTO private VALUES(?,?,?,?,?)',(sid,user,conversation,question,json.dumps(answer)))
-            db.execute('INSERT INTO conversation_turns(snapshot,user,conversation,question,answer,created) VALUES(?,?,?,?,?,?)',(sid,user,conversation,question,json.dumps(answer),time.time()))
+            self._question_identity(conversation,question)
+            if not isinstance(answer,dict): raise ValueError('answer must be an object')
+            if answer.get('snapshot_id',sid)!=sid: raise Denied('answer snapshot mismatch')
+            encoded=json.dumps(answer,allow_nan=False)
+            db.execute('''INSERT OR IGNORE INTO conversation_turns
+                (snapshot,user,conversation,question,answer,created) VALUES(?,?,?,?,?,?)''',
+                (sid,user,conversation,question,encoded,time.time()))
+            turn=db.execute('''SELECT id,answer FROM conversation_turns
+                WHERE snapshot=? AND user=? AND conversation=? AND question=?''',
+                (sid,user,conversation,question)).fetchone()
+            db.execute('''INSERT INTO private(snapshot,user,conversation,question,answer)
+                VALUES(?,?,?,?,?) ON CONFLICT(snapshot,user,conversation,question)
+                DO UPDATE SET answer=excluded.answer''',
+                (sid,user,conversation,question,turn['answer']))
+            return turn['id']
 
     def conversation_history(self,user,sid,conversation,limit=8):
         """Prior private turns within this meeting and currently opted-in scope.
@@ -287,17 +322,109 @@ class Store:
             if question is not None:sql+=' AND question=?';args.append(question)
             return [{'question':r[0],'answer':json.loads(r[1])} for r in self.db.execute(sql,args)]
 
+    @staticmethod
+    def _question_identity(conversation,question):
+        if not isinstance(conversation,str) or not 1<=len(conversation)<=100:
+            raise ValueError('conversation limit')
+        if not isinstance(question,str) or not 1<=len(question)<=4000:
+            raise ValueError('question limit')
+
+    def _checkpoint_state(self,user,sid,conversation,state):
+        snapshot=self._snapshot(user,sid)
+        if not isinstance(state,dict): raise ValueError('checkpoint must be an object')
+        if state.get('snapshot')!=sid: raise Denied('checkpoint scope mismatch')
+        self._question_identity(conversation,state.get('question'))
+        version=state.get('version',1)
+        if type(version) is not int or version!=1: raise ValueError('unsupported checkpoint version')
+        # The original caller saved a result without a step; it has not yet
+        # committed the private turn, so it is only an answered checkpoint.
+        step=state.get('step','answered' if isinstance(state.get('result'),dict) else None)
+        if step not in ('retrieved','answered','saved'): raise ValueError('invalid checkpoint step')
+        if not isinstance(state.get('skill'),str) or not state['skill']:
+            raise ValueError('checkpoint skill required')
+        evidence=state.get('evidence')
+        if step=='retrieved' and not isinstance(evidence,list):
+            raise ValueError('retrieved checkpoint requires evidence')
+        if evidence is not None and not isinstance(evidence,list):
+            raise ValueError('checkpoint evidence must be a list')
+        source_ids=state.get('source_ids',[])
+        if not isinstance(source_ids,list) or any(type(rid) is not int for rid in source_ids):
+            raise ValueError('invalid checkpoint source IDs')
+        refs=set(json.loads(snapshot['refs']))
+        if not set(source_ids).issubset(refs): raise Denied('checkpoint scope mismatch')
+        retained={rid:self.raw(user,sid,rid) for rid in source_ids}
+        if evidence is not None:
+            if any(not isinstance(row,dict) or type(row.get('id')) is not int for row in evidence):
+                raise ValueError('invalid checkpoint evidence row')
+            if {row['id'] for row in evidence}!=set(source_ids):
+                raise Denied('checkpoint evidence/source mismatch')
+            metadata=('hash','kind','meeting','logical','revision','folder','path','start_ms','end_ms')
+            for row in evidence:
+                original=retained[row['id']]
+                text=row.get('text');offset=row.get('text_offset',0);line=row.get('line_offset',0)
+                if (not isinstance(text,str) or type(offset) is not int or offset<0
+                    or type(line) is not int or line<0
+                    or any(original[key]!=row.get(key) for key in metadata)
+                    or original['text'][offset:offset+len(text)]!=text
+                    or original['text'][:offset].count('\n')!=line):
+                    raise Denied('checkpoint evidence provenance mismatch')
+        if 'history' in state:
+            history=state['history']
+            if not isinstance(history,list): raise ValueError('invalid checkpoint history')
+            allowed={turn['turn_id']:turn for turn in self.conversation_history(user,sid,conversation)}
+            if any(not isinstance(turn,dict) or turn.get('turn_id') not in allowed
+                   or turn!=allowed[turn['turn_id']] for turn in history):
+                raise Denied('checkpoint history scope mismatch')
+        result=state.get('result')
+        if step in ('answered','saved'):
+            if not isinstance(result,dict): raise ValueError('answered checkpoint requires result')
+            if result.get('snapshot_id',sid)!=sid: raise Denied('checkpoint result snapshot mismatch')
+            for key in ('claims','citations','inferences'):
+                rows=result.get(key,[])
+                if not isinstance(rows,list): raise ValueError('invalid checkpoint result references')
+                for row in rows:
+                    if not isinstance(row,dict): raise ValueError('invalid checkpoint result reference')
+                    ids=row.get('source_ids',[]) if key=='inferences' else [row.get('source_id')]
+                    if (not isinstance(ids,list) or any(type(rid) is not int for rid in ids)
+                        or not set(ids).issubset(retained)):
+                        raise Denied('checkpoint result source mismatch')
+                    if key=='claims':
+                        quote=row.get('quote')
+                        if not isinstance(quote,str) or not quote or quote not in retained[ids[0]]['text']:
+                            raise Denied('checkpoint quotation mismatch')
+        if step=='saved':
+            turn_id=state.get('turn_id')
+            if type(turn_id) is not int or turn_id<1: raise ValueError('saved checkpoint requires turn_id')
+            turn=self.db.execute('''SELECT t.answer,p.answer AS private_answer FROM conversation_turns t
+                JOIN private p ON p.snapshot=t.snapshot AND p.user=t.user
+                AND p.conversation=t.conversation AND p.question=t.question
+                WHERE t.id=? AND t.snapshot=? AND t.user=? AND t.conversation=? AND t.question=?''',
+                (turn_id,sid,user,conversation,state['question'])).fetchone()
+            if not turn or json.loads(turn['answer'])!=result or json.loads(turn['private_answer'])!=result:
+                raise ValueError('saved checkpoint must match the committed answer and turn')
+        return {**state,'version':version,'step':step,'source_ids':source_ids}
+
     def checkpoint_put(self,user,sid,conversation,state):
         with self.tx() as db:
-            s=self._snapshot(user,sid)
-            if state.get('snapshot')!=sid or not set(state.get('source_ids',[])).issubset(set(json.loads(s['refs']))):raise Denied('checkpoint scope mismatch')
-            db.execute('INSERT OR REPLACE INTO checkpoints VALUES(?,?,?,?)',(sid,user,conversation,json.dumps(state)))
+            checked=self._checkpoint_state(user,sid,conversation,state)
+            previous=db.execute('SELECT state FROM checkpoints WHERE snapshot=? AND user=? AND conversation=?',
+                (sid,user,conversation)).fetchone()
+            # Preserve the original no-step API while Zimo integrates step writes.
+            if previous and 'step' in state:
+                old=json.loads(previous[0]);steps=('retrieved','answered','saved')
+                if (old.get('question')==checked['question'] and old.get('skill')==checked['skill']
+                    and old.get('step') in steps and steps.index(checked['step'])<steps.index(old['step'])):
+                    raise ValueError('checkpoint step cannot go backwards')
+            checked['updated']=time.time()
+            db.execute('INSERT OR REPLACE INTO checkpoints VALUES(?,?,?,?)',
+                (sid,user,conversation,json.dumps(checked,allow_nan=False)))
+            return checked
 
     def checkpoint_get(self,user,sid,conversation):
         with self.read():
             self._snapshot(user,sid)
             row=self.db.execute('SELECT state FROM checkpoints WHERE snapshot=? AND user=? AND conversation=?',(sid,user,conversation)).fetchone()
-            return json.loads(row[0]) if row else None
+            return self._checkpoint_state(user,sid,conversation,json.loads(row[0])) if row else None
 
     def promote(self,user,sid,conversation,question,meeting):
         with self.lock:
