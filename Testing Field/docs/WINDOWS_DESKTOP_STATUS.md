@@ -11,6 +11,8 @@ validation claim.
 - Import/export use private temporary copies.
 - Summary shows allowlisted Session Health metrics only; transcript text,
   questions, citations, raw errors and unknown fields are not rendered.
+- `desktop/build-windows.ps1` can publish an unpackaged developer bundle without
+  overwriting an existing output directory.
 
 ## Validation
 
@@ -37,4 +39,4 @@ otherwise set `MEETING_COPILOT_PYTHON` as above.
 ## Remaining validation
 
 Import/export, consented microphone capture, interruption/resume, Session Health
-export, packaging/signing and clean-PC validation remain open.
+export, code signing and clean-PC validation remain open.

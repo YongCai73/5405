@@ -132,6 +132,17 @@ internal static class BackendPaths
             return ValidRoot(configured) ? Path.GetFullPath(configured) : throw new InvalidOperationException(
                 "MEETING_COPILOT_DESKTOP_ROOT must contain desktop\\bridge.py and src.");
 
+        var bundlePointer = Path.Combine(AppContext.BaseDirectory, "backend-root.txt");
+        if (File.Exists(bundlePointer))
+        {
+            var value = File.ReadAllText(bundlePointer).Trim();
+            var bundled = Path.IsPathFullyQualified(value)
+                ? value
+                : Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, value));
+            if (ValidRoot(bundled)) return bundled;
+            throw new InvalidOperationException("The Windows desktop bundle is missing its Python runtime.");
+        }
+
         foreach (var start in new[] { AppContext.BaseDirectory, Directory.GetCurrentDirectory() })
         {
             for (var directory = new DirectoryInfo(start); directory is not null; directory = directory.Parent)

@@ -42,6 +42,22 @@ the variable may be omitted. Optional `MEETING_COPILOT_DESKTOP_DATA_DIR` and
 `MEETING_COPILOT_DESKTOP_CONFIG` must be absolute paths, matching the macOS host
 contract.
 
+## Build an unpackaged developer bundle
+
+The source launcher above is for development. To copy the WPF host, Python
+environment, backend and shared UI into one movable folder, run from `Testing
+Field` with a fresh output path:
+
+```powershell
+.\desktop\build-windows.ps1 -PythonPath $env:MEETING_COPILOT_PYTHON `
+  -OutputDirectory .\build\windows-dev
+```
+
+Use `-Plan` first to print the resolved paths without writing files. The script
+never overwrites an existing bundle. The result is an unpackaged developer
+bundle, not an installer: it still needs the .NET desktop runtime and WebView2,
+and it has not been code signed.
+
 Before calling this supported for a Windows release, validate: a consented live
 microphone session, device enumeration, a deliberate input interruption/resume,
 audio import, JSON export (including `sessionHealth`), shutdown, and a published
