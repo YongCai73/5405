@@ -46,6 +46,7 @@ def parser():
     c=sub.add_parser('mcp');c.add_argument('snapshot')
     c=sub.add_parser('trace-export');c.add_argument('output')
     c=sub.add_parser('evaluate');c.add_argument('--output',default='results/report.json');c.add_argument('--stress',action='store_true')
+    c.add_argument('--strict',action='store_true',help='exit nonzero when deterministic workflow, policy, or recovery gate fails')
     c.add_argument('--api',action='store_true',help='explicitly run 88 configured API requests on synthetic fixtures; may incur cost')
     c=sub.add_parser('native-baseline');c.add_argument('--output',default='results/native-baseline.json')
     return p
@@ -156,7 +157,10 @@ def run(a):
         elif a.command=='trace-export':output({'redacted_events':trace.redacted_export(a.output,lambda sid:store.snapshot_info(user,sid)),'format':'local NDJSON; external Langfuse upload/hosting not configured'})
         elif a.command=='evaluate':
             from .evaluation import evaluate
-            output(evaluate(Path(a.output),root/'evaluation',stress=a.stress,config=c if a.api else None))
+            result=evaluate(Path(a.output),root/'evaluation',stress=a.stress,config=c if a.api else None)
+            output(result)
+            if a.strict and not result['release_gate_passed']:
+                raise ValueError('deterministic evaluation release gate failed; inspect the report')
         elif a.command=='native-baseline':
             from .native_baseline import run_native
             output(asyncio.run(run_native(c,root/'native-evaluation',Path(a.output))))

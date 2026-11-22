@@ -17,7 +17,7 @@ py -3.12 -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -e ".[dev]"
 .\.venv\Scripts\python.exe -m meeting_copilot init
 .\.venv\Scripts\python.exe -m meeting_copilot demo
-.\.venv\Scripts\python.exe -m meeting_copilot evaluate --output results/local-report.json --stress
+.\.venv\Scripts\python.exe -m meeting_copilot evaluate --output results/local-report.json --stress --strict
 .\.venv\Scripts\python.exe -m pytest --basetemp data/test-temp -q
 ```
 
@@ -29,11 +29,13 @@ python3.12 -m venv .venv
 .venv/bin/python -m pip install -e '.[dev]'
 .venv/bin/python -m meeting_copilot init
 .venv/bin/python -m meeting_copilot demo
-.venv/bin/python -m meeting_copilot evaluate --output results/local-report.json --stress
+.venv/bin/python -m meeting_copilot evaluate --output results/local-report.json --stress --strict
 .venv/bin/python -m pytest --basetemp data/test-temp -q
 ```
 
 `init` creates the trusted host `config.json`; `data_dir` is relative to that config. Do not rerun `init` over an existing config. Demo needs no audio package, model download, key or GPU. Its synthetic project is created in `demo-project/` beside `data/`: approved sources must be separate from runtime data. Linux and Windows source/CLI are tested; macOS and real microphone hardware recording remain pending. Windows Unicode device names/JSON should use `PYTHONUTF8=1`; this is a shell encoding setting.
+
+`evaluate --strict` exits nonzero when the deterministic fixture regresses on workflow, citation membership, policy controls, or crash recovery. It is an engineering regression gate only: it does not certify live-meeting behavior, ASR, a paid provider, or semantic answer quality.
 
 Replay, project questions and export:
 

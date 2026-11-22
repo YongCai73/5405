@@ -12,6 +12,14 @@ def test_frozen_runner_controls_and_synthetic_ablations(tmp_path):
     assert r['configurations']['no_policy']['unauthorized_disclosures']==3
     assert r['security']['passed']==r['security']['total']==10
     assert r['recovery']['passed']==r['recovery']['total']==5
+    assert summary['release_gate_passed'] is True
+    assert r['release_gate']['passed'] is True
+    assert {check['id'] for check in r['release_gate']['checks']} == {
+        'skills_fixture_correctness', 'skills_citation_membership', 'skills_no_future_evidence',
+        'case_isolation', 'policy_guard_and_ablation_sensitivity', 'security_suite', 'recovery_suite',
+        'temporal_ablation_sensitivity', 'folder_ablation_sensitivity',
+    }
+    assert 'not a live-meeting' in r['release_gate']['scope']
     assert {case['id'] for case in r['recovery']['cases']} == {'C0','C1','C2','C3','C4'}
     assert all(case['turns'] == 1 for case in r['recovery']['cases'])
     assert r['native_meet2notes_baseline']['status']=='not measured'

@@ -21,6 +21,59 @@ from .diagnostics import diagnose_case
 
 def percentile(values,p):return sorted(values)[max(0,math.ceil(len(values)*p)-1)] if values else None
 
+
+def release_gate(report):
+    """Summarize deterministic regression invariants without claiming live quality."""
+    configurations = report['configurations']
+    skills = configurations['skills']
+    no_policy = configurations['no_policy']
+    security = report['security']
+    recovery = report['recovery']
+    checks = [
+        ('skills_fixture_correctness', skills['correct'] == skills['total'], {
+            'correct': skills['correct'], 'total': skills['total'],
+        }),
+        ('skills_citation_membership', skills['supported_answer_cases'] == skills['total'], {
+            'supported': skills['supported_answer_cases'], 'total': skills['total'],
+        }),
+        ('skills_no_future_evidence', skills['future_leakage_cases'] == 0, {
+            'future_leakage_cases': skills['future_leakage_cases'],
+        }),
+        ('case_isolation', all(case.get('case_isolated') is True for case in skills['cases']), {
+            'cases': len(skills['cases']),
+        }),
+        ('policy_guard_and_ablation_sensitivity',
+         no_policy['control_unauthorized_disclosures'] == 0
+         and no_policy['unauthorized_disclosures'] == no_policy['total'], {
+             'guarded_disclosures': no_policy['control_unauthorized_disclosures'],
+             'ablated_disclosures': no_policy['unauthorized_disclosures'],
+             'attack_cases': no_policy['total'],
+         }),
+        ('security_suite', security['passed'] == security['total'], {
+            'passed': security['passed'], 'total': security['total'],
+        }),
+        ('recovery_suite', recovery['passed'] == recovery['total'], {
+            'passed': recovery['passed'], 'total': recovery['total'],
+        }),
+        ('temporal_ablation_sensitivity', configurations['no_snapshots']['future_leakage_cases'] > 0, {
+            'future_leakage_cases': configurations['no_snapshots']['future_leakage_cases'],
+        }),
+        ('folder_ablation_sensitivity', configurations['no_folder']['correct'] < configurations['no_folder']['total'], {
+            'correct': configurations['no_folder']['correct'], 'total': configurations['no_folder']['total'],
+        }),
+    ]
+    results = [
+        {'id': check_id, 'passed': passed, **detail}
+        for check_id, passed, detail in checks
+    ]
+    return {
+        'passed': all(check['passed'] for check in results),
+        'checks': results,
+        'scope': ('Deterministic synthetic regression gate for workflow, access-policy, and recovery invariants; '
+                  'not a live-meeting, ASR, paid-provider, or semantic-quality certification.'),
+    }
+
+
 def security_suite(root):
     root.mkdir(parents=True,exist_ok=True);store=Store(root/'runtime'/'security.db');cases=[]
     def record(name,fn):
@@ -354,7 +407,8 @@ def evaluate(output,work,stress=False,config=None):
         usages=[case['usage'] for variant in ('skills','direct','no_snapshots','no_folder') for case in runs[variant]['cases']]
         totals={key:sum(u[key] for u in usages) if all(u[key] is not None for u in usages) else None for key in ('input_tokens','output_tokens','estimated_cost_usd')}
         report={'created_at_utc':time.strftime('%Y-%m-%dT%H:%M:%SZ',time.gmtime()),'mode':('API evaluation / synthetic transcript fixtures; expected-term and exact-quote checks are not semantic quality assessment' if api else 'SIMULATED deterministic extractive; no paid API or ASR quality measurement'),'provider':selected_config.provider,'model':selected_config.model,'tool_rounds':0,'fixture_sha256':__import__('hashlib').sha256(__import__('importlib').resources.files('meeting_copilot').joinpath('fixtures.json').read_bytes()).hexdigest(),'qa_questions':len(questions),'configurations':runs,'security':security,'recovery':recovery,'native_meet2notes_baseline':{'status':'not measured','reason':'run native-baseline separately with the same provider/model; fake HTTP harness tests are not live native quality measurement'},'api_usage':totals,'stress':stress_capture() if stress else {'status':'not requested'},'scoring_limits':'Correct means expected substring checks plus abstention match. citation_supported means exact quotation membership only. Neither establishes semantic entailment of model inferences. All ablations use isolated synthetic data; unsafe policy ablation always uses demo generation.'}
+        report['release_gate'] = release_gate(report)
         report['run_id'] = work.name
     finally:store.close()
     output=Path(output);output.parent.mkdir(parents=True,exist_ok=True);output.write_text(json.dumps(report,indent=2),encoding='utf-8')
-    return {'report':str(output),'qa_questions':report['qa_questions'],'skills_correct':runs['skills']['correct'],'future_leakage':runs['skills']['future_leakage_cases'],'security_passed':security['passed'],'security_total':security['total'],'mode':report['mode']}
+    return {'report':str(output),'qa_questions':report['qa_questions'],'skills_correct':runs['skills']['correct'],'future_leakage':runs['skills']['future_leakage_cases'],'security_passed':security['passed'],'security_total':security['total'],'release_gate_passed':report['release_gate']['passed'],'mode':report['mode']}
