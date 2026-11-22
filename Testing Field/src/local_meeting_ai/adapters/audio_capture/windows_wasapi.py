@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib
 import math
+import os
 import threading
 import time
 import wave
@@ -43,6 +44,24 @@ class WindowsWasapiCaptureBackend:
         self._total_frames = 0
         self._buffer_sample_rate = 0
         self._buffer_channels = 0
+        # Meeting Copilot change: count PortAudio input overflows (audio lost because the
+        # callback ran late, e.g. while local ASR keeps the CPU busy).
+        self._input_overflows = 0
+
+    @property
+    def input_overflows(self) -> int:
+        return self._input_overflows
+
+    @staticmethod
+    def _frames_per_buffer() -> int:
+        """Callback buffer size; larger values tolerate a busy CPU (MC_CAPTURE_BUFFER_FRAMES)."""
+        raw = os.environ.get("MC_CAPTURE_BUFFER_FRAMES", "").strip()
+        if not raw:
+            return 8192
+        value = int(raw)
+        if not 256 <= value <= 65536:
+            raise ValidationError("MC_CAPTURE_BUFFER_FRAMES must be between 256 and 65536")
+        return value
 
     @staticmethod
     def _module() -> Any:
@@ -251,7 +270,9 @@ class WindowsWasapiCaptureBackend:
                 time_info: dict[str, float],
                 status_flags: int,
             ) -> tuple[bytes, int]:
-                del frame_count, time_info, status_flags
+                del frame_count, time_info
+                if status_flags & getattr(module, "paInputOverflow", 2):
+                    self._input_overflows += 1
                 writer = self._wave
                 if writer is not None and self._state == "recording":
                     writer.writeframesraw(input_data)
@@ -266,7 +287,7 @@ class WindowsWasapiCaptureBackend:
                     rate=source.sample_rate,
                     input=True,
                     input_device_index=index,
-                    frames_per_buffer=1024,
+                    frames_per_buffer=self._frames_per_buffer(),
                     stream_callback=callback,
                     start=True,
                 )
@@ -400,6 +421,7 @@ class WindowsWasapiCaptureBackend:
             self._pending_pcm.clear()
             self._pending_start_frame = 0
             self._total_frames = 0
+            self._input_overflows = 0
             self._buffer_sample_rate = sample_rate
             self._buffer_channels = channels
 
