@@ -345,15 +345,18 @@ function renderSummary() {
   }
   if (!detail?.segments?.length) {
     showEmpty(empty, "No summary yet", "A transcript is needed before you can generate a summary.");
+    renderSessionHealth(detail?.sessionHealth, summary);
     return;
   }
   if (!detail.recording && detail.minutes) {
     empty.hidden = true;
     renderMinutes(detail.minutes, summary);
+    renderSessionHealth(detail.sessionHealth, summary);
     return;
   }
   if (!detail?.summary) {
     showEmpty(empty, "No summary yet", "Generate a recap from this meeting’s transcript.");
+    renderSessionHealth(detail.sessionHealth, summary);
     return;
   }
   empty.hidden = true;
@@ -366,6 +369,55 @@ function renderSummary() {
     appendAnswer(line, p, segmentCitations);
     summary.append(p);
   }
+  renderSessionHealth(detail.sessionHealth, summary);
+}
+
+function healthNumber(health, key) {
+  const value = health?.[key];
+  return Number.isFinite(value) && value >= 0 ? value : null;
+}
+
+function healthSeconds(value) {
+  return (Math.round(value * 100) / 100) + " s";
+}
+
+function renderSessionHealth(health, container) {
+  if (!health || typeof health !== "object" || Array.isArray(health)) return;
+  const metrics = [
+    ["processed", "Segments processed", (value) => String(value)],
+    ["dropped_segments", "Dropped segments", (value) => String(value)],
+    ["errors", "Transcription errors", (value) => String(value)],
+    ["speech_to_ready_p95_s", "Speech-to-ready p95", healthSeconds],
+    ["capture_missing_seconds", "Missing audio", healthSeconds],
+    ["capture_stalls", "Capture stalls", (value) => String(value)],
+    ["input_overflows", "Input overflows", (value) => String(value)],
+  ].flatMap(([key, label, format]) => {
+    const value = healthNumber(health, key);
+    return value === null ? [] : [[label, format(value)]];
+  });
+  const preset = health.preset === "low-latency" ? "Low latency" : health.preset === "default" ? "Standard" : null;
+  if (preset) {
+    const settings = [preset];
+    const threads = healthNumber(health, "asrThreads");
+    const pause = healthNumber(health, "pauseMs");
+    if (threads !== null) settings.push(threads + " threads");
+    if (pause !== null) settings.push(pause + " ms pauses");
+    metrics.unshift(["Capture preset", settings.join(" · ")]);
+  }
+  if (!metrics.length) return;
+
+  const section = make("section", "session-health");
+  section.setAttribute("aria-label", "Session health");
+  section.append(make("h2", "", "Session health"));
+  section.append(make("p", "session-health-note", "Saved locally after recording. These are operational diagnostics, not an accuracy score."));
+  const list = make("dl", "session-health-list");
+  for (const [label, value] of metrics) {
+    const row = make("div", "session-health-row");
+    row.append(make("dt", "", label), make("dd", "", value));
+    list.append(row);
+  }
+  section.append(list);
+  container.append(section);
 }
 
 function renderMinutes(minutes, container) {

@@ -209,6 +209,27 @@ test('effective parameters come from the capture status, including environment o
   assert.equal(app.nodes.get('recording-settings').title, 'preset: low-latency');
 });
 
+test('finished session displays only allowlisted health diagnostics', async () => {
+  const app = await application();
+  app.install(detail(false, null, {
+    sessionHealth: {
+      preset: 'low-latency', asrThreads: 4, pauseMs: 300,
+      processed: 12, dropped_segments: 1, errors: 0,
+      speech_to_ready_p95_s: 1.357, capture_missing_seconds: 2.5,
+      capture_stalls: 2, input_overflows: 0,
+      rawTranscript: 'must never be rendered', arbitrary: 'also hidden',
+    },
+  }));
+
+  const health = app.nodes.get('summary-content').textContent;
+  assert.match(health, /Session health/);
+  assert.match(health, /Low latency · 4 threads · 300 ms pauses/);
+  assert.match(health, /Segments processed12/);
+  assert.match(health, /Speech-to-ready p951\.36 s/);
+  assert.match(health, /Missing audio2\.5 s/);
+  assert.doesNotMatch(health, /rawTranscript|must never be rendered|arbitrary/);
+});
+
 test('an already active capture cannot submit a second recording from the dialog', async () => {
   const app = await application();
   app.install(detail(true, standard));

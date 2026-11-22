@@ -171,6 +171,13 @@ mark { color: inherit; background: var(--wash-strong); border-radius: 2px; }
 .summary-content { padding: 4px 0 16px; }
 .summary-line { color: var(--body); line-height: 1.55; font-size: 13px; border-bottom: 1px solid var(--line-subtle); padding: 11px 0; white-space: pre-wrap; overflow-wrap: anywhere; }
 .summary-line:last-child { border-bottom: 0; }
+.session-health { margin-top: 20px; padding: 15px; border: 1px solid var(--line); border-radius: 10px; background: var(--subtle-surface); }
+.session-health h2 { color: var(--ink); font-size: 14px; font-weight: 720; }
+.session-health-note { margin-top: 4px; color: var(--muted); font-size: 11px; line-height: 1.45; }
+.session-health-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(155px, 1fr)); gap: 8px; margin: 13px 0 0; }
+.session-health-row { min-width: 0; padding: 8px 9px; border: 1px solid var(--line-subtle); border-radius: 7px; background: var(--surface); }
+.session-health-row dt { color: var(--muted); font-size: 10px; line-height: 1.3; }
+.session-health-row dd { margin: 3px 0 0; color: var(--body); font-size: 12px; font-weight: 650; overflow-wrap: anywhere; }
 .minutes-header { margin: 0 0 12px; }
 .minutes-header h2 { color: var(--accent); font-size: 21px; font-weight: 730; letter-spacing: -.025em; }
 .minutes-section { padding: 14px 0; border-top: 1px solid var(--line); }
