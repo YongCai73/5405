@@ -62,6 +62,155 @@ def stress_capture():
     result=pipe.close();worker.join();_,peak_mem=tracemalloc.get_traced_memory();tracemalloc.stop()
     return {**result,'synthetic':True,'logical_audio_seconds':1200,'actual_wall_seconds':round(time.perf_counter()-start,4),'chunks_submitted':400,'queue_capacity':4,'peak_queue':peak,'peak_python_allocation_bytes':peak_mem,'note':'accelerated synthetic queue test, not 20 minutes microphone, real ASR, or transcription accuracy'}
 
+
+def recovery_suite(root):
+    """Exercise the durable Q&A resume boundaries through the real state machine."""
+    class InjectedCrash(Exception):
+        pass
+
+    class CountingAssistant(Assistant):
+        def __init__(self, store, user, trace_path, crash=None):
+            self.calls = {'retrieve': 0, 'answer': 0}
+            self.crash = crash
+            super().__init__(store, user, Provider(Config()), Trace(trace_path))
+
+        def _fire(self, point):
+            if self.crash == point:
+                self.crash = None
+                raise InjectedCrash(point)
+
+        async def retrieve(self, state):
+            self.calls['retrieve'] += 1
+            self._fire('in_retrieve')
+            return await super().retrieve(state)
+
+        async def answer(self, state):
+            self.calls['answer'] += 1
+            self._fire('before_answer')
+            return await super().answer(state)
+
+        def _checkpoint(self, state, step, evidence, result=None, turn_id=None):
+            if step == 'answered':
+                self._fire('before_answered')
+            return super()._checkpoint(state, step, evidence, result, turn_id)
+
+    root = Path(root)
+    root.mkdir(parents=True, exist_ok=True)
+    store = Store(root / 'runtime' / 'recovery.db')
+    question = 'Why was SQLite chosen?'
+    cases = []
+
+    def scenario(case_id):
+        meeting = f'recovery-{case_id.lower()}'
+        store.create('alice', meeting, f'Recovery fixture {case_id}')
+        event = {
+            **next(events()),
+            'event_id': f'{case_id}-event',
+            'segment_id': f'{case_id}-segment',
+            'stream': case_id,
+            'seq': 1,
+        }
+        store.ingest('alice', meeting, event)
+        return store.snapshot('alice', meeting), f'case-{case_id.lower()}'
+
+    def checkpoint_step(snapshot, conversation):
+        saved = store.checkpoint_get('alice', snapshot, conversation)
+        return saved and saved['step']
+
+    def turn_count(snapshot, conversation):
+        return store.db.execute(
+            'SELECT COUNT(*) FROM conversation_turns WHERE snapshot=? AND conversation=?',
+            (snapshot, conversation),
+        ).fetchone()[0]
+
+    def record(case_id, execute):
+        try:
+            detail = execute()
+            cases.append({'id': case_id, 'passed': bool(detail.pop('passed')), **detail})
+        except Exception as exc:
+            cases.append({'id': case_id, 'passed': False, 'error_type': type(exc).__name__})
+
+    try:
+        def c0():
+            snapshot, conversation = scenario('C0')
+            assistant = CountingAssistant(store, 'alice', root / 'c0-trace.jsonl', 'in_retrieve')
+            try:
+                asyncio.run(assistant.ask(snapshot, question, conversation))
+            except InjectedCrash:
+                pass
+            after_crash = checkpoint_step(snapshot, conversation)
+            result = asyncio.run(assistant.ask(snapshot, question, conversation))
+            calls = assistant.calls
+            turns = turn_count(snapshot, conversation)
+            return {'passed': after_crash is None and calls == {'retrieve': 2, 'answer': 1} and turns == 1 and not result['abstained'],
+                    'checkpoint_after_crash': after_crash, 'calls': calls, 'turns': turns}
+
+        def c1_or_c2(case_id, crash_point):
+            snapshot, conversation = scenario(case_id)
+            assistant = CountingAssistant(store, 'alice', root / f'{case_id.lower()}-trace.jsonl', crash_point)
+            try:
+                asyncio.run(assistant.ask(snapshot, question, conversation))
+            except InjectedCrash:
+                pass
+            after_crash = checkpoint_step(snapshot, conversation)
+            asyncio.run(assistant.ask(snapshot, question, conversation))
+            calls = assistant.calls
+            turns = turn_count(snapshot, conversation)
+            return {'passed': after_crash == 'retrieved' and calls == {'retrieve': 1, 'answer': 2} and turns == 1,
+                    'checkpoint_after_crash': after_crash, 'calls': calls, 'turns': turns}
+
+        def c3():
+            snapshot, conversation = scenario('C3')
+            assistant = CountingAssistant(store, 'alice', root / 'c3-trace.jsonl')
+            original_put = store.private_put
+            failed = {'remaining': 1}
+
+            def fail_once(*args, **kwargs):
+                if failed['remaining']:
+                    failed['remaining'] -= 1
+                    raise InjectedCrash('before_saved')
+                return original_put(*args, **kwargs)
+
+            store.private_put = fail_once
+            try:
+                asyncio.run(assistant.ask(snapshot, question, conversation))
+            except InjectedCrash:
+                pass
+            finally:
+                store.private_put = original_put
+            after_crash = checkpoint_step(snapshot, conversation)
+            result = asyncio.run(assistant.ask(snapshot, question, conversation))
+            calls = assistant.calls
+            turns = turn_count(snapshot, conversation)
+            return {'passed': after_crash == 'answered' and calls == {'retrieve': 1, 'answer': 1} and turns == 1 and 'resumed_from_checkpoint' not in result,
+                    'checkpoint_after_crash': after_crash, 'calls': calls, 'turns': turns}
+
+        def c4():
+            snapshot, conversation = scenario('C4')
+            assistant = CountingAssistant(store, 'alice', root / 'c4-trace.jsonl')
+            asyncio.run(assistant.ask(snapshot, question, conversation))
+            result = asyncio.run(assistant.ask(snapshot, question, conversation))
+            calls = assistant.calls
+            turns = turn_count(snapshot, conversation)
+            return {'passed': result.get('resumed_from_checkpoint') == 'saved' and calls == {'retrieve': 1, 'answer': 1} and turns == 1,
+                    'checkpoint_after_crash': 'saved', 'calls': calls, 'turns': turns,
+                    'model_usage_on_replay': result['usage']}
+
+        record('C0', c0)
+        record('C1', lambda: c1_or_c2('C1', 'before_answer'))
+        record('C2', lambda: c1_or_c2('C2', 'before_answered'))
+        record('C3', c3)
+        record('C4', c4)
+    finally:
+        store.close()
+
+    return {
+        'cases': cases,
+        'total': len(cases),
+        'passed': sum(case['passed'] for case in cases),
+        'note': 'Deterministic fault injection through the real Assistant and Store state machine; not a process-kill or paid-provider test.',
+    }
+
 def evaluate(output,work,stress=False,config=None):
     work=Path(work)/('run-'+uuid.uuid4().hex);work.mkdir(parents=True)
     store=Store(work/'runtime'/'evidence.db');user='eval-host';meeting='eval';store.create(user,meeting,'FROZEN SYNTHETIC EVALUATION')
@@ -201,9 +350,10 @@ def evaluate(output,work,stress=False,config=None):
             'unauthorized_disclosures':sum(c['ablated_disclosure'] for c in attack_cases),
             'evidence':'Canaries are read from evaluator-owned meeting evidence, unselected retained folder, and another private thread; final checkpoint is not bypassed or used.'}
         security=security_suite(work/'security')
+        recovery=recovery_suite(work/'recovery')
         usages=[case['usage'] for variant in ('skills','direct','no_snapshots','no_folder') for case in runs[variant]['cases']]
         totals={key:sum(u[key] for u in usages) if all(u[key] is not None for u in usages) else None for key in ('input_tokens','output_tokens','estimated_cost_usd')}
-        report={'created_at_utc':time.strftime('%Y-%m-%dT%H:%M:%SZ',time.gmtime()),'mode':('API evaluation / synthetic transcript fixtures; expected-term and exact-quote checks are not semantic quality assessment' if api else 'SIMULATED deterministic extractive; no paid API or ASR quality measurement'),'provider':selected_config.provider,'model':selected_config.model,'tool_rounds':0,'fixture_sha256':__import__('hashlib').sha256(__import__('importlib').resources.files('meeting_copilot').joinpath('fixtures.json').read_bytes()).hexdigest(),'qa_questions':len(questions),'configurations':runs,'security':security,'native_meet2notes_baseline':{'status':'not measured','reason':'run native-baseline separately with the same provider/model; fake HTTP harness tests are not live native quality measurement'},'api_usage':totals,'stress':stress_capture() if stress else {'status':'not requested'},'scoring_limits':'Correct means expected substring checks plus abstention match. citation_supported means exact quotation membership only. Neither establishes semantic entailment of model inferences. All ablations use isolated synthetic data; unsafe policy ablation always uses demo generation.'}
+        report={'created_at_utc':time.strftime('%Y-%m-%dT%H:%M:%SZ',time.gmtime()),'mode':('API evaluation / synthetic transcript fixtures; expected-term and exact-quote checks are not semantic quality assessment' if api else 'SIMULATED deterministic extractive; no paid API or ASR quality measurement'),'provider':selected_config.provider,'model':selected_config.model,'tool_rounds':0,'fixture_sha256':__import__('hashlib').sha256(__import__('importlib').resources.files('meeting_copilot').joinpath('fixtures.json').read_bytes()).hexdigest(),'qa_questions':len(questions),'configurations':runs,'security':security,'recovery':recovery,'native_meet2notes_baseline':{'status':'not measured','reason':'run native-baseline separately with the same provider/model; fake HTTP harness tests are not live native quality measurement'},'api_usage':totals,'stress':stress_capture() if stress else {'status':'not requested'},'scoring_limits':'Correct means expected substring checks plus abstention match. citation_supported means exact quotation membership only. Neither establishes semantic entailment of model inferences. All ablations use isolated synthetic data; unsafe policy ablation always uses demo generation.'}
         report['run_id'] = work.name
     finally:store.close()
     output=Path(output);output.parent.mkdir(parents=True,exist_ok=True);output.write_text(json.dumps(report,indent=2),encoding='utf-8')

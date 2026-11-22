@@ -11,6 +11,9 @@ def test_frozen_runner_controls_and_synthetic_ablations(tmp_path):
     assert r['configurations']['no_policy']['control_unauthorized_disclosures']==0
     assert r['configurations']['no_policy']['unauthorized_disclosures']==3
     assert r['security']['passed']==r['security']['total']==10
+    assert r['recovery']['passed']==r['recovery']['total']==5
+    assert {case['id'] for case in r['recovery']['cases']} == {'C0','C1','C2','C3','C4'}
+    assert all(case['turns'] == 1 for case in r['recovery']['cases'])
     assert r['native_meet2notes_baseline']['status']=='not measured'
 
     # Verify correlation in actual evaluation output.
