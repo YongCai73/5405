@@ -101,6 +101,12 @@ def evaluate(output,work,stress=False,config=None):
                         db.execute('INSERT INTO snapshots VALUES(?,?,?,?,?,?,?,?)',(new,user,meeting,old['watermark'],old['meetings'],'[]',json.dumps(refs),time.time()));sid=new
                 skill = 'direct' if variant == 'direct' else q['skill']
                 runner = direct if variant == 'direct' else assistant
+                # A benchmark case is an independent trial, not a retry of a
+                # previous case that happens to reuse a snapshot and question.
+                # Crash recovery intentionally reuses committed turns for the
+                # same (snapshot, conversation, question), so namespace the
+                # evaluator's private conversation by case as well as variant.
+                conversation = f"evaluation-{variant}-{q['id']}"
 
                 start = time.perf_counter()
 
@@ -113,7 +119,7 @@ def evaluate(output,work,stress=False,config=None):
                         runner.ask(
                             sid,
                             q['question'],
-                            'evaluation-' + variant,
+                            conversation,
                             skill,
                         )
                     )
@@ -134,7 +140,7 @@ def evaluate(output,work,stress=False,config=None):
                 correct=result['abstained']==q.get('abstain',False) and all(term.lower() in result['text'].lower() for term in q['expected'])
                 supported=all(c['quote'] in store.raw(user,sid,c['source_id'])['text'] for c in result['claims'])
                 leakage=any(store.raw(user,sid,c['source_id'])['id']>watermarks[q['id']] for c in result['claims'])
-                cases.append({'id':q['id'],'at_event':q['at'],'asked_at_ms':question_times[q['id']],'total_graph_latency_ms':round(total_graph_latency,3),'correct':correct,'citation_supported':supported,'abstained':result['abstained'],'future_evidence_leakage':leakage,'latency_ms':round(latency,3),'source_ids':[c['source_id'] for c in result['claims']],'usage':result['usage']})
+                cases.append({'id':q['id'],'at_event':q['at'],'asked_at_ms':question_times[q['id']],'total_graph_latency_ms':round(total_graph_latency,3),'correct':correct,'citation_supported':supported,'abstained':result['abstained'],'future_evidence_leakage':leakage,'latency_ms':round(latency,3),'source_ids':[c['source_id'] for c in result['claims']],'usage':result['usage'],'case_isolated':True})
                 cases[-1]['diagnosis'] = diagnose_case(
                     q,
                     result,

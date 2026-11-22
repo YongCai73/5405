@@ -69,6 +69,7 @@ def test_frozen_runner_controls_and_synthetic_ablations(tmp_path):
         )
 
         for case in cases:
+            assert case['case_isolated'] is True
             diagnosis = case["diagnosis"]
 
             assert diagnosis["failure_count"] == len(
