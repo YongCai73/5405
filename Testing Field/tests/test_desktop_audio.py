@@ -233,6 +233,23 @@ def test_capture_child_default_keeps_standard_preset(tmp_path, monkeypatch):
     assert received == [False]
 
 
+def test_capture_failure_message_is_platform_neutral(tmp_path, monkeypatch):
+    import meeting_copilot.audio as audio
+
+    def fail(*args, **kwargs):
+        raise RuntimeError('simulated microphone failure')
+
+    monkeypatch.setattr(audio, 'listen', fail)
+    monkeypatch.setattr(BRIDGE.os, 'getppid', lambda: 123)
+    output = io.StringIO()
+
+    assert BRIDGE.capture_audio(tmp_path, output, 'm', 'mic', 0, 123, 'alice', 'base.en') == 1
+
+    error = json.loads(output.getvalue())['error']
+    assert 'system microphone access' in error
+    assert 'macOS' not in error
+
+
 def test_finished_stalled_capture_clears_status_but_retains_fatal_error(desktop, monkeypatch):
     capture = FakeCapture(desktop.root, 'm', 'mic', 0, 'alice', 'base.en')
     capture.recording_status.update(stalled=True, warning='No audio received.')

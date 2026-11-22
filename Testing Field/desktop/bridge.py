@@ -274,7 +274,7 @@ def capture_audio(root, stream, meeting, device, offset, parent_pid, principal, 
     except KeyboardInterrupt:
         return 0
     except Exception:
-        write_json(stream, {'error': 'Could not record from this microphone. Check macOS microphone access and the selected device.'})
+        write_json(stream, {'error': 'Could not record from this microphone. Check system microphone access and the selected device.'})
         return 1
     finally:
         store.close()

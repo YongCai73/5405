@@ -8,6 +8,8 @@ data/
 .cache/
 build/
 dist/
+desktop/windows/bin/
+desktop/windows/obj/
 config.json
 demo-project/
 results/local-*.json

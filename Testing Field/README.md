@@ -2,7 +2,7 @@
 
 A local CLI for retained meeting/project evidence, private cited questions, three LangGraph task skills, background summaries and read-only MCP. No-key demo mode uses **SIMULATED transcript replay and deterministic extractive quotations**. Configured API mode adds model synthesis, explicitly separated from exact supporting quotes. Quote/reference checks do **not** prove semantic entailment.
 
-The [macOS desktop prototype](desktop/README.md) adds a window for browsing meetings, transcribing audio, and asking questions with clickable sources. It uses the same local Python backend.
+The [macOS desktop prototype](desktop/README.md) adds a window for browsing meetings, transcribing audio, and asking questions with clickable sources. The [Windows desktop developer MVP](desktop/windows/README.md) hosts the same local Python backend and shared web UI through WPF/WebView2; it is build- and demo-validated, but not yet a signed or microphone-validated release.
 
 **Start here:** [Chinese B/G/C/T/D/R handoff](handoff.md) includes the ready-to-use Windows path, full-repository clone/branch workflow, real-ID PowerShell flow, both-platform API/audio commands and cleanup. The local prepared `Testing Field` is an application copy, not a Git checkout. Develop in a separate full clone of [meeting-copilot/prototype-20261108](https://github.com/cyudaddy/5405/tree/meeting-copilot/prototype-20261108).
 
