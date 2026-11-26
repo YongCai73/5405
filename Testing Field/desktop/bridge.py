@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import ctypes
 import json
 import math
 import os
@@ -137,8 +138,10 @@ class Capture:
             'secondsWithoutAudio': 0,
             'warning': '',
         }
+        self.stop_file = Path(root) / f'.capture-stop-{uuid.uuid4().hex}'
         command = [sys.executable, '-u', str(Path(__file__).resolve()), '--data-dir', str(root),
-                   '--capture', meeting, device, str(offset), str(os.getpid()), principal, model]
+                   '--capture', meeting, device, str(offset), str(os.getpid()), principal, model,
+                   '--capture-stop-file', str(self.stop_file)]
         if low_latency:
             command.append('--low-latency')
         self.process = subprocess.Popen(
@@ -209,10 +212,11 @@ class Capture:
         if not self.stop_requested and self.process.poll() is None:
             self.stop_requested = True
             try:
-                self.process.send_signal(signal.SIGINT)
-            except ProcessLookupError:
-                pass
+                self.stop_file.touch(exist_ok=True)
+            except OSError:
+                self.process.terminate()
         if self.finished.wait(8 if closing else 15):
+            self.stop_file.unlink(missing_ok=True)
             return
         if not closing:
             raise DesktopError('Recording is still finishing transcription. Try again in a moment.')
@@ -220,6 +224,7 @@ class Capture:
         if not self.finished.wait(3):
             self.process.kill()
             self.finished.wait(3)
+        self.stop_file.unlink(missing_ok=True)
 
 
 class OffsetStore:
@@ -248,15 +253,48 @@ def configure_cache(root):
     os.environ['HF_HUB_DISABLE_IMPLICIT_TOKEN'] = '1'
 
 
-def capture_audio(root, stream, meeting, device, offset, parent_pid, principal, model, *, low_latency=False):
+def parent_is_alive(parent_pid):
+    """Check whether the desktop host that owns a capture process is alive.
+
+    ``os.getppid()`` is not reliable for a Windows child launched through the
+    desktop host: Windows can report the console launcher instead of the Python
+    bridge process. Query the supplied process handle there, while retaining the
+    parent relationship check used by the POSIX capture path.
+    """
+    if not isinstance(parent_pid, int) or parent_pid <= 0:
+        return False
+    if os.name != 'nt':
+        return os.getppid() == parent_pid
+    process_query_limited_information = 0x1000
+    still_active = 259
+    handle = ctypes.windll.kernel32.OpenProcess(
+        process_query_limited_information, False, parent_pid,
+    )
+    if not handle:
+        return False
+    try:
+        exit_code = ctypes.c_ulong()
+        if not ctypes.windll.kernel32.GetExitCodeProcess(handle, ctypes.byref(exit_code)):
+            return False
+        return exit_code.value == still_active
+    finally:
+        ctypes.windll.kernel32.CloseHandle(handle)
+
+
+def capture_audio(root, stream, meeting, device, offset, parent_pid, principal, model, *, low_latency=False,
+                  stop_file=None):
     from meeting_copilot.audio import listen
     from meeting_copilot.store import Store
     from meeting_copilot.trace import Trace
 
     store = Store(root / 'evidence.db')
+    stop_path = Path(stop_file) if stop_file else None
+
+    def should_stop():
+        return not parent_is_alive(parent_pid) or (stop_path is not None and stop_path.exists())
 
     def on_status(status):
-        if os.getppid() != parent_pid:
+        if should_stop():
             raise KeyboardInterrupt
         if status['event'] == 'recording_started':
             write_json(stream, {**status, 'event': 'started'})
@@ -264,7 +302,7 @@ def capture_audio(root, stream, meeting, device, offset, parent_pid, principal, 
             write_json(stream, status)
 
     try:
-        if os.getppid() != parent_pid:
+        if should_stop():
             return 0
         result = listen(OffsetStore(store, offset), principal, meeting, root, device, 28800, True,
                         model=model, download=True, trace=Trace(root / 'traces.jsonl'), on_status=on_status,
@@ -807,6 +845,7 @@ def main():
     parser.add_argument('--data-dir', type=Path, required=True)
     parser.add_argument('--config', type=Path, help='Trusted configuration file using the existing Meeting Copilot schema.')
     parser.add_argument('--capture', nargs=6, help=argparse.SUPPRESS)
+    parser.add_argument('--capture-stop-file', type=Path, help=argparse.SUPPRESS)
     parser.add_argument('--low-latency', action='store_true', help=argparse.SUPPRESS)
     args = parser.parse_args()
     workspace = args.data_dir.resolve()
@@ -833,7 +872,7 @@ def main():
             signal.signal(signal.SIGINT, signal.default_int_handler)
             meeting, device, offset, parent_pid, principal, model = args.capture
             return capture_audio(root, protocol, meeting, device, int(offset), int(parent_pid), principal, model,
-                                 low_latency=args.low_latency)
+                                 low_latency=args.low_latency, stop_file=args.capture_stop_file)
         bridge = DesktopBridge(config)
 
         def terminate(_signum, _frame):

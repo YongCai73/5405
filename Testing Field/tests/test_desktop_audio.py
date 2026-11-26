@@ -139,6 +139,44 @@ def test_capture_process_only_receives_flag_when_selected(tmp_path, monkeypatch,
     assert capture.recording_status['asrThreads'] == 6
 
 
+def test_windows_parent_liveness_uses_process_handle(monkeypatch):
+    calls = []
+
+    class Kernel32:
+        def OpenProcess(self, access, inherit, process_id):
+            calls.append(('open', access, inherit, process_id))
+            return 42
+
+        def GetExitCodeProcess(self, handle, result):
+            calls.append(('exit', handle))
+            result._obj.value = 259
+            return True
+
+        def CloseHandle(self, handle):
+            calls.append(('close', handle))
+            return True
+
+    monkeypatch.setattr(BRIDGE.os, 'name', 'nt')
+    monkeypatch.setattr(BRIDGE.ctypes, 'windll', SimpleNamespace(kernel32=Kernel32()))
+
+    assert BRIDGE.parent_is_alive(123)
+    assert calls == [('open', 0x1000, False, 123), ('exit', 42), ('close', 42)]
+
+
+def test_capture_stop_uses_and_cleans_private_marker(tmp_path):
+    capture = BRIDGE.Capture.__new__(BRIDGE.Capture)
+    capture.stop_requested = False
+    capture.stop_file = tmp_path / '.capture-stop-test'
+    observed = []
+    capture.process = SimpleNamespace(poll=lambda: None, terminate=lambda: pytest.fail('unexpected terminate'))
+    capture.finished = SimpleNamespace(wait=lambda timeout: observed.append(capture.stop_file.exists()) or True)
+
+    capture.stop()
+
+    assert observed == [True]
+    assert not capture.stop_file.exists()
+
+
 def test_capture_stall_and_resume_are_live_nonfatal_status(tmp_path, monkeypatch):
     begin = threading.Event()
     holder = {}
@@ -202,7 +240,7 @@ def test_capture_child_passes_preset_to_listen_and_forwards_audio_status(tmp_pat
         }
 
     monkeypatch.setattr(audio, 'listen', listen)
-    monkeypatch.setattr(BRIDGE.os, 'getppid', lambda: 123)
+    monkeypatch.setattr(BRIDGE, 'parent_is_alive', lambda parent_pid: parent_pid == 123)
     output = io.StringIO()
     assert BRIDGE.capture_audio(tmp_path, output, 'm', 'mic', 0, 123, 'alice', 'base.en',
                                 low_latency=low_latency) == 0
@@ -228,7 +266,7 @@ def test_capture_child_default_keeps_standard_preset(tmp_path, monkeypatch):
         return {'errors': 0, 'dropped_segments': 0}
 
     monkeypatch.setattr(audio, 'listen', listen)
-    monkeypatch.setattr(BRIDGE.os, 'getppid', lambda: 123)
+    monkeypatch.setattr(BRIDGE, 'parent_is_alive', lambda parent_pid: parent_pid == 123)
     assert BRIDGE.capture_audio(tmp_path, io.StringIO(), 'm', 'mic', 0, 123, 'alice', 'base.en') == 0
     assert received == [False]
 
@@ -240,7 +278,7 @@ def test_capture_failure_message_is_platform_neutral(tmp_path, monkeypatch):
         raise RuntimeError('simulated microphone failure')
 
     monkeypatch.setattr(audio, 'listen', fail)
-    monkeypatch.setattr(BRIDGE.os, 'getppid', lambda: 123)
+    monkeypatch.setattr(BRIDGE, 'parent_is_alive', lambda parent_pid: parent_pid == 123)
     output = io.StringIO()
 
     assert BRIDGE.capture_audio(tmp_path, output, 'm', 'mic', 0, 123, 'alice', 'base.en') == 1
