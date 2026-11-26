@@ -2,6 +2,7 @@ import json
 import threading
 import time
 from pathlib import Path
+from .private_files import append_private_text, private_directory, private_file, write_private_text
 
 from contextlib import contextmanager
 from contextvars import ContextVar
@@ -32,7 +33,7 @@ class Trace:
     """Allowlisted metadata only: no questions, excerpts, paths, keys or model errors."""
     allowed={'snapshot_id','source_ids', 'run_id', 'case_id', 'variant', 'latency_ms','dropped_segments','input_tokens','output_tokens','estimated_cost_usd','policy','reason','watermark','queue_depth','mode'}
     def __init__(self,path):
-        self.path=Path(path);self.path.parent.mkdir(parents=True,exist_ok=True);self.lock=threading.Lock()
+        self.path=Path(path);private_directory(self.path.parent);private_file(self.path);self.lock=threading.Lock()
 
     def emit(self, event, **values):
         context = _evaluation_context.get() or {}
@@ -48,7 +49,7 @@ class Trace:
             },
         }
         with self.lock:
-            with self.path.open('a',encoding='utf-8') as f:f.write(json.dumps(row)+'\n')
+            append_private_text(self.path,json.dumps(row)+'\n')
     def redacted_export(self,destination,authorize=None):
         rows=[]
         if self.path.exists():
@@ -58,5 +59,5 @@ class Trace:
                     try:authorize(r['snapshot_id'])
                     except PermissionError:continue
                 rows.append({k:v for k,v in r.items() if k in self.allowed|{'event','time'}})
-        Path(destination).write_text(''.join(json.dumps(r)+'\n' for r in rows),encoding='utf-8')
+        write_private_text(destination,''.join(json.dumps(r)+'\n' for r in rows))
         return len(rows)

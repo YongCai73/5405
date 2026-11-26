@@ -9,6 +9,7 @@ from pathlib import Path
 from .config import Config
 from .store import Store
 from .trace import Trace
+from .private_files import private_directory, write_private_text
 
 def output(value):print(json.dumps(value,ensure_ascii=False,indent=2,default=str))
 
@@ -65,8 +66,8 @@ def run(a):
     config_path=Path(a.config)
     if a.command=='init':
         if config_path.exists():raise ValueError('config already exists')
-        config_path.write_text(json.dumps({k:v for k,v in vars(Config()).items() if not k.startswith('_')},indent=2),encoding='utf-8');output({'config':str(config_path),'provider':'demo / SIMULATED'});return
-    c=Config.load(config_path);root=c.root;root.mkdir(parents=True,exist_ok=True)
+        write_private_text(config_path,json.dumps({k:v for k,v in vars(Config()).items() if not k.startswith('_')},indent=2),exclusive=True);output({'config':str(config_path),'provider':'demo / SIMULATED'});return
+    c=Config.load(config_path);root=c.root;private_directory(root)
     for key,rel in [('HF_HOME','cache/huggingface'),('XDG_CACHE_HOME','cache'),('LITELLM_CACHE_DIR','cache/litellm'),('TIKTOKEN_CACHE_DIR','cache/tiktoken')]:os.environ[key]=str(root/rel)
     os.environ['LITELLM_LOCAL_MODEL_COST_MAP']='True'
     from .assistant import Assistant,Workers,LiveSummaries
@@ -80,7 +81,7 @@ def run(a):
             if c.provider!='demo':raise ValueError('demo requires provider=demo; use ask for real API')
             folder=seed(store,user,root);sid=store.snapshot(user,'demo',folders=[folder]);result=asyncio.run(assistant.ask(sid,'Compare SQLite and Kafka deployment','demo','compare_options'))
             asyncio.run(assistant.summary_graph.ainvoke({'snapshot':sid}))
-            path=root/'demo-export.json';path.write_text(json.dumps(store.export(user,sid,'demo'),indent=2),encoding='utf-8');output({'notice':'SIMULATED transcript; deterministic extractive QA; no microphone, ASR or paid API used.','folder_id':folder,'result':result,'export':str(path)})
+            path=root/'demo-export.json';write_private_text(path,json.dumps(store.export(user,sid,'demo'),indent=2));output({'notice':'SIMULATED transcript; deterministic extractive QA; no microphone, ASR or paid API used.','folder_id':folder,'result':result,'export':str(path)})
         elif a.command=='replay':
             from .replay import import_jsonl
             output({'events':import_jsonl(store,user,a.meeting,a.file),'gaps':store.gaps(user,a.meeting)})
@@ -114,7 +115,7 @@ def run(a):
         elif a.command=='live-status':output({'meeting':store.metadata(user,a.meeting),'streams':store.gaps(user,a.meeting),'latest_shared_summary':store.latest_summary(user,a.meeting)})
         elif a.command=='checkpoint':output(store.checkpoint_get(user,a.snapshot,a.conversation))
         elif a.command=='promote':output({'source_id':store.promote(user,a.snapshot,a.conversation,a.question,a.meeting)})
-        elif a.command=='export':Path(a.output).write_text(json.dumps(store.export(user,a.snapshot,a.conversation),indent=2),encoding='utf-8');output({'export':a.output})
+        elif a.command=='export':write_private_text(a.output,json.dumps(store.export(user,a.snapshot,a.conversation),indent=2));output({'export':a.output})
         elif a.command=='cleanup':
             if a.confirm!=a.meeting:raise ValueError('confirmation mismatch')
             store.cleanup(user,a.meeting)
