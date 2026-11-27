@@ -4,7 +4,7 @@
 
 这台电脑上有两份代码，请先分清：
 
-- **开发仓库（本指南使用）**：`D:\Yan\Cornell\Semester 1\ENMGT 5405 Applied AI for Teams\Final Project\5405\Testing Field`，是 Git 仓库 `5405` 里的应用目录，分支 `jiaxuan/mcp-skills`，包含技能自动选择、受控工具调用和关联 trace。
+- **开发仓库（本指南使用）**：`D:\Yan\Cornell\Semester 1\ENMGT 5405 Applied AI for Teams\Final Project\5405\Testing Field`，是 Git 仓库 `5405` 里的应用目录，分支 `jiaxuan/discussion-skills`（叠在 `jiaxuan/mcp-skills` 之上），包含技能自动选择、受控工具调用、关联 trace，以及 `clarify` / `grill_me` / `design_review` 三个技术讨论技能和用户主动触发的 meta-suggestion。
 - **旧的独立运行副本**：`D:\Yan\Cornell\Semester 1\ENMGT 5405 Applied AI for Teams\Final Project\Testing Field`，没有 `.git`，代码较早、没有上述功能。它的 `config.json`、数据库和 `.venv` 都保持原样，本次没有改动；不要把它当开发仓库，也不要用新代码覆盖它。
 
 运行时版本 **0.2.0**。这份指南使用 **DeepSeek V4.1-Flash-1017**，启动步骤按平台完整分开：
@@ -52,7 +52,7 @@ $py = (Resolve-Path '.\.venv\Scripts\python.exe').Path
 if (-not (Test-Path config.json)) { & $py -m meeting_copilot init }
 ```
 
-预期第二行显示 `## jiaxuan/mcp-skills...`。**接 W2，不需要重新安装。**
+预期第二行显示 `## jiaxuan/discussion-skills...`。**接 W2，不需要重新安装。**
 
 *这个 `.venv` 是 2026-11-27 用 `uv` 建的 Python 3.12 环境，已装 `.[dev,audio]`。仓库副本里原本没有 `config.json`（它被 `.gitignore` 排除），上面最后一行会在缺失时生成默认配置。旧运行副本里的配置不会被读取或改动；如果想沿用，自己把那份 `config.json` 复制过来即可，其中只有环境变量名、没有 key。*
 
@@ -61,7 +61,7 @@ if (-not (Test-Path config.json)) { & $py -m meeting_copilot init }
 在准备存放项目的目录打开 PowerShell，运行：
 
 ```powershell
-git clone --branch jiaxuan/mcp-skills --single-branch https://github.com/cyudaddy/5405.git meeting-copilot-dev
+git clone --branch jiaxuan/discussion-skills --single-branch https://github.com/cyudaddy/5405.git meeting-copilot-dev
 Set-Location 'meeting-copilot-dev\Testing Field'
 $env:PYTHONUTF8 = '1'
 py -3.12 -m venv .venv
@@ -71,7 +71,7 @@ $py = (Resolve-Path '.\.venv\Scripts\python.exe').Path
 & $py -m meeting_copilot init
 ```
 
-**接 W2。** *`jiaxuan/mcp-skills` 合并进 `main` 之后，把上面的分支名换成 `main`。*
+**接 W2。** *两个任务分支合并进 `main` 之后，把上面的分支名换成 `main`。只想要不含新讨论技能的版本时用 `jiaxuan/mcp-skills`。*
 
 <details>
 <summary>备用：没有 py / Python 3.12，但已安装 uv</summary>
@@ -168,6 +168,35 @@ $auto.skill; $auto.routing.status; $auto.text
 
 *路由状态：`matched` 用命中的技能；`ambiguous`（并列）和 `not_applicable`（没有触发词）都退回 `direct` 关键词检索；`manual` 是你用 `--skill` 指定的。同一会话里同一个问题换技能再问，会返回第一次的回答并附带 `skill_conflict` 说明，换一个 `--conversation` 即可重新回答。细节见 [docs/MCP_SKILLS.md](docs/MCP_SKILLS.md)。*
 
+#### W4c｜技术讨论技能、反馈偏好与 meta-suggestion
+
+*同样不需要 key。本地抽取模式只能演示流程和状态；解释、追问质量、假设与失败场景都需要配置真实模型后才有内容。`scripts/skills_demo.py` 的 Demo 3、Demo 4 会把下面这些自动跑一遍。*
+
+三个新技能都能自动选中，也可以用 `--skill clarify|grill_me|design_review` 指定：
+
+```powershell
+& $py -m meeting_copilot ask $sampleMeeting 'Explain the bounded queue' --conversation learn | Out-String | ConvertFrom-Json | % text
+& $py -m meeting_copilot ask $sampleMeeting 'Grill me on the SQLite decision' --conversation grill | Out-String | ConvertFrom-Json | % text
+& $py -m meeting_copilot ask $sampleMeeting 'Because there is no broker to operate' --conversation grill | Out-String | ConvertFrom-Json | % text
+& $py -m meeting_copilot ask $sampleMeeting 'stop' --conversation grill | Out-String | ConvertFrom-Json | % text
+& $py -m meeting_copilot ask $sampleMeeting 'What could go wrong with the bounded queue design?' --folder $folderId --conversation review | Out-String | ConvertFrom-Json | % text
+```
+
+- `clarify`：直白解释当前疑点。同一个 `--conversation` 里解释过的术语会被记住，之后只简短带过；换一个 conversation 就是全新的记忆。会议里没定义的术语可以用通用知识补充，但会单独列在“General background … NOT from the meeting”标题下。
+- `grill_me`：每次只问一个问题，然后等你回答；你的下一条消息会被当作回答并继续追问，最多 5 轮。**追问期间保持同一个 `--conversation`**，说 `stop` / `wrap up` 结束，或显式指定别的 `--skill` 离开。
+- `design_review`：引文是会议事实，放在 `proposal_evidence`；关键假设、失败场景、最该先验证什么是模型建议，标题会写明“not meeting facts”。
+
+给回答打分、保存表达偏好，然后在想看的时候主动触发建议：
+
+```powershell
+& $py -m meeting_copilot feedback $auto.snapshot_id 'Why was Kafka rejected?' --rating down --note 'too long' --conversation auto-notes
+& $py -m meeting_copilot prefs add 'Skip basic definitions unless I ask.'
+& $py -m meeting_copilot prefs list
+& $py -m meeting_copilot suggest $sampleMeeting
+```
+
+`suggest` 只读你自己在这场会议里的提问和打分，输出“观察到的重复需求 → 依据的提问编号 → 该保存偏好、改用或调整现有技能，还是新增技能”。新增技能只给出草稿契约和测试案例，供开发者或编码 agent 实现，**不会自动启用任何东西**。加 `--use-model` 会把你的提问文本（不含回答和证据）发给已配置的模型来补充建议，会产生费用。至少要有几条重复的提问才会有建议，样例会议里刚问一两句时会得到 `no_change`。细节见 [docs/DISCUSSION_SKILLS.md](docs/DISCUSSION_SKILLS.md)。
+
 #### W5｜真实会议：终端 A 录音，终端 B 私问
 
 *安装和配置不用每场重做；每场新会议只需新建会议 ID、启动一次录音。同一录音可反复提问或开多个 B 窗口，共用会议 ID。新终端要各自准备目录、Python 路径和 API key。*
@@ -248,7 +277,7 @@ $liveAnswer.text
 & $py -m pytest --basetemp data/test-temp -q
 ```
 
-*`jiaxuan/mcp-skills` 在这台 Windows 电脑上 2026-11-27 的结果：275 通过、10 项平台相关跳过、0 失败，完整测试约五分半钟；严格评测门禁 12 项全部通过。较早的 84 通过、1 项跳过是旧提交的历史记录。个别桌面问答测试对机器负载敏感，与其他重任务同时跑时可能超时，单独重跑即可。*
+*`jiaxuan/discussion-skills` 在这台 Windows 电脑上 2026-11-27 接电源时的结果：308 通过、10 项平台相关跳过、0 失败，约两分半钟；严格评测门禁 12 项全部通过（`jiaxuan/mcp-skills` 单独是 275 通过）。用电池供电时电脑会降频，同一套测试跑了 50 分钟并有 1 项因超时失败，所以跑测试请接电源。较早的 84 通过、1 项跳过是旧提交的历史记录。个别桌面问答测试对机器负载敏感，与其他重任务同时跑时可能超时，单独重跑即可。*
 
 </details>
 
@@ -310,7 +339,7 @@ py="$app_dir/.venv/bin/python"
 在准备存放项目的目录打开 Terminal，运行：
 
 ```bash
-git clone --branch jiaxuan/mcp-skills --single-branch https://github.com/cyudaddy/5405.git meeting-copilot-dev
+git clone --branch jiaxuan/discussion-skills --single-branch https://github.com/cyudaddy/5405.git meeting-copilot-dev
 cd 'meeting-copilot-dev/Testing Field'
 export PYTHONUTF8=1
 python3.12 -m venv .venv
@@ -320,7 +349,7 @@ py="$app_dir/.venv/bin/python"
 "$py" -m meeting_copilot init
 ```
 
-**接 M2。** *`jiaxuan/mcp-skills` 合并进 `main` 之后，把上面的分支名换成 `main`。*
+**接 M2。** *两个任务分支合并进 `main` 之后，把上面的分支名换成 `main`。只想要不含新讨论技能的版本时用 `jiaxuan/mcp-skills`。*
 
 <details>
 <summary>备用：没有 python3.12，但已安装 uv</summary>
@@ -417,6 +446,37 @@ task_id=$(printf '%s' "$auto" | "$py" -c 'import json,sys; r=json.load(sys.stdin
 ```
 
 *路由状态：`matched` 用命中的技能；`ambiguous`（并列）和 `not_applicable`（没有触发词）都退回 `direct` 关键词检索；`manual` 是你用 `--skill` 指定的。同一会话里同一个问题换技能再问，会返回第一次的回答并附带 `skill_conflict` 说明，换一个 `--conversation` 即可重新回答。细节见 [docs/MCP_SKILLS.md](docs/MCP_SKILLS.md)。*
+
+#### M4c｜技术讨论技能、反馈偏好与 meta-suggestion
+
+*同样不需要 key。本地抽取模式只能演示流程和状态；解释、追问质量、假设与失败场景都需要配置真实模型后才有内容。`scripts/skills_demo.py` 的 Demo 3、Demo 4 会把下面这些自动跑一遍。*
+
+三个新技能都能自动选中，也可以用 `--skill clarify|grill_me|design_review` 指定：
+
+```bash
+show() { "$py" -c 'import json,sys; print(json.load(sys.stdin)["text"])'; }
+"$py" -m meeting_copilot ask "$sample_meeting" 'Explain the bounded queue' --conversation learn | show
+"$py" -m meeting_copilot ask "$sample_meeting" 'Grill me on the SQLite decision' --conversation grill | show
+"$py" -m meeting_copilot ask "$sample_meeting" 'Because there is no broker to operate' --conversation grill | show
+"$py" -m meeting_copilot ask "$sample_meeting" 'stop' --conversation grill | show
+"$py" -m meeting_copilot ask "$sample_meeting" 'What could go wrong with the bounded queue design?' --folder "$folder_id" --conversation review | show
+```
+
+- `clarify`：直白解释当前疑点。同一个 `--conversation` 里解释过的术语会被记住，之后只简短带过；换一个 conversation 就是全新的记忆。会议里没定义的术语可以用通用知识补充，但会单独列在“General background … NOT from the meeting”标题下。
+- `grill_me`：每次只问一个问题，然后等你回答；你的下一条消息会被当作回答并继续追问，最多 5 轮。**追问期间保持同一个 `--conversation`**，说 `stop` / `wrap up` 结束，或显式指定别的 `--skill` 离开。
+- `design_review`：引文是会议事实，放在 `proposal_evidence`；关键假设、失败场景、最该先验证什么是模型建议，标题会写明“not meeting facts”。
+
+给回答打分、保存表达偏好，然后在想看的时候主动触发建议：
+
+```bash
+snapshot_id=$(printf '%s' "$auto" | "$py" -c 'import json,sys; print(json.load(sys.stdin)["snapshot_id"])')
+"$py" -m meeting_copilot feedback "$snapshot_id" 'Why was Kafka rejected?' --rating down --note 'too long' --conversation auto-notes
+"$py" -m meeting_copilot prefs add 'Skip basic definitions unless I ask.'
+"$py" -m meeting_copilot prefs list
+"$py" -m meeting_copilot suggest "$sample_meeting"
+```
+
+`suggest` 只读你自己在这场会议里的提问和打分，输出“观察到的重复需求 → 依据的提问编号 → 该保存偏好、改用或调整现有技能，还是新增技能”。新增技能只给出草稿契约和测试案例，供开发者或编码 agent 实现，**不会自动启用任何东西**。加 `--use-model` 会把你的提问文本（不含回答和证据）发给已配置的模型来补充建议，会产生费用。至少要有几条重复的提问才会有建议，样例会议里刚问一两句时会得到 `no_change`。细节见 [docs/DISCUSSION_SKILLS.md](docs/DISCUSSION_SKILLS.md)。
 
 #### M5｜真实会议：终端 A 录音，终端 B 私问
 
@@ -545,6 +605,7 @@ printf '%s' "$probe" | "$py" -c 'import json,sys; r=json.load(sys.stdin); print(
 | 项目 | 结果 / 记录 |
 |---|---|
 | MCP＋Skills（本分支，Windows，2026-11-27） | 275 通过、10 项平台相关跳过、0 失败；严格评测门禁 12/12；路由回归 24/24、技能控制 13/13，均为本地确定性结果。DeepSeek 工具轮次**仅模拟协议测试**，真实端点未测。[报告](results/mcp-skills-validation-2026-11-27.md)、[设计说明](docs/MCP_SKILLS.md) |
+| 讨论技能＋meta-suggestion（`jiaxuan/discussion-skills`，Windows，2026-11-27） | 308 通过、10 项平台跳过；严格门禁 12/12；路由回归 36/36、技能控制 17/17。全部用本地抽取模式或脚本化的假模型回复验证，**没有调用任何真实模型**，因此“解释是否直白、追问是否有用、建议是否靠谱”都未验证。[报告](results/discussion-skills-validation-2026-11-27.md)、[设计说明](docs/DISCUSSION_SKILLS.md) |
 | Windows（历史，旧提交） | 84 通过、1 项 symlink 权限跳过；[完整记录](results/windows-validation.json)；另有[原生 junction 检查](results/windows-junction.json) |
 | Linux | 85 项通过；[验证记录](results/windows-repair3-validation.json) |
 | 本地 ASR | Windows 公开音频使用 `tiny.en` 得到 2 段；[记录](results/windows-prepared.json)。本指南改用的 `base.en` 尚未单独实测 |
@@ -563,6 +624,9 @@ printf '%s' "$probe" | "$py" -c 'import json,sys; r=json.load(sys.stdin); print(
 | P0 | 各平台真实麦克风、拔插、20 分钟技术会议，以及 `base.en` CPU 吞吐/术语识别 | Zimo Li / Qiyan Zhai |
 | P0 | 在真实 DeepSeek 端点上跑 W6 / M6 的工具轮次实测（`reasoning_content` 回传和 `thinking: disabled` 已实现，仅模拟验证），通过后再把 `tool_rounds` 调高；人工检查答案质量 | Zimo Li / Jiaxuan Yan |
 | P1 | 用真实模型跑 `evaluate --api`，对比 `skills` / `direct` / `auto` 的质量、引用、延迟、tokens 和成本，并做人工语义复核；现有对照只在模拟模式下跑过，不能说明技能有无收益 | Jiaxuan Yan / Qiyan Zhai |
+| P0 | 用真实模型在自己的真实问题上试 `clarify` / `grill_me` / `design_review` 和 `suggest --use-model`，由提问者本人判断是否更好用；这是这批功能的完成标准，目前完全没有验证 | Jiaxuan Yan |
+| P1 | 桌面端：给三个新技能加按钮，并在窗口里试一次 `grill_me` 多轮会话（现在只能靠输入触发，应用未重新构建） | Cai Yong / Jiaxuan Yan |
+| P2 | `suggest` 的规则只匹配英文短语，用“开头两个词相同”粗略聚类；按真实提问历史校准，并考虑把确认后的草稿契约半自动落到 `skills/` | Jiaxuan Yan |
 | P2 | 路由只认英文触发词，并列时退回 `direct` 而不是询问用户；按真实提问补触发词或加交互式消歧。若需要模型工具也真正经过 MCP 客户端，需另做设计 | Jiaxuan Yan |
 | P1 | 真实模型与 native baseline 的同数据 A/B、延迟、tokens 和成本 | Qiyan Zhai |
 | P1 | graph 中间节点崩溃恢复、重放与幂等 | Xiaolong Lin / Zimo Li |

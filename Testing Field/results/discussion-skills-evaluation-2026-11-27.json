@@ -1,0 +1,4890 @@
+{
+  "created_at_utc": "2026-11-27T23:21:03Z",
+  "mode": "SIMULATED deterministic extractive; no paid API or ASR quality measurement",
+  "provider": "demo",
+  "model": "simulated-extractive",
+  "tool_rounds": 0,
+  "fixture_sha256": "5a2f64239e6a71acce74d0969a349766545e7efa160e57e5d98cf462d5004fdf",
+  "qa_questions": 22,
+  "configurations": {
+    "skills": {
+      "total": 22,
+      "correct": 22,
+      "supported_answer_cases": 22,
+      "future_leakage_cases": 0,
+      "p50_ms": 0.33,
+      "p95_ms": 1.352,
+      "cases": [
+        {
+          "id": "q01",
+          "at_event": 1,
+          "asked_at_ms": 5000,
+          "total_graph_latency_ms": 10.786,
+          "correct": true,
+          "citation_supported": true,
+          "abstained": false,
+          "future_evidence_leakage": false,
+          "latency_ms": 0.378,
+          "source_ids": [
+            3
+          ],
+          "usage": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "estimated_cost_usd": 0.0
+          },
+          "case_isolated": true,
+          "skill": "trace_decision",
+          "skill_version": "1.1.0",
+          "route_status": "manual",
+          "fixture_skill": "trace_decision",
+          "task_id": "7d2c1fc62dbf430caf15a0bbfb290f40",
+          "abstain_reason": null,
+          "inferences": 0,
+          "provider_called": false,
+          "diagnosis": {
+            "passed": true,
+            "failure_codes": [],
+            "failure_count": 0
+          }
+        },
+        {
+          "id": "q02",
+          "at_event": 2,
+          "asked_at_ms": 25000,
+          "total_graph_latency_ms": 7.078,
+          "correct": true,
+          "citation_supported": true,
+          "abstained": false,
+          "future_evidence_leakage": false,
+          "latency_ms": 0.304,
+          "source_ids": [
+            4
+          ],
+          "usage": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "estimated_cost_usd": 0.0
+          },
+          "case_isolated": true,
+          "skill": "trace_decision",
+          "skill_version": "1.1.0",
+          "route_status": "manual",
+          "fixture_skill": "trace_decision",
+          "task_id": "ddee256199634d34babf6b4952245fb8",
+          "abstain_reason": null,
+          "inferences": 0,
+          "provider_called": false,
+          "diagnosis": {
+            "passed": true,
+            "failure_codes": [],
+            "failure_count": 0
+          }
+        },
+        {
+          "id": "q03",
+          "at_event": 3,
+          "asked_at_ms": 50000,
+          "total_graph_latency_ms": 11.286,
+          "correct": true,
+          "citation_supported": true,
+          "abstained": false,
+          "future_evidence_leakage": false,
+          "latency_ms": 1.352,
+          "source_ids": [
+            2,
+            5,
+            1
+          ],
+          "usage": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "estimated_cost_usd": 0.0
+          },
+          "case_isolated": true,
+          "skill": "compare_options",
+          "skill_version": "1.1.0",
+          "route_status": "manual",
+          "fixture_skill": "compare_options",
+          "task_id": "8118d7ce083f41c6a73c8f57ee7cddc3",
+          "abstain_reason": null,
+          "inferences": 0,
+          "provider_called": false,
+          "diagnosis": {
+            "passed": true,
+            "failure_codes": [],
+            "failure_count": 0
+          }
+        },
+        {
+          "id": "q04",
+          "at_event": 4,
+          "asked_at_ms": 74000,
+          "total_graph_latency_ms": 13.716,
+          "correct": true,
+          "citation_supported": true,
+          "abstained": false,
+          "future_evidence_leakage": false,
+          "latency_ms": 0.344,
+          "source_ids": [
+            6,
+            5
+          ],
+          "usage": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "estimated_cost_usd": 0.0
+          },
+          "case_isolated": true,
+          "skill": "trace_decision",
+          "skill_version": "1.1.0",
+          "route_status": "manual",
+          "fixture_skill": "trace_decision",
+          "task_id": "ffc675d2b2f84abc878555cf8213cc8c",
+          "abstain_reason": null,
+          "inferences": 0,
+          "provider_called": false,
+          "diagnosis": {
+            "passed": true,
+            "failure_codes": [],
+            "failure_count": 0
+          }
+        },
+        {
+          "id": "q05",
+          "at_event": 5,
+          "asked_at_ms": 99000,
+          "total_graph_latency_ms": 6.511,
+          "correct": true,
+          "citation_supported": true,
+          "abstained": false,
+          "future_evidence_leakage": false,
+          "latency_ms": 0.328,
+          "source_ids": [
+            7,
+            6
+          ],
+          "usage": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "estimated_cost_usd": 0.0
+          },
+          "case_isolated": true,
+          "skill": "trace_decision",
+          "skill_version": "1.1.0",
+          "route_status": "manual",
+          "fixture_skill": "trace_decision",
+          "task_id": "3dee7df45170489c88e83df35b2c318d",
+          "abstain_reason": null,
+          "inferences": 0,
+          "provider_called": false,
+          "diagnosis": {
+            "passed": true,
+            "failure_codes": [],
+            "failure_count": 0
+          }
+        },
+        {
+          "id": "q06",
+          "at_event": 6,
+          "asked_at_ms": 126000,
+          "total_graph_latency_ms": 5.712,
+          "correct": true,
+          "citation_supported": true,
+          "abstained": false,
+          "future_evidence_leakage": false,
+          "latency_ms": 0.273,
+          "source_ids": [
+            8
+          ],
+          "usage": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "estimated_cost_usd": 0.0
+          },
+          "case_isolated": true,
+          "skill": "trace_decision",
+          "skill_version": "1.1.0",
+          "route_status": "manual",
+          "fixture_skill": "trace_decision",
+          "task_id": "461e05ad7be64ee48b866a965109bb68",
+          "abstain_reason": null,
+          "inferences": 0,
+          "provider_called": false,
+          "diagnosis": {
+            "passed": true,
+            "failure_codes": [],
+            "failure_count": 0
+          }
+        },
+        {
+          "id": "q07",
+          "at_event": 7,
+          "asked_at_ms": 154000,
+          "total_graph_latency_ms": 6.369,
+          "correct": true,
+          "citation_supported": true,
+          "abstained": false,
+          "future_evidence_leakage": false,
+          "latency_ms": 0.429,
+          "source_ids": [
+            9,
+            7,
+            6,
+            8
+          ],
+          "usage": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "estimated_cost_usd": 0.0
+          },
+          "case_isolated": true,
+          "skill": "trace_decision",
+          "skill_version": "1.1.0",
+          "route_status": "manual",
+          "fixture_skill": "trace_decision",
+          "task_id": "8620d866d8dd40fb8bde06dd573ed929",
+          "abstain_reason": null,
+          "inferences": 0,
+          "provider_called": false,
+          "diagnosis": {
+            "passed": true,
+            "failure_codes": [],
+            "failure_count": 0
+          }
+        },
+        {
+          "id": "q08",
+          "at_event": 8,
+          "asked_at_ms": 184000,
+          "total_graph_latency_ms": 6.84,
+          "correct": true,
+          "citation_supported": true,
+          "abstained": false,
+          "future_evidence_leakage": false,
+          "latency_ms": 0.482,
+          "source_ids": [
+            10,
+            9,
+            7,
+            6,
+            8
+          ],
+          "usage": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "estimated_cost_usd": 0.0
+          },
+          "case_isolated": true,
+          "skill": "trace_decision",
+          "skill_version": "1.1.0",
+          "route_status": "manual",
+          "fixture_skill": "trace_decision",
+          "task_id": "593eddd08946467692a7d6c23b9969fa",
+          "abstain_reason": null,
+          "inferences": 0,
+          "provider_called": false,
+          "diagnosis": {
+            "passed": true,
+            "failure_codes": [],
+            "failure_count": 0
+          }
+        },
+        {
+          "id": "q09",
+          "at_event": 9,
+          "asked_at_ms": 214000,
+          "total_graph_latency_ms": 6.222,
+          "correct": true,
+          "citation_supported": true,
+          "abstained": false,
+          "future_evidence_leakage": false,
+          "latency_ms": 0.293,
+          "source_ids": [
+            11
+          ],
+          "usage": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "estimated_cost_usd": 0.0
+          },
+          "case_isolated": true,
+          "skill": "trace_decision",
+          "skill_version": "1.1.0",
+          "route_status": "manual",
+          "fixture_skill": "trace_decision",
+          "task_id": "6b8220b5878a479a92541c75f01f8841",
+          "abstain_reason": null,
+          "inferences": 0,
+          "provider_called": false,
+          "diagnosis": {
+            "passed": true,
+            "failure_codes": [],
+            "failure_count": 0
+          }
+        },
+        {
+          "id": "q10",
+          "at_event": 10,
+          "asked_at_ms": 214001,
+          "total_graph_latency_ms": 6.09,
+          "correct": true,
+          "citation_supported": true,
+          "abstained": false,
+          "future_evidence_leakage": false,
+          "latency_ms": 0.284,
+          "source_ids": [
+            12
+          ],
+          "usage": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "estimated_cost_usd": 0.0
+          },
+          "case_isolated": true,
+          "skill": "trace_decision",
+          "skill_version": "1.1.0",
+          "route_status": "manual",
+          "fixture_skill": "trace_decision",
+          "task_id": "6d9f7562e28e4808ab545f777c5481de",
+          "abstain_reason": null,
+          "inferences": 0,
+          "provider_called": false,
+          "diagnosis": {
+            "passed": true,
+            "failure_codes": [],
+            "failure_count": 0
+          }
+        },
+        {
+          "id": "q11",
+          "at_event": 11,
+          "asked_at_ms": 266000,
+          "total_graph_latency_ms": 6.007,
+          "correct": true,
+          "citation_supported": true,
+          "abstained": false,
+          "future_evidence_leakage": false,
+          "latency_ms": 0.32,
+          "source_ids": [
+            13,
+            6
+          ],
+          "usage": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "estimated_cost_usd": 0.0
+          },
+          "case_isolated": true,
+          "skill": "trace_decision",
+          "skill_version": "1.1.0",
+          "route_status": "manual",
+          "fixture_skill": "trace_decision",
+          "task_id": "f690e8f26fb0491aa263d0f3b6e97bec",
+          "abstain_reason": null,
+          "inferences": 0,
+          "provider_called": false,
+          "diagnosis": {
+            "passed": true,
+            "failure_codes": [],
+            "failure_count": 0
+          }
+        },
+        {
+          "id": "q12",
+          "at_event": 12,
+          "asked_at_ms": 296000,
+          "total_graph_latency_ms": 6.638,
+          "correct": true,
+          "citation_supported": true,
+          "abstained": false,
+          "future_evidence_leakage": false,
+          "latency_ms": 0.331,
+          "source_ids": [
+            14
+          ],
+          "usage": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "estimated_cost_usd": 0.0
+          },
+          "case_isolated": true,
+          "skill": "compare_options",
+          "skill_version": "1.1.0",
+          "route_status": "manual",
+          "fixture_skill": "compare_options",
+          "task_id": "cce1f3c933e644e695480915890620bd",
+          "abstain_reason": null,
+          "inferences": 0,
+          "provider_called": false,
+          "diagnosis": {
+            "passed": true,
+            "failure_codes": [],
+            "failure_count": 0
+          }
+        },
+        {
+          "id": "q13",
+          "at_event": 13,
+          "asked_at_ms": 325000,
+          "total_graph_latency_ms": 5.764,
+          "correct": true,
+          "citation_supported": true,
+          "abstained": false,
+          "future_evidence_leakage": false,
+          "latency_ms": 0.278,
+          "source_ids": [
+            15
+          ],
+          "usage": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "estimated_cost_usd": 0.0
+          },
+          "case_isolated": true,
+          "skill": "trace_decision",
+          "skill_version": "1.1.0",
+          "route_status": "manual",
+          "fixture_skill": "trace_decision",
+          "task_id": "832ac56aec1a4f4fb5d1c64b573c1311",
+          "abstain_reason": null,
+          "inferences": 0,
+          "provider_called": false,
+          "diagnosis": {
+            "passed": true,
+            "failure_codes": [],
+            "failure_count": 0
+          }
+        },
+        {
+          "id": "q14",
+          "at_event": 14,
+          "asked_at_ms": 355000,
+          "total_graph_latency_ms": 6.119,
+          "correct": true,
+          "citation_supported": true,
+          "abstained": false,
+          "future_evidence_leakage": false,
+          "latency_ms": 0.355,
+          "source_ids": [
+            16,
+            15
+          ],
+          "usage": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "estimated_cost_usd": 0.0
+          },
+          "case_isolated": true,
+          "skill": "trace_decision",
+          "skill_version": "1.1.0",
+          "route_status": "manual",
+          "fixture_skill": "trace_decision",
+          "task_id": "37361411764543d39c74f42a6dd77cdd",
+          "abstain_reason": null,
+          "inferences": 0,
+          "provider_called": false,
+          "diagnosis": {
+            "passed": true,
+            "failure_codes": [],
+            "failure_count": 0
+          }
+        },
+        {
+          "id": "q15",
+          "at_event": 15,
+          "asked_at_ms": 385000,
+          "total_graph_latency_ms": 5.874,
+          "correct": true,
+          "citation_supported": true,
+          "abstained": false,
+          "future_evidence_leakage": false,
+          "latency_ms": 0.38,
+          "source_ids": [
+            17,
+            13,
+            5
+          ],
+          "usage": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "estimated_cost_usd": 0.0
+          },
+          "case_isolated": true,
+          "skill": "trace_decision",
+          "skill_version": "1.1.0",
+          "route_status": "manual",
+          "fixture_skill": "trace_decision",
+          "task_id": "dc183272a37a44328e9ddf4db65f8019",
+          "abstain_reason": null,
+          "inferences": 0,
+          "provider_called": false,
+          "diagnosis": {
+            "passed": true,
+            "failure_codes": [],
+            "failure_count": 0
+          }
+        },
+        {
+          "id": "q16",
+          "at_event": 16,
+          "asked_at_ms": 426000,
+          "total_graph_latency_ms": 6.132,
+          "correct": true,
+          "citation_supported": true,
+          "abstained": false,
+          "future_evidence_leakage": false,
+          "latency_ms": 0.313,
+          "source_ids": [
+            18
+          ],
+          "usage": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "estimated_cost_usd": 0.0
+          },
+          "case_isolated": true,
+          "skill": "trace_decision",
+          "skill_version": "1.1.0",
+          "route_status": "manual",
+          "fixture_skill": "trace_decision",
+          "task_id": "ceab015234d2494d88d25ed9aaef7a07",
+          "abstain_reason": null,
+          "inferences": 0,
+          "provider_called": false,
+          "diagnosis": {
+            "passed": true,
+            "failure_codes": [],
+            "failure_count": 0
+          }
+        },
+        {
+          "id": "q17",
+          "at_event": 16,
+          "asked_at_ms": 426000,
+          "total_graph_latency_ms": 5.192,
+          "correct": true,
+          "citation_supported": true,
+          "abstained": true,
+          "future_evidence_leakage": false,
+          "latency_ms": 0.216,
+          "source_ids": [],
+          "usage": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "estimated_cost_usd": 0.0
+          },
+          "case_isolated": true,
+          "skill": "trace_decision",
+          "skill_version": "1.1.0",
+          "route_status": "manual",
+          "fixture_skill": "trace_decision",
+          "task_id": "def4036a37b045fd9d5ad3b71f003c15",
+          "abstain_reason": "no_evidence_retrieved",
+          "inferences": 0,
+          "provider_called": false,
+          "diagnosis": {
+            "passed": true,
+            "failure_codes": [],
+            "failure_count": 0
+          }
+        },
+        {
+          "id": "q18",
+          "at_event": 17,
+          "asked_at_ms": 426001,
+          "total_graph_latency_ms": 5.426,
+          "correct": true,
+          "citation_supported": true,
+          "abstained": false,
+          "future_evidence_leakage": false,
+          "latency_ms": 0.297,
+          "source_ids": [
+            19
+          ],
+          "usage": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "estimated_cost_usd": 0.0
+          },
+          "case_isolated": true,
+          "skill": "trace_decision",
+          "skill_version": "1.1.0",
+          "route_status": "manual",
+          "fixture_skill": "trace_decision",
+          "task_id": "9ec1c52dbddf4c63987056ff950dfb1a",
+          "abstain_reason": null,
+          "inferences": 0,
+          "provider_called": false,
+          "diagnosis": {
+            "passed": true,
+            "failure_codes": [],
+            "failure_count": 0
+          }
+        },
+        {
+          "id": "q19",
+          "at_event": 20,
+          "asked_at_ms": 1200000,
+          "total_graph_latency_ms": 10.494,
+          "correct": true,
+          "citation_supported": true,
+          "abstained": false,
+          "future_evidence_leakage": false,
+          "latency_ms": 1.365,
+          "source_ids": [
+            1,
+            20,
+            13
+          ],
+          "usage": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "estimated_cost_usd": 0.0
+          },
+          "case_isolated": true,
+          "skill": "trace_decision",
+          "skill_version": "1.1.0",
+          "route_status": "manual",
+          "fixture_skill": "trace_decision",
+          "task_id": "8748833af67b4c71ac8db4bf0a67019a",
+          "abstain_reason": null,
+          "inferences": 0,
+          "provider_called": false,
+          "diagnosis": {
+            "passed": true,
+            "failure_codes": [],
+            "failure_count": 0
+          }
+        },
+        {
+          "id": "q20",
+          "at_event": 20,
+          "asked_at_ms": 1200000,
+          "total_graph_latency_ms": 28.87,
+          "correct": true,
+          "citation_supported": true,
+          "abstained": true,
+          "future_evidence_leakage": false,
+          "latency_ms": 0.214,
+          "source_ids": [],
+          "usage": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "estimated_cost_usd": 0.0
+          },
+          "case_isolated": true,
+          "skill": "trace_decision",
+          "skill_version": "1.1.0",
+          "route_status": "manual",
+          "fixture_skill": "trace_decision",
+          "task_id": "2c2e0135fa974fb59b1e08bc505451b6",
+          "abstain_reason": "no_evidence_retrieved",
+          "inferences": 0,
+          "provider_called": false,
+          "diagnosis": {
+            "passed": true,
+            "failure_codes": [],
+            "failure_count": 0
+          }
+        },
+        {
+          "id": "q21",
+          "at_event": 20,
+          "asked_at_ms": 1200000,
+          "total_graph_latency_ms": 6.959,
+          "correct": true,
+          "citation_supported": true,
+          "abstained": false,
+          "future_evidence_leakage": false,
+          "latency_ms": 0.65,
+          "source_ids": [
+            14,
+            15,
+            16,
+            17,
+            18,
+            20,
+            21,
+            22
+          ],
+          "usage": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "estimated_cost_usd": 0.0
+          },
+          "case_isolated": true,
+          "skill": "catch_up",
+          "skill_version": "1.1.0",
+          "route_status": "manual",
+          "fixture_skill": "catch_up",
+          "task_id": "81fb652cbe104cddb25d0c43e9eeadc1",
+          "abstain_reason": null,
+          "inferences": 0,
+          "provider_called": false,
+          "diagnosis": {
+            "passed": true,
+            "failure_codes": [],
+            "failure_count": 0
+          }
+        },
+        {
+          "id": "q22",
+          "at_event": 2,
+          "asked_at_ms": 25000,
+          "total_graph_latency_ms": 6.111,
+          "correct": true,
+          "citation_supported": true,
+          "abstained": false,
+          "future_evidence_leakage": false,
+          "latency_ms": 0.334,
+          "source_ids": [
+            4,
+            3
+          ],
+          "usage": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "estimated_cost_usd": 0.0
+          },
+          "case_isolated": true,
+          "skill": "compare_options",
+          "skill_version": "1.1.0",
+          "route_status": "manual",
+          "fixture_skill": "compare_options",
+          "task_id": "11698d6b57a7438e806574e44d792e9d",
+          "abstain_reason": null,
+          "inferences": 0,
+          "provider_called": false,
+          "diagnosis": {
+            "passed": true,
+            "failure_codes": [],
+            "failure_count": 0
+          }
+        }
+      ],
+      "same_retrieval_context_as_skills": true,
+      "latency_definition": "p50/p95 are answer-node generation/validation only; total_graph_latency_ms includes retrieval/persistence (direct reuses frozen retrieval)",
+      "diagnosis_summary": {
+        "cases_with_failures": 0,
+        "failure_counts": {}
+      }
+    },
+    "direct": {
+      "total": 22,
+      "correct": 21,
+      "supported_answer_cases": 22,
+      "future_leakage_cases": 0,
+      "p50_ms": 0.197,
+      "p95_ms": 1.253,
+      "cases": [
+        {
+          "id": "q01",
+          "at_event": 1,
+          "asked_at_ms": 5000,
+          "total_graph_latency_ms": 4.509,
+          "correct": true,
+          "citation_supported": true,
+          "abstained": false,
+          "future_evidence_leakage": false,
+          "latency_ms": 0.157,
+          "source_ids": [
+            3
+          ],
+          "usage": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "estimated_cost_usd": 0.0
+          },
+          "case_isolated": true,
+          "skill": "direct",
+          "skill_version": "1.1.0",
+          "route_status": "manual",
+          "fixture_skill": "trace_decision",
+          "task_id": "d79e44d2171f4db89aab943ef69b02b9",
+          "abstain_reason": null,
+          "inferences": 0,
+          "provider_called": false,
+          "diagnosis": {
+            "passed": true,
+            "failure_codes": [],
+            "failure_count": 0
+          }
+        },
+        {
+          "id": "q02",
+          "at_event": 2,
+          "asked_at_ms": 25000,
+          "total_graph_latency_ms": 3.977,
+          "correct": true,
+          "citation_supported": true,
+          "abstained": false,
+          "future_evidence_leakage": false,
+          "latency_ms": 0.139,
+          "source_ids": [
+            4
+          ],
+          "usage": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "estimated_cost_usd": 0.0
+          },
+          "case_isolated": true,
+          "skill": "direct",
+          "skill_version": "1.1.0",
+          "route_status": "manual",
+          "fixture_skill": "trace_decision",
+          "task_id": "2f2b21bafe7341e185c40b42050378ad",
+          "abstain_reason": null,
+          "inferences": 0,
+          "provider_called": false,
+          "diagnosis": {
+            "passed": true,
+            "failure_codes": [],
+            "failure_count": 0
+          }
+        },
+        {
+          "id": "q03",
+          "at_event": 3,
+          "asked_at_ms": 50000,
+          "total_graph_latency_ms": 8.511,
+          "correct": true,
+          "citation_supported": true,
+          "abstained": false,
+          "future_evidence_leakage": false,
+          "latency_ms": 1.317,
+          "source_ids": [
+            2,
+            5,
+            1
+          ],
+          "usage": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "estimated_cost_usd": 0.0
+          },
+          "case_isolated": true,
+          "skill": "direct",
+          "skill_version": "1.1.0",
+          "route_status": "manual",
+          "fixture_skill": "compare_options",
+          "task_id": "dc4a71ff7e754db6a872e731d0583aee",
+          "abstain_reason": null,
+          "inferences": 0,
+          "provider_called": false,
+          "diagnosis": {
+            "passed": true,
+            "failure_codes": [],
+            "failure_count": 0
+          }
+        },
+        {
+          "id": "q04",
+          "at_event": 4,
+          "asked_at_ms": 74000,
+          "total_graph_latency_ms": 4.502,
+          "correct": true,
+          "citation_supported": true,
+          "abstained": false,
+          "future_evidence_leakage": false,
+          "latency_ms": 0.211,
+          "source_ids": [
+            6,
+            5
+          ],
+          "usage": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "estimated_cost_usd": 0.0
+          },
+          "case_isolated": true,
+          "skill": "direct",
+          "skill_version": "1.1.0",
+          "route_status": "manual",
+          "fixture_skill": "trace_decision",
+          "task_id": "1ad4d06cfddc4c36b5b05ee05dc0763b",
+          "abstain_reason": null,
+          "inferences": 0,
+          "provider_called": false,
+          "diagnosis": {
+            "passed": true,
+            "failure_codes": [],
+            "failure_count": 0
+          }
+        },
+        {
+          "id": "q05",
+          "at_event": 5,
+          "asked_at_ms": 99000,
+          "total_graph_latency_ms": 4.622,
+          "correct": true,
+          "citation_supported": true,
+          "abstained": false,
+          "future_evidence_leakage": false,
+          "latency_ms": 0.207,
+          "source_ids": [
+            7,
+            6
+          ],
+          "usage": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "estimated_cost_usd": 0.0
+          },
+          "case_isolated": true,
+          "skill": "direct",
+          "skill_version": "1.1.0",
+          "route_status": "manual",
+          "fixture_skill": "trace_decision",
+          "task_id": "678801c777c241ec8144d2aeb42481fb",
+          "abstain_reason": null,
+          "inferences": 0,
+          "provider_called": false,
+          "diagnosis": {
+            "passed": true,
+            "failure_codes": [],
+            "failure_count": 0
+          }
+        },
+        {
+          "id": "q06",
+          "at_event": 6,
+          "asked_at_ms": 126000,
+          "total_graph_latency_ms": 6.37,
+          "correct": true,
+          "citation_supported": true,
+          "abstained": false,
+          "future_evidence_leakage": false,
+          "latency_ms": 0.154,
+          "source_ids": [
+            8
+          ],
+          "usage": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "estimated_cost_usd": 0.0
+          },
+          "case_isolated": true,
+          "skill": "direct",
+          "skill_version": "1.1.0",
+          "route_status": "manual",
+          "fixture_skill": "trace_decision",
+          "task_id": "e2d33d73feae47c3a2ac7ef21f176424",
+          "abstain_reason": null,
+          "inferences": 0,
+          "provider_called": false,
+          "diagnosis": {
+            "passed": true,
+            "failure_codes": [],
+            "failure_count": 0
+          }
+        },
+        {
+          "id": "q07",
+          "at_event": 7,
+          "asked_at_ms": 154000,
+          "total_graph_latency_ms": 4.728,
+          "correct": true,
+          "citation_supported": true,
+          "abstained": false,
+          "future_evidence_leakage": false,
+          "latency_ms": 0.296,
+          "source_ids": [
+            9,
+            7,
+            6,
+            8
+          ],
+          "usage": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "estimated_cost_usd": 0.0
+          },
+          "case_isolated": true,
+          "skill": "direct",
+          "skill_version": "1.1.0",
+          "route_status": "manual",
+          "fixture_skill": "trace_decision",
+          "task_id": "c8f449ac500a4614be1f5669bc6dd283",
+          "abstain_reason": null,
+          "inferences": 0,
+          "provider_called": false,
+          "diagnosis": {
+            "passed": true,
+            "failure_codes": [],
+            "failure_count": 0
+          }
+        },
+        {
+          "id": "q08",
+          "at_event": 8,
+          "asked_at_ms": 184000,
+          "total_graph_latency_ms": 4.859,
+          "correct": true,
+          "citation_supported": true,
+          "abstained": false,
+          "future_evidence_leakage": false,
+          "latency_ms": 0.403,
+          "source_ids": [
+            10,
+            9,
+            7,
+            6,
+            8
+          ],
+          "usage": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "estimated_cost_usd": 0.0
+          },
+          "case_isolated": true,
+          "skill": "direct",
+          "skill_version": "1.1.0",
+          "route_status": "manual",
+          "fixture_skill": "trace_decision",
+          "task_id": "2e0cc6463764486c89809566b0d2ed39",
+          "abstain_reason": null,
+          "inferences": 0,
+          "provider_called": false,
+          "diagnosis": {
+            "passed": true,
+            "failure_codes": [],
+            "failure_count": 0
+          }
+        },
+        {
+          "id": "q09",
+          "at_event": 9,
+          "asked_at_ms": 214000,
+          "total_graph_latency_ms": 3.991,
+          "correct": true,
+          "citation_supported": true,
+          "abstained": false,
+          "future_evidence_leakage": false,
+          "latency_ms": 0.145,
+          "source_ids": [
+            11
+          ],
+          "usage": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "estimated_cost_usd": 0.0
+          },
+          "case_isolated": true,
+          "skill": "direct",
+          "skill_version": "1.1.0",
+          "route_status": "manual",
+          "fixture_skill": "trace_decision",
+          "task_id": "79f220d3f29440eb8ad94ea17e3a293a",
+          "abstain_reason": null,
+          "inferences": 0,
+          "provider_called": false,
+          "diagnosis": {
+            "passed": true,
+            "failure_codes": [],
+            "failure_count": 0
+          }
+        },
+        {
+          "id": "q10",
+          "at_event": 10,
+          "asked_at_ms": 214001,
+          "total_graph_latency_ms": 4.939,
+          "correct": true,
+          "citation_supported": true,
+          "abstained": false,
+          "future_evidence_leakage": false,
+          "latency_ms": 0.164,
+          "source_ids": [
+            12
+          ],
+          "usage": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "estimated_cost_usd": 0.0
+          },
+          "case_isolated": true,
+          "skill": "direct",
+          "skill_version": "1.1.0",
+          "route_status": "manual",
+          "fixture_skill": "trace_decision",
+          "task_id": "51d833385b7f4c4eb6f2bf293e271e7c",
+          "abstain_reason": null,
+          "inferences": 0,
+          "provider_called": false,
+          "diagnosis": {
+            "passed": true,
+            "failure_codes": [],
+            "failure_count": 0
+          }
+        },
+        {
+          "id": "q11",
+          "at_event": 11,
+          "asked_at_ms": 266000,
+          "total_graph_latency_ms": 4.887,
+          "correct": true,
+          "citation_supported": true,
+          "abstained": false,
+          "future_evidence_leakage": false,
+          "latency_ms": 0.212,
+          "source_ids": [
+            13,
+            6
+          ],
+          "usage": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "estimated_cost_usd": 0.0
+          },
+          "case_isolated": true,
+          "skill": "direct",
+          "skill_version": "1.1.0",
+          "route_status": "manual",
+          "fixture_skill": "trace_decision",
+          "task_id": "858dcc9020504bba90d3e46931a22c6d",
+          "abstain_reason": null,
+          "inferences": 0,
+          "provider_called": false,
+          "diagnosis": {
+            "passed": true,
+            "failure_codes": [],
+            "failure_count": 0
+          }
+        },
+        {
+          "id": "q12",
+          "at_event": 12,
+          "asked_at_ms": 296000,
+          "total_graph_latency_ms": 5.226,
+          "correct": true,
+          "citation_supported": true,
+          "abstained": false,
+          "future_evidence_leakage": false,
+          "latency_ms": 0.263,
+          "source_ids": [
+            14
+          ],
+          "usage": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "estimated_cost_usd": 0.0
+          },
+          "case_isolated": true,
+          "skill": "direct",
+          "skill_version": "1.1.0",
+          "route_status": "manual",
+          "fixture_skill": "compare_options",
+          "task_id": "5900b1bf22434f598c2abec2ca8e3421",
+          "abstain_reason": null,
+          "inferences": 0,
+          "provider_called": false,
+          "diagnosis": {
+            "passed": true,
+            "failure_codes": [],
+            "failure_count": 0
+          }
+        },
+        {
+          "id": "q13",
+          "at_event": 13,
+          "asked_at_ms": 325000,
+          "total_graph_latency_ms": 4.194,
+          "correct": true,
+          "citation_supported": true,
+          "abstained": false,
+          "future_evidence_leakage": false,
+          "latency_ms": 0.143,
+          "source_ids": [
+            15
+          ],
+          "usage": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "estimated_cost_usd": 0.0
+          },
+          "case_isolated": true,
+          "skill": "direct",
+          "skill_version": "1.1.0",
+          "route_status": "manual",
+          "fixture_skill": "trace_decision",
+          "task_id": "9f588c803b0246f79f5f8db4b4cda7a1",
+          "abstain_reason": null,
+          "inferences": 0,
+          "provider_called": false,
+          "diagnosis": {
+            "passed": true,
+            "failure_codes": [],
+            "failure_count": 0
+          }
+        },
+        {
+          "id": "q14",
+          "at_event": 14,
+          "asked_at_ms": 355000,
+          "total_graph_latency_ms": 4.288,
+          "correct": true,
+          "citation_supported": true,
+          "abstained": false,
+          "future_evidence_leakage": false,
+          "latency_ms": 0.204,
+          "source_ids": [
+            16,
+            15
+          ],
+          "usage": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "estimated_cost_usd": 0.0
+          },
+          "case_isolated": true,
+          "skill": "direct",
+          "skill_version": "1.1.0",
+          "route_status": "manual",
+          "fixture_skill": "trace_decision",
+          "task_id": "4b544c99321c48d79f99d321f0512c1f",
+          "abstain_reason": null,
+          "inferences": 0,
+          "provider_called": false,
+          "diagnosis": {
+            "passed": true,
+            "failure_codes": [],
+            "failure_count": 0
+          }
+        },
+        {
+          "id": "q15",
+          "at_event": 15,
+          "asked_at_ms": 385000,
+          "total_graph_latency_ms": 5.022,
+          "correct": true,
+          "citation_supported": true,
+          "abstained": false,
+          "future_evidence_leakage": false,
+          "latency_ms": 0.288,
+          "source_ids": [
+            17,
+            13,
+            5
+          ],
+          "usage": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "estimated_cost_usd": 0.0
+          },
+          "case_isolated": true,
+          "skill": "direct",
+          "skill_version": "1.1.0",
+          "route_status": "manual",
+          "fixture_skill": "trace_decision",
+          "task_id": "c858cc9a399e4a00a2bfddd89a003d7f",
+          "abstain_reason": null,
+          "inferences": 0,
+          "provider_called": false,
+          "diagnosis": {
+            "passed": true,
+            "failure_codes": [],
+            "failure_count": 0
+          }
+        },
+        {
+          "id": "q16",
+          "at_event": 16,
+          "asked_at_ms": 426000,
+          "total_graph_latency_ms": 4.196,
+          "correct": true,
+          "citation_supported": true,
+          "abstained": false,
+          "future_evidence_leakage": false,
+          "latency_ms": 0.167,
+          "source_ids": [
+            18
+          ],
+          "usage": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "estimated_cost_usd": 0.0
+          },
+          "case_isolated": true,
+          "skill": "direct",
+          "skill_version": "1.1.0",
+          "route_status": "manual",
+          "fixture_skill": "trace_decision",
+          "task_id": "7bff4612708f428f895c49fff9e4424b",
+          "abstain_reason": null,
+          "inferences": 0,
+          "provider_called": false,
+          "diagnosis": {
+            "passed": true,
+            "failure_codes": [],
+            "failure_count": 0
+          }
+        },
+        {
+          "id": "q17",
+          "at_event": 16,
+          "asked_at_ms": 426000,
+          "total_graph_latency_ms": 4.132,
+          "correct": true,
+          "citation_supported": true,
+          "abstained": true,
+          "future_evidence_leakage": false,
+          "latency_ms": 0.099,
+          "source_ids": [],
+          "usage": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "estimated_cost_usd": 0.0
+          },
+          "case_isolated": true,
+          "skill": "direct",
+          "skill_version": "1.1.0",
+          "route_status": "manual",
+          "fixture_skill": "trace_decision",
+          "task_id": "5c7faae9e7454a2b900655279aedbac0",
+          "abstain_reason": "no_evidence_retrieved",
+          "inferences": 0,
+          "provider_called": false,
+          "diagnosis": {
+            "passed": true,
+            "failure_codes": [],
+            "failure_count": 0
+          }
+        },
+        {
+          "id": "q18",
+          "at_event": 17,
+          "asked_at_ms": 426001,
+          "total_graph_latency_ms": 4.09,
+          "correct": true,
+          "citation_supported": true,
+          "abstained": false,
+          "future_evidence_leakage": false,
+          "latency_ms": 0.169,
+          "source_ids": [
+            19
+          ],
+          "usage": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "estimated_cost_usd": 0.0
+          },
+          "case_isolated": true,
+          "skill": "direct",
+          "skill_version": "1.1.0",
+          "route_status": "manual",
+          "fixture_skill": "trace_decision",
+          "task_id": "e9c7361264264067b2c1e23b35eb1f33",
+          "abstain_reason": null,
+          "inferences": 0,
+          "provider_called": false,
+          "diagnosis": {
+            "passed": true,
+            "failure_codes": [],
+            "failure_count": 0
+          }
+        },
+        {
+          "id": "q19",
+          "at_event": 20,
+          "asked_at_ms": 1200000,
+          "total_graph_latency_ms": 7.517,
+          "correct": true,
+          "citation_supported": true,
+          "abstained": false,
+          "future_evidence_leakage": false,
+          "latency_ms": 1.253,
+          "source_ids": [
+            1,
+            20,
+            13
+          ],
+          "usage": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "estimated_cost_usd": 0.0
+          },
+          "case_isolated": true,
+          "skill": "direct",
+          "skill_version": "1.1.0",
+          "route_status": "manual",
+          "fixture_skill": "trace_decision",
+          "task_id": "f38e1e807e9440ed85bc69aeba821344",
+          "abstain_reason": null,
+          "inferences": 0,
+          "provider_called": false,
+          "diagnosis": {
+            "passed": true,
+            "failure_codes": [],
+            "failure_count": 0
+          }
+        },
+        {
+          "id": "q20",
+          "at_event": 20,
+          "asked_at_ms": 1200000,
+          "total_graph_latency_ms": 4.008,
+          "correct": true,
+          "citation_supported": true,
+          "abstained": true,
+          "future_evidence_leakage": false,
+          "latency_ms": 0.085,
+          "source_ids": [],
+          "usage": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "estimated_cost_usd": 0.0
+          },
+          "case_isolated": true,
+          "skill": "direct",
+          "skill_version": "1.1.0",
+          "route_status": "manual",
+          "fixture_skill": "trace_decision",
+          "task_id": "f0e3dfbef61e4979b04e7e9b2c2e5990",
+          "abstain_reason": "no_evidence_retrieved",
+          "inferences": 0,
+          "provider_called": false,
+          "diagnosis": {
+            "passed": true,
+            "failure_codes": [],
+            "failure_count": 0
+          }
+        },
+        {
+          "id": "q21",
+          "at_event": 20,
+          "asked_at_ms": 1200000,
+          "total_graph_latency_ms": 5.021,
+          "correct": false,
+          "citation_supported": true,
+          "abstained": false,
+          "future_evidence_leakage": false,
+          "latency_ms": 0.475,
+          "source_ids": [
+            16
+          ],
+          "usage": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "estimated_cost_usd": 0.0
+          },
+          "case_isolated": true,
+          "skill": "direct",
+          "skill_version": "1.1.0",
+          "route_status": "manual",
+          "fixture_skill": "catch_up",
+          "task_id": "79a461e3550b4050ae5976018fd62eb0",
+          "abstain_reason": null,
+          "inferences": 0,
+          "provider_called": false,
+          "diagnosis": {
+            "passed": false,
+            "failure_codes": [
+              "expected_content_mismatch"
+            ],
+            "failure_count": 1
+          }
+        },
+        {
+          "id": "q22",
+          "at_event": 2,
+          "asked_at_ms": 25000,
+          "total_graph_latency_ms": 3.829,
+          "correct": true,
+          "citation_supported": true,
+          "abstained": false,
+          "future_evidence_leakage": false,
+          "latency_ms": 0.189,
+          "source_ids": [
+            4,
+            3
+          ],
+          "usage": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "estimated_cost_usd": 0.0
+          },
+          "case_isolated": true,
+          "skill": "direct",
+          "skill_version": "1.1.0",
+          "route_status": "manual",
+          "fixture_skill": "compare_options",
+          "task_id": "be11df37503c4253a92217454db4eccc",
+          "abstain_reason": null,
+          "inferences": 0,
+          "provider_called": false,
+          "diagnosis": {
+            "passed": true,
+            "failure_codes": [],
+            "failure_count": 0
+          }
+        }
+      ],
+      "same_retrieval_context_as_skills": true,
+      "latency_definition": "p50/p95 are answer-node generation/validation only; total_graph_latency_ms includes retrieval/persistence (direct reuses frozen retrieval)",
+      "diagnosis_summary": {
+        "cases_with_failures": 1,
+        "failure_counts": {
+          "expected_content_mismatch": 1
+        }
+      }
+    },
+    "auto": {
+      "total": 22,
+      "correct": 22,
+      "supported_answer_cases": 22,
+      "future_leakage_cases": 0,
+      "p50_ms": 0.234,
+      "p95_ms": 1.167,
+      "cases": [
+        {
+          "id": "q01",
+          "at_event": 1,
+          "asked_at_ms": 5000,
+          "total_graph_latency_ms": 9.41,
+          "correct": true,
+          "citation_supported": true,
+          "abstained": false,
+          "future_evidence_leakage": false,
+          "latency_ms": 0.329,
+          "source_ids": [
+            3
+          ],
+          "usage": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "estimated_cost_usd": 0.0
+          },
+          "case_isolated": true,
+          "skill": "trace_decision",
+          "skill_version": "1.1.0",
+          "route_status": "matched",
+          "fixture_skill": "trace_decision",
+          "task_id": "8aaf60d3fd3c4fa3bde89dd3ed65e206",
+          "abstain_reason": null,
+          "inferences": 0,
+          "provider_called": false,
+          "diagnosis": {
+            "passed": true,
+            "failure_codes": [],
+            "failure_count": 0
+          }
+        },
+        {
+          "id": "q02",
+          "at_event": 2,
+          "asked_at_ms": 25000,
+          "total_graph_latency_ms": 6.178,
+          "correct": true,
+          "citation_supported": true,
+          "abstained": false,
+          "future_evidence_leakage": false,
+          "latency_ms": 0.304,
+          "source_ids": [
+            4
+          ],
+          "usage": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "estimated_cost_usd": 0.0
+          },
+          "case_isolated": true,
+          "skill": "trace_decision",
+          "skill_version": "1.1.0",
+          "route_status": "matched",
+          "fixture_skill": "trace_decision",
+          "task_id": "41a92367cb7a40789f129b6a471fcf10",
+          "abstain_reason": null,
+          "inferences": 0,
+          "provider_called": false,
+          "diagnosis": {
+            "passed": true,
+            "failure_codes": [],
+            "failure_count": 0
+          }
+        },
+        {
+          "id": "q03",
+          "at_event": 3,
+          "asked_at_ms": 50000,
+          "total_graph_latency_ms": 10.155,
+          "correct": true,
+          "citation_supported": true,
+          "abstained": false,
+          "future_evidence_leakage": false,
+          "latency_ms": 1.167,
+          "source_ids": [
+            2,
+            5,
+            1
+          ],
+          "usage": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "estimated_cost_usd": 0.0
+          },
+          "case_isolated": true,
+          "skill": "direct",
+          "skill_version": "1.1.0",
+          "route_status": "not_applicable",
+          "fixture_skill": "compare_options",
+          "task_id": "33e6f4905f1a4cedb26cb498e6b0f2eb",
+          "abstain_reason": null,
+          "inferences": 0,
+          "provider_called": false,
+          "diagnosis": {
+            "passed": true,
+            "failure_codes": [],
+            "failure_count": 0
+          }
+        },
+        {
+          "id": "q04",
+          "at_event": 4,
+          "asked_at_ms": 74000,
+          "total_graph_latency_ms": 6.786,
+          "correct": true,
+          "citation_supported": true,
+          "abstained": false,
+          "future_evidence_leakage": false,
+          "latency_ms": 0.193,
+          "source_ids": [
+            6,
+            5
+          ],
+          "usage": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "estimated_cost_usd": 0.0
+          },
+          "case_isolated": true,
+          "skill": "direct",
+          "skill_version": "1.1.0",
+          "route_status": "not_applicable",
+          "fixture_skill": "trace_decision",
+          "task_id": "9b7e84c160cf47b79a79a7e72bfceaf5",
+          "abstain_reason": null,
+          "inferences": 0,
+          "provider_called": false,
+          "diagnosis": {
+            "passed": true,
+            "failure_codes": [],
+            "failure_count": 0
+          }
+        },
+        {
+          "id": "q05",
+          "at_event": 5,
+          "asked_at_ms": 99000,
+          "total_graph_latency_ms": 6.617,
+          "correct": true,
+          "citation_supported": true,
+          "abstained": false,
+          "future_evidence_leakage": false,
+          "latency_ms": 0.213,
+          "source_ids": [
+            7,
+            6
+          ],
+          "usage": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "estimated_cost_usd": 0.0
+          },
+          "case_isolated": true,
+          "skill": "direct",
+          "skill_version": "1.1.0",
+          "route_status": "not_applicable",
+          "fixture_skill": "trace_decision",
+          "task_id": "0171acac62054fb3a88187ea25a09d40",
+          "abstain_reason": null,
+          "inferences": 0,
+          "provider_called": false,
+          "diagnosis": {
+            "passed": true,
+            "failure_codes": [],
+            "failure_count": 0
+          }
+        },
+        {
+          "id": "q06",
+          "at_event": 6,
+          "asked_at_ms": 126000,
+          "total_graph_latency_ms": 5.79,
+          "correct": true,
+          "citation_supported": true,
+          "abstained": false,
+          "future_evidence_leakage": false,
+          "latency_ms": 0.145,
+          "source_ids": [
+            8
+          ],
+          "usage": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "estimated_cost_usd": 0.0
+          },
+          "case_isolated": true,
+          "skill": "direct",
+          "skill_version": "1.1.0",
+          "route_status": "not_applicable",
+          "fixture_skill": "trace_decision",
+          "task_id": "7f33d4750b6940c393c3156ce4716c31",
+          "abstain_reason": null,
+          "inferences": 0,
+          "provider_called": false,
+          "diagnosis": {
+            "passed": true,
+            "failure_codes": [],
+            "failure_count": 0
+          }
+        },
+        {
+          "id": "q07",
+          "at_event": 7,
+          "asked_at_ms": 154000,
+          "total_graph_latency_ms": 6.391,
+          "correct": true,
+          "citation_supported": true,
+          "abstained": false,
+          "future_evidence_leakage": false,
+          "latency_ms": 0.27,
+          "source_ids": [
+            9,
+            7,
+            6,
+            8
+          ],
+          "usage": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "estimated_cost_usd": 0.0
+          },
+          "case_isolated": true,
+          "skill": "direct",
+          "skill_version": "1.1.0",
+          "route_status": "not_applicable",
+          "fixture_skill": "trace_decision",
+          "task_id": "dec82172e21e4fe58edb695dd497dffe",
+          "abstain_reason": null,
+          "inferences": 0,
+          "provider_called": false,
+          "diagnosis": {
+            "passed": true,
+            "failure_codes": [],
+            "failure_count": 0
+          }
+        },
+        {
+          "id": "q08",
+          "at_event": 8,
+          "asked_at_ms": 184000,
+          "total_graph_latency_ms": 11.554,
+          "correct": true,
+          "citation_supported": true,
+          "abstained": false,
+          "future_evidence_leakage": false,
+          "latency_ms": 0.342,
+          "source_ids": [
+            10,
+            9,
+            7,
+            6,
+            8
+          ],
+          "usage": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "estimated_cost_usd": 0.0
+          },
+          "case_isolated": true,
+          "skill": "direct",
+          "skill_version": "1.1.0",
+          "route_status": "not_applicable",
+          "fixture_skill": "trace_decision",
+          "task_id": "d5c85a2000464d87ace4472e202df793",
+          "abstain_reason": null,
+          "inferences": 0,
+          "provider_called": false,
+          "diagnosis": {
+            "passed": true,
+            "failure_codes": [],
+            "failure_count": 0
+          }
+        },
+        {
+          "id": "q09",
+          "at_event": 9,
+          "asked_at_ms": 214000,
+          "total_graph_latency_ms": 7.13,
+          "correct": true,
+          "citation_supported": true,
+          "abstained": false,
+          "future_evidence_leakage": false,
+          "latency_ms": 0.328,
+          "source_ids": [
+            11
+          ],
+          "usage": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "estimated_cost_usd": 0.0
+          },
+          "case_isolated": true,
+          "skill": "trace_decision",
+          "skill_version": "1.1.0",
+          "route_status": "matched",
+          "fixture_skill": "trace_decision",
+          "task_id": "a7809820106b49fb9c4e84725b9d5cbb",
+          "abstain_reason": null,
+          "inferences": 0,
+          "provider_called": false,
+          "diagnosis": {
+            "passed": true,
+            "failure_codes": [],
+            "failure_count": 0
+          }
+        },
+        {
+          "id": "q10",
+          "at_event": 10,
+          "asked_at_ms": 214001,
+          "total_graph_latency_ms": 7.083,
+          "correct": true,
+          "citation_supported": true,
+          "abstained": false,
+          "future_evidence_leakage": false,
+          "latency_ms": 0.32,
+          "source_ids": [
+            12
+          ],
+          "usage": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "estimated_cost_usd": 0.0
+          },
+          "case_isolated": true,
+          "skill": "trace_decision",
+          "skill_version": "1.1.0",
+          "route_status": "matched",
+          "fixture_skill": "trace_decision",
+          "task_id": "f6e9e9cc0f13433fae45eeb602ec05bd",
+          "abstain_reason": null,
+          "inferences": 0,
+          "provider_called": false,
+          "diagnosis": {
+            "passed": true,
+            "failure_codes": [],
+            "failure_count": 0
+          }
+        },
+        {
+          "id": "q11",
+          "at_event": 11,
+          "asked_at_ms": 266000,
+          "total_graph_latency_ms": 6.433,
+          "correct": true,
+          "citation_supported": true,
+          "abstained": false,
+          "future_evidence_leakage": false,
+          "latency_ms": 0.229,
+          "source_ids": [
+            13,
+            6
+          ],
+          "usage": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "estimated_cost_usd": 0.0
+          },
+          "case_isolated": true,
+          "skill": "direct",
+          "skill_version": "1.1.0",
+          "route_status": "not_applicable",
+          "fixture_skill": "trace_decision",
+          "task_id": "a97694ae0f7440d6958946e8260a7ceb",
+          "abstain_reason": null,
+          "inferences": 0,
+          "provider_called": false,
+          "diagnosis": {
+            "passed": true,
+            "failure_codes": [],
+            "failure_count": 0
+          }
+        },
+        {
+          "id": "q12",
+          "at_event": 12,
+          "asked_at_ms": 296000,
+          "total_graph_latency_ms": 5.777,
+          "correct": true,
+          "citation_supported": true,
+          "abstained": false,
+          "future_evidence_leakage": false,
+          "latency_ms": 0.149,
+          "source_ids": [
+            14
+          ],
+          "usage": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "estimated_cost_usd": 0.0
+          },
+          "case_isolated": true,
+          "skill": "direct",
+          "skill_version": "1.1.0",
+          "route_status": "not_applicable",
+          "fixture_skill": "compare_options",
+          "task_id": "6d2a7eb7dfae49ddbbe024f87bed2dce",
+          "abstain_reason": null,
+          "inferences": 0,
+          "provider_called": false,
+          "diagnosis": {
+            "passed": true,
+            "failure_codes": [],
+            "failure_count": 0
+          }
+        },
+        {
+          "id": "q13",
+          "at_event": 13,
+          "asked_at_ms": 325000,
+          "total_graph_latency_ms": 6.37,
+          "correct": true,
+          "citation_supported": true,
+          "abstained": false,
+          "future_evidence_leakage": false,
+          "latency_ms": 0.146,
+          "source_ids": [
+            15
+          ],
+          "usage": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "estimated_cost_usd": 0.0
+          },
+          "case_isolated": true,
+          "skill": "direct",
+          "skill_version": "1.1.0",
+          "route_status": "not_applicable",
+          "fixture_skill": "trace_decision",
+          "task_id": "f40d7f59f50548fca8617a9aefe1e6c8",
+          "abstain_reason": null,
+          "inferences": 0,
+          "provider_called": false,
+          "diagnosis": {
+            "passed": true,
+            "failure_codes": [],
+            "failure_count": 0
+          }
+        },
+        {
+          "id": "q14",
+          "at_event": 14,
+          "asked_at_ms": 355000,
+          "total_graph_latency_ms": 6.08,
+          "correct": true,
+          "citation_supported": true,
+          "abstained": false,
+          "future_evidence_leakage": false,
+          "latency_ms": 0.205,
+          "source_ids": [
+            16,
+            15
+          ],
+          "usage": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "estimated_cost_usd": 0.0
+          },
+          "case_isolated": true,
+          "skill": "direct",
+          "skill_version": "1.1.0",
+          "route_status": "not_applicable",
+          "fixture_skill": "trace_decision",
+          "task_id": "e4eb54ea0b0d4f72ab399853994c9b28",
+          "abstain_reason": null,
+          "inferences": 0,
+          "provider_called": false,
+          "diagnosis": {
+            "passed": true,
+            "failure_codes": [],
+            "failure_count": 0
+          }
+        },
+        {
+          "id": "q15",
+          "at_event": 15,
+          "asked_at_ms": 385000,
+          "total_graph_latency_ms": 5.737,
+          "correct": true,
+          "citation_supported": true,
+          "abstained": false,
+          "future_evidence_leakage": false,
+          "latency_ms": 0.24,
+          "source_ids": [
+            17,
+            13,
+            5
+          ],
+          "usage": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "estimated_cost_usd": 0.0
+          },
+          "case_isolated": true,
+          "skill": "direct",
+          "skill_version": "1.1.0",
+          "route_status": "not_applicable",
+          "fixture_skill": "trace_decision",
+          "task_id": "d0cfdeb030674684bb5dc73bb7529dae",
+          "abstain_reason": null,
+          "inferences": 0,
+          "provider_called": false,
+          "diagnosis": {
+            "passed": true,
+            "failure_codes": [],
+            "failure_count": 0
+          }
+        },
+        {
+          "id": "q16",
+          "at_event": 16,
+          "asked_at_ms": 426000,
+          "total_graph_latency_ms": 5.862,
+          "correct": true,
+          "citation_supported": true,
+          "abstained": false,
+          "future_evidence_leakage": false,
+          "latency_ms": 0.146,
+          "source_ids": [
+            18
+          ],
+          "usage": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "estimated_cost_usd": 0.0
+          },
+          "case_isolated": true,
+          "skill": "direct",
+          "skill_version": "1.1.0",
+          "route_status": "not_applicable",
+          "fixture_skill": "trace_decision",
+          "task_id": "0c4fe83bc3ab440693d90cf25d1b4cb7",
+          "abstain_reason": null,
+          "inferences": 0,
+          "provider_called": false,
+          "diagnosis": {
+            "passed": true,
+            "failure_codes": [],
+            "failure_count": 0
+          }
+        },
+        {
+          "id": "q17",
+          "at_event": 16,
+          "asked_at_ms": 426000,
+          "total_graph_latency_ms": 5.481,
+          "correct": true,
+          "citation_supported": true,
+          "abstained": true,
+          "future_evidence_leakage": false,
+          "latency_ms": 0.082,
+          "source_ids": [],
+          "usage": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "estimated_cost_usd": 0.0
+          },
+          "case_isolated": true,
+          "skill": "direct",
+          "skill_version": "1.1.0",
+          "route_status": "not_applicable",
+          "fixture_skill": "trace_decision",
+          "task_id": "1f3ed78ff3d44426aef014df79c6c862",
+          "abstain_reason": "no_evidence_retrieved",
+          "inferences": 0,
+          "provider_called": false,
+          "diagnosis": {
+            "passed": true,
+            "failure_codes": [],
+            "failure_count": 0
+          }
+        },
+        {
+          "id": "q18",
+          "at_event": 17,
+          "asked_at_ms": 426001,
+          "total_graph_latency_ms": 5.999,
+          "correct": true,
+          "citation_supported": true,
+          "abstained": false,
+          "future_evidence_leakage": false,
+          "latency_ms": 0.158,
+          "source_ids": [
+            19
+          ],
+          "usage": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "estimated_cost_usd": 0.0
+          },
+          "case_isolated": true,
+          "skill": "direct",
+          "skill_version": "1.1.0",
+          "route_status": "not_applicable",
+          "fixture_skill": "trace_decision",
+          "task_id": "f479f97e03ca4cfd9817eb1aa03de128",
+          "abstain_reason": null,
+          "inferences": 0,
+          "provider_called": false,
+          "diagnosis": {
+            "passed": true,
+            "failure_codes": [],
+            "failure_count": 0
+          }
+        },
+        {
+          "id": "q19",
+          "at_event": 20,
+          "asked_at_ms": 1200000,
+          "total_graph_latency_ms": 10.616,
+          "correct": true,
+          "citation_supported": true,
+          "abstained": false,
+          "future_evidence_leakage": false,
+          "latency_ms": 1.178,
+          "source_ids": [
+            1,
+            20,
+            13
+          ],
+          "usage": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "estimated_cost_usd": 0.0
+          },
+          "case_isolated": true,
+          "skill": "direct",
+          "skill_version": "1.1.0",
+          "route_status": "not_applicable",
+          "fixture_skill": "trace_decision",
+          "task_id": "48222c74938f46b79f5ce47f99e58dc5",
+          "abstain_reason": null,
+          "inferences": 0,
+          "provider_called": false,
+          "diagnosis": {
+            "passed": true,
+            "failure_codes": [],
+            "failure_count": 0
+          }
+        },
+        {
+          "id": "q20",
+          "at_event": 20,
+          "asked_at_ms": 1200000,
+          "total_graph_latency_ms": 6.178,
+          "correct": true,
+          "citation_supported": true,
+          "abstained": true,
+          "future_evidence_leakage": false,
+          "latency_ms": 0.085,
+          "source_ids": [],
+          "usage": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "estimated_cost_usd": 0.0
+          },
+          "case_isolated": true,
+          "skill": "direct",
+          "skill_version": "1.1.0",
+          "route_status": "not_applicable",
+          "fixture_skill": "trace_decision",
+          "task_id": "40198561d5b441369746ce55b70fedd3",
+          "abstain_reason": "no_evidence_retrieved",
+          "inferences": 0,
+          "provider_called": false,
+          "diagnosis": {
+            "passed": true,
+            "failure_codes": [],
+            "failure_count": 0
+          }
+        },
+        {
+          "id": "q21",
+          "at_event": 20,
+          "asked_at_ms": 1200000,
+          "total_graph_latency_ms": 7.802,
+          "correct": true,
+          "citation_supported": true,
+          "abstained": false,
+          "future_evidence_leakage": false,
+          "latency_ms": 0.569,
+          "source_ids": [
+            14,
+            15,
+            16,
+            17,
+            18,
+            20,
+            21,
+            22
+          ],
+          "usage": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "estimated_cost_usd": 0.0
+          },
+          "case_isolated": true,
+          "skill": "catch_up",
+          "skill_version": "1.1.0",
+          "route_status": "matched",
+          "fixture_skill": "catch_up",
+          "task_id": "81c7db5494f549e6acbad4c2346a7a67",
+          "abstain_reason": null,
+          "inferences": 0,
+          "provider_called": false,
+          "diagnosis": {
+            "passed": true,
+            "failure_codes": [],
+            "failure_count": 0
+          }
+        },
+        {
+          "id": "q22",
+          "at_event": 2,
+          "asked_at_ms": 25000,
+          "total_graph_latency_ms": 7.299,
+          "correct": true,
+          "citation_supported": true,
+          "abstained": false,
+          "future_evidence_leakage": false,
+          "latency_ms": 0.351,
+          "source_ids": [
+            4,
+            3
+          ],
+          "usage": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "estimated_cost_usd": 0.0
+          },
+          "case_isolated": true,
+          "skill": "compare_options",
+          "skill_version": "1.1.0",
+          "route_status": "matched",
+          "fixture_skill": "compare_options",
+          "task_id": "1290c8654e4c43d6b6bcb4b34795e71e",
+          "abstain_reason": null,
+          "inferences": 0,
+          "provider_called": false,
+          "diagnosis": {
+            "passed": true,
+            "failure_codes": [],
+            "failure_count": 0
+          }
+        }
+      ],
+      "same_retrieval_context_as_skills": false,
+      "latency_definition": "p50/p95 are answer-node generation/validation only; total_graph_latency_ms includes retrieval/persistence (direct reuses frozen retrieval)",
+      "diagnosis_summary": {
+        "cases_with_failures": 0,
+        "failure_counts": {}
+      },
+      "routing": {
+        "status_counts": {
+          "matched": 6,
+          "not_applicable": 16
+        },
+        "skill_counts": {
+          "catch_up": 1,
+          "compare_options": 1,
+          "direct": 16,
+          "trace_decision": 4
+        },
+        "same_skill_as_fixture_label": 6,
+        "note": "Fixture skill labels predate the router and assign trace_decision to plain factual questions, so disagreement with them is expected and is not a routing error rate."
+      }
+    },
+    "no_snapshots": {
+      "total": 22,
+      "correct": 20,
+      "supported_answer_cases": 22,
+      "future_leakage_cases": 10,
+      "p50_ms": 0.341,
+      "p95_ms": 1.275,
+      "cases": [
+        {
+          "id": "q01",
+          "at_event": 1,
+          "asked_at_ms": 5000,
+          "total_graph_latency_ms": 5.611,
+          "correct": true,
+          "citation_supported": true,
+          "abstained": false,
+          "future_evidence_leakage": false,
+          "latency_ms": 0.274,
+          "source_ids": [
+            3
+          ],
+          "usage": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "estimated_cost_usd": 0.0
+          },
+          "case_isolated": true,
+          "skill": "trace_decision",
+          "skill_version": "1.1.0",
+          "route_status": "manual",
+          "fixture_skill": "trace_decision",
+          "task_id": "54415bdef020409dbbf5cac45224d733",
+          "abstain_reason": null,
+          "inferences": 0,
+          "provider_called": false,
+          "diagnosis": {
+            "passed": true,
+            "failure_codes": [],
+            "failure_count": 0
+          }
+        },
+        {
+          "id": "q02",
+          "at_event": 2,
+          "asked_at_ms": 25000,
+          "total_graph_latency_ms": 5.467,
+          "correct": true,
+          "citation_supported": true,
+          "abstained": false,
+          "future_evidence_leakage": false,
+          "latency_ms": 0.282,
+          "source_ids": [
+            4
+          ],
+          "usage": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "estimated_cost_usd": 0.0
+          },
+          "case_isolated": true,
+          "skill": "trace_decision",
+          "skill_version": "1.1.0",
+          "route_status": "manual",
+          "fixture_skill": "trace_decision",
+          "task_id": "ab075ca0c8074636a5a481b835255112",
+          "abstain_reason": null,
+          "inferences": 0,
+          "provider_called": false,
+          "diagnosis": {
+            "passed": true,
+            "failure_codes": [],
+            "failure_count": 0
+          }
+        },
+        {
+          "id": "q03",
+          "at_event": 3,
+          "asked_at_ms": 50000,
+          "total_graph_latency_ms": 9.911,
+          "correct": true,
+          "citation_supported": true,
+          "abstained": false,
+          "future_evidence_leakage": false,
+          "latency_ms": 1.275,
+          "source_ids": [
+            2,
+            5,
+            1
+          ],
+          "usage": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "estimated_cost_usd": 0.0
+          },
+          "case_isolated": true,
+          "skill": "compare_options",
+          "skill_version": "1.1.0",
+          "route_status": "manual",
+          "fixture_skill": "compare_options",
+          "task_id": "e4b10143857f4623874c6b9ff9339647",
+          "abstain_reason": null,
+          "inferences": 0,
+          "provider_called": false,
+          "diagnosis": {
+            "passed": true,
+            "failure_codes": [],
+            "failure_count": 0
+          }
+        },
+        {
+          "id": "q04",
+          "at_event": 4,
+          "asked_at_ms": 74000,
+          "total_graph_latency_ms": 6.418,
+          "correct": true,
+          "citation_supported": true,
+          "abstained": false,
+          "future_evidence_leakage": true,
+          "latency_ms": 0.566,
+          "source_ids": [
+            6,
+            15,
+            5,
+            10,
+            9,
+            7,
+            8
+          ],
+          "usage": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "estimated_cost_usd": 0.0
+          },
+          "case_isolated": true,
+          "skill": "trace_decision",
+          "skill_version": "1.1.0",
+          "route_status": "manual",
+          "fixture_skill": "trace_decision",
+          "task_id": "6010164f7ed745d4a57d8b085807706e",
+          "abstain_reason": null,
+          "inferences": 0,
+          "provider_called": false,
+          "diagnosis": {
+            "passed": false,
+            "failure_codes": [
+              "temporal_leakage"
+            ],
+            "failure_count": 1
+          }
+        },
+        {
+          "id": "q05",
+          "at_event": 5,
+          "asked_at_ms": 99000,
+          "total_graph_latency_ms": 5.884,
+          "correct": true,
+          "citation_supported": true,
+          "abstained": false,
+          "future_evidence_leakage": true,
+          "latency_ms": 0.497,
+          "source_ids": [
+            7,
+            10,
+            9,
+            6,
+            8
+          ],
+          "usage": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "estimated_cost_usd": 0.0
+          },
+          "case_isolated": true,
+          "skill": "trace_decision",
+          "skill_version": "1.1.0",
+          "route_status": "manual",
+          "fixture_skill": "trace_decision",
+          "task_id": "8e1bc0e7f0f940bcbfe934240c2e5593",
+          "abstain_reason": null,
+          "inferences": 0,
+          "provider_called": false,
+          "diagnosis": {
+            "passed": false,
+            "failure_codes": [
+              "temporal_leakage"
+            ],
+            "failure_count": 1
+          }
+        },
+        {
+          "id": "q06",
+          "at_event": 6,
+          "asked_at_ms": 126000,
+          "total_graph_latency_ms": 5.386,
+          "correct": true,
+          "citation_supported": true,
+          "abstained": false,
+          "future_evidence_leakage": false,
+          "latency_ms": 0.273,
+          "source_ids": [
+            8
+          ],
+          "usage": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "estimated_cost_usd": 0.0
+          },
+          "case_isolated": true,
+          "skill": "trace_decision",
+          "skill_version": "1.1.0",
+          "route_status": "manual",
+          "fixture_skill": "trace_decision",
+          "task_id": "8aaedc24ada44518881a06c83a647b5e",
+          "abstain_reason": null,
+          "inferences": 0,
+          "provider_called": false,
+          "diagnosis": {
+            "passed": true,
+            "failure_codes": [],
+            "failure_count": 0
+          }
+        },
+        {
+          "id": "q07",
+          "at_event": 7,
+          "asked_at_ms": 154000,
+          "total_graph_latency_ms": 8.048,
+          "correct": true,
+          "citation_supported": true,
+          "abstained": false,
+          "future_evidence_leakage": true,
+          "latency_ms": 0.481,
+          "source_ids": [
+            9,
+            10,
+            7,
+            6,
+            8
+          ],
+          "usage": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "estimated_cost_usd": 0.0
+          },
+          "case_isolated": true,
+          "skill": "trace_decision",
+          "skill_version": "1.1.0",
+          "route_status": "manual",
+          "fixture_skill": "trace_decision",
+          "task_id": "3116de08ae39480ab829d24769b50057",
+          "abstain_reason": null,
+          "inferences": 0,
+          "provider_called": false,
+          "diagnosis": {
+            "passed": false,
+            "failure_codes": [
+              "temporal_leakage"
+            ],
+            "failure_count": 1
+          }
+        },
+        {
+          "id": "q08",
+          "at_event": 8,
+          "asked_at_ms": 184000,
+          "total_graph_latency_ms": 6.376,
+          "correct": true,
+          "citation_supported": true,
+          "abstained": false,
+          "future_evidence_leakage": true,
+          "latency_ms": 0.505,
+          "source_ids": [
+            10,
+            20,
+            9,
+            7,
+            6,
+            8
+          ],
+          "usage": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "estimated_cost_usd": 0.0
+          },
+          "case_isolated": true,
+          "skill": "trace_decision",
+          "skill_version": "1.1.0",
+          "route_status": "manual",
+          "fixture_skill": "trace_decision",
+          "task_id": "e741661e658349ff98348258fac2ff33",
+          "abstain_reason": null,
+          "inferences": 0,
+          "provider_called": false,
+          "diagnosis": {
+            "passed": false,
+            "failure_codes": [
+              "temporal_leakage"
+            ],
+            "failure_count": 1
+          }
+        },
+        {
+          "id": "q09",
+          "at_event": 9,
+          "asked_at_ms": 214000,
+          "total_graph_latency_ms": 6.054,
+          "correct": false,
+          "citation_supported": true,
+          "abstained": false,
+          "future_evidence_leakage": true,
+          "latency_ms": 0.325,
+          "source_ids": [
+            12,
+            22
+          ],
+          "usage": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "estimated_cost_usd": 0.0
+          },
+          "case_isolated": true,
+          "skill": "trace_decision",
+          "skill_version": "1.1.0",
+          "route_status": "manual",
+          "fixture_skill": "trace_decision",
+          "task_id": "b306231b8c7947ab80a23373917e5e0e",
+          "abstain_reason": null,
+          "inferences": 0,
+          "provider_called": false,
+          "diagnosis": {
+            "passed": false,
+            "failure_codes": [
+              "temporal_leakage",
+              "expected_content_mismatch"
+            ],
+            "failure_count": 2
+          }
+        },
+        {
+          "id": "q10",
+          "at_event": 10,
+          "asked_at_ms": 214001,
+          "total_graph_latency_ms": 5.778,
+          "correct": true,
+          "citation_supported": true,
+          "abstained": false,
+          "future_evidence_leakage": true,
+          "latency_ms": 0.321,
+          "source_ids": [
+            12,
+            22
+          ],
+          "usage": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "estimated_cost_usd": 0.0
+          },
+          "case_isolated": true,
+          "skill": "trace_decision",
+          "skill_version": "1.1.0",
+          "route_status": "manual",
+          "fixture_skill": "trace_decision",
+          "task_id": "ebaaaa35e8e141aba208859a9d19e5db",
+          "abstain_reason": null,
+          "inferences": 0,
+          "provider_called": false,
+          "diagnosis": {
+            "passed": false,
+            "failure_codes": [
+              "temporal_leakage"
+            ],
+            "failure_count": 1
+          }
+        },
+        {
+          "id": "q11",
+          "at_event": 11,
+          "asked_at_ms": 266000,
+          "total_graph_latency_ms": 6.189,
+          "correct": true,
+          "citation_supported": true,
+          "abstained": false,
+          "future_evidence_leakage": true,
+          "latency_ms": 0.397,
+          "source_ids": [
+            13,
+            6,
+            20
+          ],
+          "usage": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "estimated_cost_usd": 0.0
+          },
+          "case_isolated": true,
+          "skill": "trace_decision",
+          "skill_version": "1.1.0",
+          "route_status": "manual",
+          "fixture_skill": "trace_decision",
+          "task_id": "d0f848c5ec7c4377a500f6ce43bff9a6",
+          "abstain_reason": null,
+          "inferences": 0,
+          "provider_called": false,
+          "diagnosis": {
+            "passed": false,
+            "failure_codes": [
+              "temporal_leakage"
+            ],
+            "failure_count": 1
+          }
+        },
+        {
+          "id": "q12",
+          "at_event": 12,
+          "asked_at_ms": 296000,
+          "total_graph_latency_ms": 5.645,
+          "correct": true,
+          "citation_supported": true,
+          "abstained": false,
+          "future_evidence_leakage": true,
+          "latency_ms": 0.363,
+          "source_ids": [
+            14,
+            15,
+            16
+          ],
+          "usage": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "estimated_cost_usd": 0.0
+          },
+          "case_isolated": true,
+          "skill": "compare_options",
+          "skill_version": "1.1.0",
+          "route_status": "manual",
+          "fixture_skill": "compare_options",
+          "task_id": "5c2729e2444744219055d37480e126b9",
+          "abstain_reason": null,
+          "inferences": 0,
+          "provider_called": false,
+          "diagnosis": {
+            "passed": false,
+            "failure_codes": [
+              "temporal_leakage"
+            ],
+            "failure_count": 1
+          }
+        },
+        {
+          "id": "q13",
+          "at_event": 13,
+          "asked_at_ms": 325000,
+          "total_graph_latency_ms": 5.847,
+          "correct": true,
+          "citation_supported": true,
+          "abstained": false,
+          "future_evidence_leakage": true,
+          "latency_ms": 0.327,
+          "source_ids": [
+            15,
+            16
+          ],
+          "usage": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "estimated_cost_usd": 0.0
+          },
+          "case_isolated": true,
+          "skill": "trace_decision",
+          "skill_version": "1.1.0",
+          "route_status": "manual",
+          "fixture_skill": "trace_decision",
+          "task_id": "8d5490e24539410d92ef3b924dea97cf",
+          "abstain_reason": null,
+          "inferences": 0,
+          "provider_called": false,
+          "diagnosis": {
+            "passed": false,
+            "failure_codes": [
+              "temporal_leakage"
+            ],
+            "failure_count": 1
+          }
+        },
+        {
+          "id": "q14",
+          "at_event": 14,
+          "asked_at_ms": 355000,
+          "total_graph_latency_ms": 5.802,
+          "correct": true,
+          "citation_supported": true,
+          "abstained": false,
+          "future_evidence_leakage": false,
+          "latency_ms": 0.34,
+          "source_ids": [
+            16,
+            15
+          ],
+          "usage": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "estimated_cost_usd": 0.0
+          },
+          "case_isolated": true,
+          "skill": "trace_decision",
+          "skill_version": "1.1.0",
+          "route_status": "manual",
+          "fixture_skill": "trace_decision",
+          "task_id": "3a09906dc9dd453fa92dcb1c378550ab",
+          "abstain_reason": null,
+          "inferences": 0,
+          "provider_called": false,
+          "diagnosis": {
+            "passed": true,
+            "failure_codes": [],
+            "failure_count": 0
+          }
+        },
+        {
+          "id": "q15",
+          "at_event": 15,
+          "asked_at_ms": 385000,
+          "total_graph_latency_ms": 5.955,
+          "correct": true,
+          "citation_supported": true,
+          "abstained": false,
+          "future_evidence_leakage": false,
+          "latency_ms": 0.408,
+          "source_ids": [
+            17,
+            13,
+            5
+          ],
+          "usage": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "estimated_cost_usd": 0.0
+          },
+          "case_isolated": true,
+          "skill": "trace_decision",
+          "skill_version": "1.1.0",
+          "route_status": "manual",
+          "fixture_skill": "trace_decision",
+          "task_id": "895f1adf0b864e78aebc58f36c948d31",
+          "abstain_reason": null,
+          "inferences": 0,
+          "provider_called": false,
+          "diagnosis": {
+            "passed": true,
+            "failure_codes": [],
+            "failure_count": 0
+          }
+        },
+        {
+          "id": "q16",
+          "at_event": 16,
+          "asked_at_ms": 426000,
+          "total_graph_latency_ms": 6.194,
+          "correct": true,
+          "citation_supported": true,
+          "abstained": false,
+          "future_evidence_leakage": false,
+          "latency_ms": 0.277,
+          "source_ids": [
+            18
+          ],
+          "usage": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "estimated_cost_usd": 0.0
+          },
+          "case_isolated": true,
+          "skill": "trace_decision",
+          "skill_version": "1.1.0",
+          "route_status": "manual",
+          "fixture_skill": "trace_decision",
+          "task_id": "88a002e0b4f243308665e2dca1b8bbba",
+          "abstain_reason": null,
+          "inferences": 0,
+          "provider_called": false,
+          "diagnosis": {
+            "passed": true,
+            "failure_codes": [],
+            "failure_count": 0
+          }
+        },
+        {
+          "id": "q17",
+          "at_event": 16,
+          "asked_at_ms": 426000,
+          "total_graph_latency_ms": 5.998,
+          "correct": false,
+          "citation_supported": true,
+          "abstained": false,
+          "future_evidence_leakage": true,
+          "latency_ms": 0.276,
+          "source_ids": [
+            19
+          ],
+          "usage": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "estimated_cost_usd": 0.0
+          },
+          "case_isolated": true,
+          "skill": "trace_decision",
+          "skill_version": "1.1.0",
+          "route_status": "manual",
+          "fixture_skill": "trace_decision",
+          "task_id": "4831dbf934ab49c39a26cc8ab67db627",
+          "abstain_reason": null,
+          "inferences": 0,
+          "provider_called": false,
+          "diagnosis": {
+            "passed": false,
+            "failure_codes": [
+              "temporal_leakage",
+              "abstention_mismatch"
+            ],
+            "failure_count": 2
+          }
+        },
+        {
+          "id": "q18",
+          "at_event": 17,
+          "asked_at_ms": 426001,
+          "total_graph_latency_ms": 5.578,
+          "correct": true,
+          "citation_supported": true,
+          "abstained": false,
+          "future_evidence_leakage": false,
+          "latency_ms": 0.307,
+          "source_ids": [
+            19
+          ],
+          "usage": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "estimated_cost_usd": 0.0
+          },
+          "case_isolated": true,
+          "skill": "trace_decision",
+          "skill_version": "1.1.0",
+          "route_status": "manual",
+          "fixture_skill": "trace_decision",
+          "task_id": "b21f7ef062db4a3d92964c8c36f0e9de",
+          "abstain_reason": null,
+          "inferences": 0,
+          "provider_called": false,
+          "diagnosis": {
+            "passed": true,
+            "failure_codes": [],
+            "failure_count": 0
+          }
+        },
+        {
+          "id": "q19",
+          "at_event": 20,
+          "asked_at_ms": 1200000,
+          "total_graph_latency_ms": 10.089,
+          "correct": true,
+          "citation_supported": true,
+          "abstained": false,
+          "future_evidence_leakage": false,
+          "latency_ms": 1.286,
+          "source_ids": [
+            1,
+            20,
+            13
+          ],
+          "usage": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "estimated_cost_usd": 0.0
+          },
+          "case_isolated": true,
+          "skill": "trace_decision",
+          "skill_version": "1.1.0",
+          "route_status": "manual",
+          "fixture_skill": "trace_decision",
+          "task_id": "59b2b1ab09244efa993fecfe83535459",
+          "abstain_reason": null,
+          "inferences": 0,
+          "provider_called": false,
+          "diagnosis": {
+            "passed": true,
+            "failure_codes": [],
+            "failure_count": 0
+          }
+        },
+        {
+          "id": "q20",
+          "at_event": 20,
+          "asked_at_ms": 1200000,
+          "total_graph_latency_ms": 5.761,
+          "correct": true,
+          "citation_supported": true,
+          "abstained": true,
+          "future_evidence_leakage": false,
+          "latency_ms": 0.234,
+          "source_ids": [],
+          "usage": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "estimated_cost_usd": 0.0
+          },
+          "case_isolated": true,
+          "skill": "trace_decision",
+          "skill_version": "1.1.0",
+          "route_status": "manual",
+          "fixture_skill": "trace_decision",
+          "task_id": "4af53d9051674ca98eb2edcc02960838",
+          "abstain_reason": "no_evidence_retrieved",
+          "inferences": 0,
+          "provider_called": false,
+          "diagnosis": {
+            "passed": true,
+            "failure_codes": [],
+            "failure_count": 0
+          }
+        },
+        {
+          "id": "q21",
+          "at_event": 20,
+          "asked_at_ms": 1200000,
+          "total_graph_latency_ms": 6.808,
+          "correct": true,
+          "citation_supported": true,
+          "abstained": false,
+          "future_evidence_leakage": false,
+          "latency_ms": 0.672,
+          "source_ids": [
+            14,
+            15,
+            16,
+            17,
+            18,
+            20,
+            21,
+            22
+          ],
+          "usage": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "estimated_cost_usd": 0.0
+          },
+          "case_isolated": true,
+          "skill": "catch_up",
+          "skill_version": "1.1.0",
+          "route_status": "manual",
+          "fixture_skill": "catch_up",
+          "task_id": "8043d7310e4b42bdbca61729845057df",
+          "abstain_reason": null,
+          "inferences": 0,
+          "provider_called": false,
+          "diagnosis": {
+            "passed": true,
+            "failure_codes": [],
+            "failure_count": 0
+          }
+        },
+        {
+          "id": "q22",
+          "at_event": 2,
+          "asked_at_ms": 25000,
+          "total_graph_latency_ms": 5.921,
+          "correct": true,
+          "citation_supported": true,
+          "abstained": false,
+          "future_evidence_leakage": false,
+          "latency_ms": 0.341,
+          "source_ids": [
+            4,
+            3
+          ],
+          "usage": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "estimated_cost_usd": 0.0
+          },
+          "case_isolated": true,
+          "skill": "compare_options",
+          "skill_version": "1.1.0",
+          "route_status": "manual",
+          "fixture_skill": "compare_options",
+          "task_id": "6292bad2973249efa5dfbd30663b075c",
+          "abstain_reason": null,
+          "inferences": 0,
+          "provider_called": false,
+          "diagnosis": {
+            "passed": true,
+            "failure_codes": [],
+            "failure_count": 0
+          }
+        }
+      ],
+      "same_retrieval_context_as_skills": false,
+      "latency_definition": "p50/p95 are answer-node generation/validation only; total_graph_latency_ms includes retrieval/persistence (direct reuses frozen retrieval)",
+      "diagnosis_summary": {
+        "cases_with_failures": 10,
+        "failure_counts": {
+          "abstention_mismatch": 1,
+          "expected_content_mismatch": 1,
+          "temporal_leakage": 10
+        }
+      }
+    },
+    "no_folder": {
+      "total": 22,
+      "correct": 20,
+      "supported_answer_cases": 22,
+      "future_leakage_cases": 0,
+      "p50_ms": 0.309,
+      "p95_ms": 0.447,
+      "cases": [
+        {
+          "id": "q01",
+          "at_event": 1,
+          "asked_at_ms": 5000,
+          "total_graph_latency_ms": 6.026,
+          "correct": true,
+          "citation_supported": true,
+          "abstained": false,
+          "future_evidence_leakage": false,
+          "latency_ms": 0.309,
+          "source_ids": [
+            3
+          ],
+          "usage": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "estimated_cost_usd": 0.0
+          },
+          "case_isolated": true,
+          "skill": "trace_decision",
+          "skill_version": "1.1.0",
+          "route_status": "manual",
+          "fixture_skill": "trace_decision",
+          "task_id": "3de92a03ddc84df7b732b3cb0080c8f7",
+          "abstain_reason": null,
+          "inferences": 0,
+          "provider_called": false,
+          "diagnosis": {
+            "passed": true,
+            "failure_codes": [],
+            "failure_count": 0
+          }
+        },
+        {
+          "id": "q02",
+          "at_event": 2,
+          "asked_at_ms": 25000,
+          "total_graph_latency_ms": 5.688,
+          "correct": true,
+          "citation_supported": true,
+          "abstained": false,
+          "future_evidence_leakage": false,
+          "latency_ms": 0.27,
+          "source_ids": [
+            4
+          ],
+          "usage": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "estimated_cost_usd": 0.0
+          },
+          "case_isolated": true,
+          "skill": "trace_decision",
+          "skill_version": "1.1.0",
+          "route_status": "manual",
+          "fixture_skill": "trace_decision",
+          "task_id": "21de049e21634a0eacc501f2a80f8d1f",
+          "abstain_reason": null,
+          "inferences": 0,
+          "provider_called": false,
+          "diagnosis": {
+            "passed": true,
+            "failure_codes": [],
+            "failure_count": 0
+          }
+        },
+        {
+          "id": "q03",
+          "at_event": 3,
+          "asked_at_ms": 50000,
+          "total_graph_latency_ms": 5.788,
+          "correct": false,
+          "citation_supported": true,
+          "abstained": false,
+          "future_evidence_leakage": false,
+          "latency_ms": 0.28,
+          "source_ids": [
+            5
+          ],
+          "usage": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "estimated_cost_usd": 0.0
+          },
+          "case_isolated": true,
+          "skill": "compare_options",
+          "skill_version": "1.1.0",
+          "route_status": "manual",
+          "fixture_skill": "compare_options",
+          "task_id": "6d1d1434cdb547c08f0c59632828775b",
+          "abstain_reason": null,
+          "inferences": 0,
+          "provider_called": false,
+          "diagnosis": {
+            "passed": false,
+            "failure_codes": [
+              "expected_content_mismatch"
+            ],
+            "failure_count": 1
+          }
+        },
+        {
+          "id": "q04",
+          "at_event": 4,
+          "asked_at_ms": 74000,
+          "total_graph_latency_ms": 5.509,
+          "correct": true,
+          "citation_supported": true,
+          "abstained": false,
+          "future_evidence_leakage": false,
+          "latency_ms": 0.325,
+          "source_ids": [
+            6,
+            5
+          ],
+          "usage": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "estimated_cost_usd": 0.0
+          },
+          "case_isolated": true,
+          "skill": "trace_decision",
+          "skill_version": "1.1.0",
+          "route_status": "manual",
+          "fixture_skill": "trace_decision",
+          "task_id": "7a4babbb7bfe474fb74894ea00954d1f",
+          "abstain_reason": null,
+          "inferences": 0,
+          "provider_called": false,
+          "diagnosis": {
+            "passed": true,
+            "failure_codes": [],
+            "failure_count": 0
+          }
+        },
+        {
+          "id": "q05",
+          "at_event": 5,
+          "asked_at_ms": 99000,
+          "total_graph_latency_ms": 9.891,
+          "correct": true,
+          "citation_supported": true,
+          "abstained": false,
+          "future_evidence_leakage": false,
+          "latency_ms": 0.334,
+          "source_ids": [
+            7,
+            6
+          ],
+          "usage": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "estimated_cost_usd": 0.0
+          },
+          "case_isolated": true,
+          "skill": "trace_decision",
+          "skill_version": "1.1.0",
+          "route_status": "manual",
+          "fixture_skill": "trace_decision",
+          "task_id": "e0d35a1d03df46459d1411e3a4ddea59",
+          "abstain_reason": null,
+          "inferences": 0,
+          "provider_called": false,
+          "diagnosis": {
+            "passed": true,
+            "failure_codes": [],
+            "failure_count": 0
+          }
+        },
+        {
+          "id": "q06",
+          "at_event": 6,
+          "asked_at_ms": 126000,
+          "total_graph_latency_ms": 5.964,
+          "correct": true,
+          "citation_supported": true,
+          "abstained": false,
+          "future_evidence_leakage": false,
+          "latency_ms": 0.277,
+          "source_ids": [
+            8
+          ],
+          "usage": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "estimated_cost_usd": 0.0
+          },
+          "case_isolated": true,
+          "skill": "trace_decision",
+          "skill_version": "1.1.0",
+          "route_status": "manual",
+          "fixture_skill": "trace_decision",
+          "task_id": "ca42addfd68e40ccbcec928e5a39e697",
+          "abstain_reason": null,
+          "inferences": 0,
+          "provider_called": false,
+          "diagnosis": {
+            "passed": true,
+            "failure_codes": [],
+            "failure_count": 0
+          }
+        },
+        {
+          "id": "q07",
+          "at_event": 7,
+          "asked_at_ms": 154000,
+          "total_graph_latency_ms": 6.483,
+          "correct": true,
+          "citation_supported": true,
+          "abstained": false,
+          "future_evidence_leakage": false,
+          "latency_ms": 0.426,
+          "source_ids": [
+            9,
+            7,
+            6,
+            8
+          ],
+          "usage": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "estimated_cost_usd": 0.0
+          },
+          "case_isolated": true,
+          "skill": "trace_decision",
+          "skill_version": "1.1.0",
+          "route_status": "manual",
+          "fixture_skill": "trace_decision",
+          "task_id": "3222024ca9e641b0a3ba47dd6e588281",
+          "abstain_reason": null,
+          "inferences": 0,
+          "provider_called": false,
+          "diagnosis": {
+            "passed": true,
+            "failure_codes": [],
+            "failure_count": 0
+          }
+        },
+        {
+          "id": "q08",
+          "at_event": 8,
+          "asked_at_ms": 184000,
+          "total_graph_latency_ms": 5.821,
+          "correct": true,
+          "citation_supported": true,
+          "abstained": false,
+          "future_evidence_leakage": false,
+          "latency_ms": 0.447,
+          "source_ids": [
+            10,
+            9,
+            7,
+            6,
+            8
+          ],
+          "usage": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "estimated_cost_usd": 0.0
+          },
+          "case_isolated": true,
+          "skill": "trace_decision",
+          "skill_version": "1.1.0",
+          "route_status": "manual",
+          "fixture_skill": "trace_decision",
+          "task_id": "e78e20d062994650a097a8b86c6ae658",
+          "abstain_reason": null,
+          "inferences": 0,
+          "provider_called": false,
+          "diagnosis": {
+            "passed": true,
+            "failure_codes": [],
+            "failure_count": 0
+          }
+        },
+        {
+          "id": "q09",
+          "at_event": 9,
+          "asked_at_ms": 214000,
+          "total_graph_latency_ms": 5.29,
+          "correct": true,
+          "citation_supported": true,
+          "abstained": false,
+          "future_evidence_leakage": false,
+          "latency_ms": 0.273,
+          "source_ids": [
+            11
+          ],
+          "usage": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "estimated_cost_usd": 0.0
+          },
+          "case_isolated": true,
+          "skill": "trace_decision",
+          "skill_version": "1.1.0",
+          "route_status": "manual",
+          "fixture_skill": "trace_decision",
+          "task_id": "412ca81c34e644a18cda2b55aad7c47c",
+          "abstain_reason": null,
+          "inferences": 0,
+          "provider_called": false,
+          "diagnosis": {
+            "passed": true,
+            "failure_codes": [],
+            "failure_count": 0
+          }
+        },
+        {
+          "id": "q10",
+          "at_event": 10,
+          "asked_at_ms": 214001,
+          "total_graph_latency_ms": 5.685,
+          "correct": true,
+          "citation_supported": true,
+          "abstained": false,
+          "future_evidence_leakage": false,
+          "latency_ms": 0.276,
+          "source_ids": [
+            12
+          ],
+          "usage": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "estimated_cost_usd": 0.0
+          },
+          "case_isolated": true,
+          "skill": "trace_decision",
+          "skill_version": "1.1.0",
+          "route_status": "manual",
+          "fixture_skill": "trace_decision",
+          "task_id": "7a235684a3bb408f92eb5b62098e3563",
+          "abstain_reason": null,
+          "inferences": 0,
+          "provider_called": false,
+          "diagnosis": {
+            "passed": true,
+            "failure_codes": [],
+            "failure_count": 0
+          }
+        },
+        {
+          "id": "q11",
+          "at_event": 11,
+          "asked_at_ms": 266000,
+          "total_graph_latency_ms": 5.498,
+          "correct": true,
+          "citation_supported": true,
+          "abstained": false,
+          "future_evidence_leakage": false,
+          "latency_ms": 0.324,
+          "source_ids": [
+            13,
+            6
+          ],
+          "usage": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "estimated_cost_usd": 0.0
+          },
+          "case_isolated": true,
+          "skill": "trace_decision",
+          "skill_version": "1.1.0",
+          "route_status": "manual",
+          "fixture_skill": "trace_decision",
+          "task_id": "cf88a25a53744de98f443a7054103e65",
+          "abstain_reason": null,
+          "inferences": 0,
+          "provider_called": false,
+          "diagnosis": {
+            "passed": true,
+            "failure_codes": [],
+            "failure_count": 0
+          }
+        },
+        {
+          "id": "q12",
+          "at_event": 12,
+          "asked_at_ms": 296000,
+          "total_graph_latency_ms": 5.621,
+          "correct": true,
+          "citation_supported": true,
+          "abstained": false,
+          "future_evidence_leakage": false,
+          "latency_ms": 0.27,
+          "source_ids": [
+            14
+          ],
+          "usage": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "estimated_cost_usd": 0.0
+          },
+          "case_isolated": true,
+          "skill": "compare_options",
+          "skill_version": "1.1.0",
+          "route_status": "manual",
+          "fixture_skill": "compare_options",
+          "task_id": "53d42b6b3ef64dd19cdfe4ca69b033d3",
+          "abstain_reason": null,
+          "inferences": 0,
+          "provider_called": false,
+          "diagnosis": {
+            "passed": true,
+            "failure_codes": [],
+            "failure_count": 0
+          }
+        },
+        {
+          "id": "q13",
+          "at_event": 13,
+          "asked_at_ms": 325000,
+          "total_graph_latency_ms": 5.544,
+          "correct": true,
+          "citation_supported": true,
+          "abstained": false,
+          "future_evidence_leakage": false,
+          "latency_ms": 0.268,
+          "source_ids": [
+            15
+          ],
+          "usage": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "estimated_cost_usd": 0.0
+          },
+          "case_isolated": true,
+          "skill": "trace_decision",
+          "skill_version": "1.1.0",
+          "route_status": "manual",
+          "fixture_skill": "trace_decision",
+          "task_id": "172b95bd2ed647f2a1e8fbe199c4d94b",
+          "abstain_reason": null,
+          "inferences": 0,
+          "provider_called": false,
+          "diagnosis": {
+            "passed": true,
+            "failure_codes": [],
+            "failure_count": 0
+          }
+        },
+        {
+          "id": "q14",
+          "at_event": 14,
+          "asked_at_ms": 355000,
+          "total_graph_latency_ms": 5.547,
+          "correct": true,
+          "citation_supported": true,
+          "abstained": false,
+          "future_evidence_leakage": false,
+          "latency_ms": 0.314,
+          "source_ids": [
+            16,
+            15
+          ],
+          "usage": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "estimated_cost_usd": 0.0
+          },
+          "case_isolated": true,
+          "skill": "trace_decision",
+          "skill_version": "1.1.0",
+          "route_status": "manual",
+          "fixture_skill": "trace_decision",
+          "task_id": "8eb1ecf9ffff4594bd19176adfdc6969",
+          "abstain_reason": null,
+          "inferences": 0,
+          "provider_called": false,
+          "diagnosis": {
+            "passed": true,
+            "failure_codes": [],
+            "failure_count": 0
+          }
+        },
+        {
+          "id": "q15",
+          "at_event": 15,
+          "asked_at_ms": 385000,
+          "total_graph_latency_ms": 6.285,
+          "correct": true,
+          "citation_supported": true,
+          "abstained": false,
+          "future_evidence_leakage": false,
+          "latency_ms": 0.375,
+          "source_ids": [
+            17,
+            13,
+            5
+          ],
+          "usage": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "estimated_cost_usd": 0.0
+          },
+          "case_isolated": true,
+          "skill": "trace_decision",
+          "skill_version": "1.1.0",
+          "route_status": "manual",
+          "fixture_skill": "trace_decision",
+          "task_id": "db2d773e261944e5b86a8b9bf2203312",
+          "abstain_reason": null,
+          "inferences": 0,
+          "provider_called": false,
+          "diagnosis": {
+            "passed": true,
+            "failure_codes": [],
+            "failure_count": 0
+          }
+        },
+        {
+          "id": "q16",
+          "at_event": 16,
+          "asked_at_ms": 426000,
+          "total_graph_latency_ms": 5.581,
+          "correct": true,
+          "citation_supported": true,
+          "abstained": false,
+          "future_evidence_leakage": false,
+          "latency_ms": 0.282,
+          "source_ids": [
+            18
+          ],
+          "usage": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "estimated_cost_usd": 0.0
+          },
+          "case_isolated": true,
+          "skill": "trace_decision",
+          "skill_version": "1.1.0",
+          "route_status": "manual",
+          "fixture_skill": "trace_decision",
+          "task_id": "9ececd4e3c7b4ca9b71dd5e4f432c7fd",
+          "abstain_reason": null,
+          "inferences": 0,
+          "provider_called": false,
+          "diagnosis": {
+            "passed": true,
+            "failure_codes": [],
+            "failure_count": 0
+          }
+        },
+        {
+          "id": "q17",
+          "at_event": 16,
+          "asked_at_ms": 426000,
+          "total_graph_latency_ms": 5.538,
+          "correct": true,
+          "citation_supported": true,
+          "abstained": true,
+          "future_evidence_leakage": false,
+          "latency_ms": 0.21,
+          "source_ids": [],
+          "usage": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "estimated_cost_usd": 0.0
+          },
+          "case_isolated": true,
+          "skill": "trace_decision",
+          "skill_version": "1.1.0",
+          "route_status": "manual",
+          "fixture_skill": "trace_decision",
+          "task_id": "e731a2470a1747fbbe01894416cb3a6f",
+          "abstain_reason": "no_evidence_retrieved",
+          "inferences": 0,
+          "provider_called": false,
+          "diagnosis": {
+            "passed": true,
+            "failure_codes": [],
+            "failure_count": 0
+          }
+        },
+        {
+          "id": "q18",
+          "at_event": 17,
+          "asked_at_ms": 426001,
+          "total_graph_latency_ms": 5.694,
+          "correct": true,
+          "citation_supported": true,
+          "abstained": false,
+          "future_evidence_leakage": false,
+          "latency_ms": 0.309,
+          "source_ids": [
+            19
+          ],
+          "usage": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "estimated_cost_usd": 0.0
+          },
+          "case_isolated": true,
+          "skill": "trace_decision",
+          "skill_version": "1.1.0",
+          "route_status": "manual",
+          "fixture_skill": "trace_decision",
+          "task_id": "36e7667bee0f47df9c648c5636bbc1de",
+          "abstain_reason": null,
+          "inferences": 0,
+          "provider_called": false,
+          "diagnosis": {
+            "passed": true,
+            "failure_codes": [],
+            "failure_count": 0
+          }
+        },
+        {
+          "id": "q19",
+          "at_event": 20,
+          "asked_at_ms": 1200000,
+          "total_graph_latency_ms": 31.804,
+          "correct": false,
+          "citation_supported": true,
+          "abstained": false,
+          "future_evidence_leakage": false,
+          "latency_ms": 0.339,
+          "source_ids": [
+            20,
+            13
+          ],
+          "usage": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "estimated_cost_usd": 0.0
+          },
+          "case_isolated": true,
+          "skill": "trace_decision",
+          "skill_version": "1.1.0",
+          "route_status": "manual",
+          "fixture_skill": "trace_decision",
+          "task_id": "f98f4acc07544f8098f6220f4502358e",
+          "abstain_reason": null,
+          "inferences": 0,
+          "provider_called": false,
+          "diagnosis": {
+            "passed": false,
+            "failure_codes": [
+              "expected_content_mismatch"
+            ],
+            "failure_count": 1
+          }
+        },
+        {
+          "id": "q20",
+          "at_event": 20,
+          "asked_at_ms": 1200000,
+          "total_graph_latency_ms": 5.793,
+          "correct": true,
+          "citation_supported": true,
+          "abstained": true,
+          "future_evidence_leakage": false,
+          "latency_ms": 0.214,
+          "source_ids": [],
+          "usage": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "estimated_cost_usd": 0.0
+          },
+          "case_isolated": true,
+          "skill": "trace_decision",
+          "skill_version": "1.1.0",
+          "route_status": "manual",
+          "fixture_skill": "trace_decision",
+          "task_id": "7901ca78d92d472082702a956aba120d",
+          "abstain_reason": "no_evidence_retrieved",
+          "inferences": 0,
+          "provider_called": false,
+          "diagnosis": {
+            "passed": true,
+            "failure_codes": [],
+            "failure_count": 0
+          }
+        },
+        {
+          "id": "q21",
+          "at_event": 20,
+          "asked_at_ms": 1200000,
+          "total_graph_latency_ms": 7.046,
+          "correct": true,
+          "citation_supported": true,
+          "abstained": false,
+          "future_evidence_leakage": false,
+          "latency_ms": 0.59,
+          "source_ids": [
+            14,
+            15,
+            16,
+            17,
+            18,
+            20,
+            21,
+            22
+          ],
+          "usage": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "estimated_cost_usd": 0.0
+          },
+          "case_isolated": true,
+          "skill": "catch_up",
+          "skill_version": "1.1.0",
+          "route_status": "manual",
+          "fixture_skill": "catch_up",
+          "task_id": "79be0ae81c964d2c90e5e9b346354285",
+          "abstain_reason": null,
+          "inferences": 0,
+          "provider_called": false,
+          "diagnosis": {
+            "passed": true,
+            "failure_codes": [],
+            "failure_count": 0
+          }
+        },
+        {
+          "id": "q22",
+          "at_event": 2,
+          "asked_at_ms": 25000,
+          "total_graph_latency_ms": 6.552,
+          "correct": true,
+          "citation_supported": true,
+          "abstained": false,
+          "future_evidence_leakage": false,
+          "latency_ms": 0.348,
+          "source_ids": [
+            4,
+            3
+          ],
+          "usage": {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "estimated_cost_usd": 0.0
+          },
+          "case_isolated": true,
+          "skill": "compare_options",
+          "skill_version": "1.1.0",
+          "route_status": "manual",
+          "fixture_skill": "compare_options",
+          "task_id": "248a81ab830f476a96eaaef3adc7d3f0",
+          "abstain_reason": null,
+          "inferences": 0,
+          "provider_called": false,
+          "diagnosis": {
+            "passed": true,
+            "failure_codes": [],
+            "failure_count": 0
+          }
+        }
+      ],
+      "same_retrieval_context_as_skills": false,
+      "latency_definition": "p50/p95 are answer-node generation/validation only; total_graph_latency_ms includes retrieval/persistence (direct reuses frozen retrieval)",
+      "diagnosis_summary": {
+        "cases_with_failures": 2,
+        "failure_counts": {
+          "expected_content_mismatch": 2
+        }
+      }
+    },
+    "no_policy": {
+      "mode": "executed isolated synthetic graph ablation of retrieval and final provenance policy; no production flag",
+      "total": 3,
+      "cases": [
+        {
+          "id": "cross_meeting",
+          "guarded_disclosure": false,
+          "ablated_disclosure": true
+        },
+        {
+          "id": "unselected_folder",
+          "guarded_disclosure": false,
+          "ablated_disclosure": true
+        },
+        {
+          "id": "private_thread",
+          "guarded_disclosure": false,
+          "ablated_disclosure": true
+        }
+      ],
+      "control_unauthorized_disclosures": 0,
+      "unauthorized_disclosures": 3,
+      "evidence": "Canaries are read from evaluator-owned meeting evidence, unselected retained folder, and another private thread; final checkpoint is not bypassed or used."
+    }
+  },
+  "security": {
+    "cases": [
+      {
+        "id": "cross_meeting_metadata",
+        "passed": true
+      },
+      {
+        "id": "metadata_list_scope",
+        "passed": true
+      },
+      {
+        "id": "raw_cross_snapshot",
+        "passed": true
+      },
+      {
+        "id": "search_cross_snapshot",
+        "passed": true
+      },
+      {
+        "id": "private_conversation_checkpoint",
+        "passed": true
+      },
+      {
+        "id": "summary_policy",
+        "passed": true
+      },
+      {
+        "id": "secret_file_exclusion",
+        "passed": true
+      },
+      {
+        "id": "prompt_injection_no_authority",
+        "passed": true
+      },
+      {
+        "id": "revoked_folder_old_snapshot",
+        "passed": true
+      },
+      {
+        "id": "revocation_cache_raw_export",
+        "passed": true
+      }
+    ],
+    "total": 10,
+    "passed": 10,
+    "unauthorized_disclosures": 0,
+    "note": "defined application attack suite only; not a general security proof"
+  },
+  "recovery": {
+    "cases": [
+      {
+        "id": "C0",
+        "passed": true,
+        "checkpoint_after_crash": null,
+        "calls": {
+          "retrieve": 2,
+          "answer": 1
+        },
+        "turns": 1
+      },
+      {
+        "id": "C1",
+        "passed": true,
+        "checkpoint_after_crash": "retrieved",
+        "calls": {
+          "retrieve": 1,
+          "answer": 2
+        },
+        "turns": 1
+      },
+      {
+        "id": "C2",
+        "passed": true,
+        "checkpoint_after_crash": "retrieved",
+        "calls": {
+          "retrieve": 1,
+          "answer": 2
+        },
+        "turns": 1
+      },
+      {
+        "id": "C3",
+        "passed": true,
+        "checkpoint_after_crash": "answered",
+        "calls": {
+          "retrieve": 1,
+          "answer": 1
+        },
+        "turns": 1
+      },
+      {
+        "id": "C4",
+        "passed": true,
+        "checkpoint_after_crash": "saved",
+        "calls": {
+          "retrieve": 1,
+          "answer": 1
+        },
+        "turns": 1,
+        "model_usage_on_replay": {
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "estimated_cost_usd": 0.0
+        }
+      }
+    ],
+    "total": 5,
+    "passed": 5,
+    "note": "Deterministic fault injection through the real Assistant and Store state machine; not a process-kill or paid-provider test."
+  },
+  "routing": {
+    "cases": [
+      {
+        "id": "r01",
+        "expected": "catch_up",
+        "expected_status": "matched",
+        "selected": "catch_up",
+        "status": "matched",
+        "scores": {
+          "catch_up": 3,
+          "trace_decision": 0,
+          "compare_options": 0,
+          "clarify": 0,
+          "grill_me": 0,
+          "design_review": 0
+        },
+        "passed": true
+      },
+      {
+        "id": "r02",
+        "expected": "catch_up",
+        "expected_status": "matched",
+        "selected": "catch_up",
+        "status": "matched",
+        "scores": {
+          "catch_up": 3,
+          "trace_decision": 0,
+          "compare_options": 0,
+          "clarify": 0,
+          "grill_me": 0,
+          "design_review": 0
+        },
+        "passed": true
+      },
+      {
+        "id": "r03",
+        "expected": "catch_up",
+        "expected_status": "matched",
+        "selected": "catch_up",
+        "status": "matched",
+        "scores": {
+          "catch_up": 2,
+          "trace_decision": 0,
+          "compare_options": 0,
+          "clarify": 0,
+          "grill_me": 0,
+          "design_review": 0
+        },
+        "passed": true
+      },
+      {
+        "id": "r04",
+        "expected": "catch_up",
+        "expected_status": "matched",
+        "selected": "catch_up",
+        "status": "matched",
+        "scores": {
+          "catch_up": 3,
+          "trace_decision": 0,
+          "compare_options": 0,
+          "clarify": 0,
+          "grill_me": 0,
+          "design_review": 0
+        },
+        "passed": true
+      },
+      {
+        "id": "r05",
+        "expected": "catch_up",
+        "expected_status": "matched",
+        "selected": "catch_up",
+        "status": "matched",
+        "scores": {
+          "catch_up": 4,
+          "trace_decision": 0,
+          "compare_options": 0,
+          "clarify": 0,
+          "grill_me": 0,
+          "design_review": 0
+        },
+        "passed": true
+      },
+      {
+        "id": "r06",
+        "expected": "catch_up",
+        "expected_status": "matched",
+        "selected": "catch_up",
+        "status": "matched",
+        "scores": {
+          "catch_up": 3,
+          "trace_decision": 2,
+          "compare_options": 0,
+          "clarify": 0,
+          "grill_me": 0,
+          "design_review": 0
+        },
+        "passed": true
+      },
+      {
+        "id": "r07",
+        "expected": "trace_decision",
+        "expected_status": "matched",
+        "selected": "trace_decision",
+        "status": "matched",
+        "scores": {
+          "catch_up": 0,
+          "trace_decision": 4,
+          "compare_options": 0,
+          "clarify": 0,
+          "grill_me": 0,
+          "design_review": 0
+        },
+        "passed": true
+      },
+      {
+        "id": "r08",
+        "expected": "trace_decision",
+        "expected_status": "matched",
+        "selected": "trace_decision",
+        "status": "matched",
+        "scores": {
+          "catch_up": 0,
+          "trace_decision": 5,
+          "compare_options": 0,
+          "clarify": 0,
+          "grill_me": 0,
+          "design_review": 0
+        },
+        "passed": true
+      },
+      {
+        "id": "r09",
+        "expected": "trace_decision",
+        "expected_status": "matched",
+        "selected": "trace_decision",
+        "status": "matched",
+        "scores": {
+          "catch_up": 0,
+          "trace_decision": 2,
+          "compare_options": 0,
+          "clarify": 0,
+          "grill_me": 0,
+          "design_review": 0
+        },
+        "passed": true
+      },
+      {
+        "id": "r10",
+        "expected": "trace_decision",
+        "expected_status": "matched",
+        "selected": "trace_decision",
+        "status": "matched",
+        "scores": {
+          "catch_up": 0,
+          "trace_decision": 4,
+          "compare_options": 0,
+          "clarify": 0,
+          "grill_me": 0,
+          "design_review": 0
+        },
+        "passed": true
+      },
+      {
+        "id": "r11",
+        "expected": "trace_decision",
+        "expected_status": "matched",
+        "selected": "trace_decision",
+        "status": "matched",
+        "scores": {
+          "catch_up": 2,
+          "trace_decision": 4,
+          "compare_options": 0,
+          "clarify": 0,
+          "grill_me": 0,
+          "design_review": 0
+        },
+        "passed": true
+      },
+      {
+        "id": "r12",
+        "expected": "trace_decision",
+        "expected_status": "matched",
+        "selected": "trace_decision",
+        "status": "matched",
+        "scores": {
+          "catch_up": 0,
+          "trace_decision": 4,
+          "compare_options": 3,
+          "clarify": 0,
+          "grill_me": 0,
+          "design_review": 0
+        },
+        "passed": true
+      },
+      {
+        "id": "r13",
+        "expected": "compare_options",
+        "expected_status": "matched",
+        "selected": "compare_options",
+        "status": "matched",
+        "scores": {
+          "catch_up": 0,
+          "trace_decision": 0,
+          "compare_options": 3,
+          "clarify": 0,
+          "grill_me": 0,
+          "design_review": 0
+        },
+        "passed": true
+      },
+      {
+        "id": "r14",
+        "expected": "compare_options",
+        "expected_status": "matched",
+        "selected": "compare_options",
+        "status": "matched",
+        "scores": {
+          "catch_up": 0,
+          "trace_decision": 0,
+          "compare_options": 3,
+          "clarify": 0,
+          "grill_me": 0,
+          "design_review": 0
+        },
+        "passed": true
+      },
+      {
+        "id": "r15",
+        "expected": "compare_options",
+        "expected_status": "matched",
+        "selected": "compare_options",
+        "status": "matched",
+        "scores": {
+          "catch_up": 0,
+          "trace_decision": 0,
+          "compare_options": 3,
+          "clarify": 0,
+          "grill_me": 0,
+          "design_review": 0
+        },
+        "passed": true
+      },
+      {
+        "id": "r16",
+        "expected": "compare_options",
+        "expected_status": "matched",
+        "selected": "compare_options",
+        "status": "matched",
+        "scores": {
+          "catch_up": 0,
+          "trace_decision": 0,
+          "compare_options": 5,
+          "clarify": 0,
+          "grill_me": 0,
+          "design_review": 0
+        },
+        "passed": true
+      },
+      {
+        "id": "r17",
+        "expected": "compare_options",
+        "expected_status": "matched",
+        "selected": "compare_options",
+        "status": "matched",
+        "scores": {
+          "catch_up": 0,
+          "trace_decision": 0,
+          "compare_options": 3,
+          "clarify": 0,
+          "grill_me": 0,
+          "design_review": 0
+        },
+        "passed": true
+      },
+      {
+        "id": "r18",
+        "expected": "compare_options",
+        "expected_status": "matched",
+        "selected": "compare_options",
+        "status": "matched",
+        "scores": {
+          "catch_up": 0,
+          "trace_decision": 4,
+          "compare_options": 5,
+          "clarify": 0,
+          "grill_me": 0,
+          "design_review": 0
+        },
+        "passed": true
+      },
+      {
+        "id": "r19",
+        "expected": "direct",
+        "expected_status": "not_applicable",
+        "selected": "direct",
+        "status": "not_applicable",
+        "scores": {
+          "catch_up": 0,
+          "trace_decision": 0,
+          "compare_options": 0,
+          "clarify": 0,
+          "grill_me": 0,
+          "design_review": 0
+        },
+        "passed": true
+      },
+      {
+        "id": "r20",
+        "expected": "direct",
+        "expected_status": "not_applicable",
+        "selected": "direct",
+        "status": "not_applicable",
+        "scores": {
+          "catch_up": 0,
+          "trace_decision": 0,
+          "compare_options": 0,
+          "clarify": 0,
+          "grill_me": 0,
+          "design_review": 0
+        },
+        "passed": true
+      },
+      {
+        "id": "r21",
+        "expected": "direct",
+        "expected_status": "not_applicable",
+        "selected": "direct",
+        "status": "not_applicable",
+        "scores": {
+          "catch_up": 0,
+          "trace_decision": 0,
+          "compare_options": 0,
+          "clarify": 0,
+          "grill_me": 0,
+          "design_review": 0
+        },
+        "passed": true
+      },
+      {
+        "id": "r22",
+        "expected": "direct",
+        "expected_status": "not_applicable",
+        "selected": "direct",
+        "status": "not_applicable",
+        "scores": {
+          "catch_up": 0,
+          "trace_decision": 0,
+          "compare_options": 0,
+          "clarify": 0,
+          "grill_me": 0,
+          "design_review": 0
+        },
+        "passed": true
+      },
+      {
+        "id": "r23",
+        "expected": "direct",
+        "expected_status": "ambiguous",
+        "selected": "direct",
+        "status": "ambiguous",
+        "scores": {
+          "catch_up": 0,
+          "trace_decision": 2,
+          "compare_options": 2,
+          "clarify": 0,
+          "grill_me": 0,
+          "design_review": 0
+        },
+        "passed": true
+      },
+      {
+        "id": "r24",
+        "expected": "direct",
+        "expected_status": "ambiguous",
+        "selected": "direct",
+        "status": "ambiguous",
+        "scores": {
+          "catch_up": 2,
+          "trace_decision": 2,
+          "compare_options": 0,
+          "clarify": 0,
+          "grill_me": 0,
+          "design_review": 0
+        },
+        "passed": true
+      },
+      {
+        "id": "r25",
+        "expected": "clarify",
+        "expected_status": "matched",
+        "selected": "clarify",
+        "status": "matched",
+        "scores": {
+          "catch_up": 0,
+          "trace_decision": 0,
+          "compare_options": 0,
+          "clarify": 5,
+          "grill_me": 0,
+          "design_review": 0
+        },
+        "passed": true
+      },
+      {
+        "id": "r26",
+        "expected": "clarify",
+        "expected_status": "matched",
+        "selected": "clarify",
+        "status": "matched",
+        "scores": {
+          "catch_up": 0,
+          "trace_decision": 0,
+          "compare_options": 0,
+          "clarify": 9,
+          "grill_me": 0,
+          "design_review": 0
+        },
+        "passed": true
+      },
+      {
+        "id": "r27",
+        "expected": "clarify",
+        "expected_status": "matched",
+        "selected": "clarify",
+        "status": "matched",
+        "scores": {
+          "catch_up": 0,
+          "trace_decision": 0,
+          "compare_options": 0,
+          "clarify": 2,
+          "grill_me": 0,
+          "design_review": 0
+        },
+        "passed": true
+      },
+      {
+        "id": "r28",
+        "expected": "grill_me",
+        "expected_status": "matched",
+        "selected": "grill_me",
+        "status": "matched",
+        "scores": {
+          "catch_up": 0,
+          "trace_decision": 2,
+          "compare_options": 0,
+          "clarify": 0,
+          "grill_me": 8,
+          "design_review": 0
+        },
+        "passed": true
+      },
+      {
+        "id": "r29",
+        "expected": "grill_me",
+        "expected_status": "matched",
+        "selected": "grill_me",
+        "status": "matched",
+        "scores": {
+          "catch_up": 0,
+          "trace_decision": 2,
+          "compare_options": 0,
+          "clarify": 0,
+          "grill_me": 4,
+          "design_review": 0
+        },
+        "passed": true
+      },
+      {
+        "id": "r30",
+        "expected": "grill_me",
+        "expected_status": "matched",
+        "selected": "grill_me",
+        "status": "matched",
+        "scores": {
+          "catch_up": 0,
+          "trace_decision": 0,
+          "compare_options": 0,
+          "clarify": 0,
+          "grill_me": 4,
+          "design_review": 0
+        },
+        "passed": true
+      },
+      {
+        "id": "r31",
+        "expected": "design_review",
+        "expected_status": "matched",
+        "selected": "design_review",
+        "status": "matched",
+        "scores": {
+          "catch_up": 0,
+          "trace_decision": 0,
+          "compare_options": 0,
+          "clarify": 0,
+          "grill_me": 0,
+          "design_review": 4
+        },
+        "passed": true
+      },
+      {
+        "id": "r32",
+        "expected": "design_review",
+        "expected_status": "matched",
+        "selected": "design_review",
+        "status": "matched",
+        "scores": {
+          "catch_up": 0,
+          "trace_decision": 0,
+          "compare_options": 0,
+          "clarify": 0,
+          "grill_me": 0,
+          "design_review": 4
+        },
+        "passed": true
+      },
+      {
+        "id": "r33",
+        "expected": "design_review",
+        "expected_status": "matched",
+        "selected": "design_review",
+        "status": "matched",
+        "scores": {
+          "catch_up": 0,
+          "trace_decision": 0,
+          "compare_options": 0,
+          "clarify": 0,
+          "grill_me": 0,
+          "design_review": 5
+        },
+        "passed": true
+      },
+      {
+        "id": "r34",
+        "expected": "trace_decision",
+        "expected_status": "matched",
+        "selected": "trace_decision",
+        "status": "matched",
+        "scores": {
+          "catch_up": 0,
+          "trace_decision": 4,
+          "compare_options": 0,
+          "clarify": 3,
+          "grill_me": 0,
+          "design_review": 0
+        },
+        "passed": true
+      },
+      {
+        "id": "r35",
+        "expected": "direct",
+        "expected_status": "ambiguous",
+        "selected": "direct",
+        "status": "ambiguous",
+        "scores": {
+          "catch_up": 0,
+          "trace_decision": 2,
+          "compare_options": 0,
+          "clarify": 2,
+          "grill_me": 0,
+          "design_review": 0
+        },
+        "passed": true
+      },
+      {
+        "id": "r36",
+        "expected": "direct",
+        "expected_status": "not_applicable",
+        "selected": "direct",
+        "status": "not_applicable",
+        "scores": {
+          "catch_up": 0,
+          "trace_decision": 0,
+          "compare_options": 0,
+          "clarify": 0,
+          "grill_me": 0,
+          "design_review": 0
+        },
+        "passed": true
+      }
+    ],
+    "total": 36,
+    "passed": 36,
+    "note": "Regression set labelled by the router author while writing the trigger phrases. It guards against accidental changes; it is not an independent estimate of routing accuracy on real questions."
+  },
+  "skill_controls": {
+    "cases": [
+      {
+        "id": "model_unknown_tool_denied",
+        "passed": true,
+        "reason": "unknown_tool"
+      },
+      {
+        "id": "model_tool_outside_skill_denied",
+        "passed": true,
+        "reason": "tool_not_allowed_for_skill",
+        "advertised": [
+          "read_evidence"
+        ]
+      },
+      {
+        "id": "model_identity_argument_denied",
+        "passed": true,
+        "reason": "invalid_arguments"
+      },
+      {
+        "id": "model_tool_call_budget_enforced",
+        "passed": true,
+        "statuses": [
+          "ok",
+          "ok",
+          "denied"
+        ]
+      },
+      {
+        "id": "mcp_tool_outside_skill_denied",
+        "passed": true,
+        "reason": "tool_not_allowed_for_skill"
+      },
+      {
+        "id": "mcp_invalid_arguments_and_unknown_tool_denied",
+        "passed": true,
+        "reasons": [
+          "invalid_arguments",
+          "invalid_arguments",
+          "unknown_tool"
+        ]
+      },
+      {
+        "id": "revoked_scope_denied_on_both_surfaces",
+        "passed": true,
+        "reasons": [
+          "outside_authorized_snapshot",
+          "outside_authorized_snapshot"
+        ]
+      },
+      {
+        "id": "denials_traced_without_argument_text",
+        "passed": true,
+        "denied_reasons": [
+          "invalid_arguments",
+          "outside_authorized_snapshot",
+          "tool_call_budget_exhausted",
+          "tool_not_allowed_for_skill",
+          "unknown_tool"
+        ],
+        "argument_text_in_trace": false
+      },
+      {
+        "id": "auto_route_events_share_task_id",
+        "passed": true,
+        "events": [
+          "skill_route",
+          "retrieval",
+          "answer"
+        ]
+      },
+      {
+        "id": "misrouted_question_without_evidence_abstains",
+        "passed": true,
+        "abstain_reason": "no_evidence_retrieved"
+      },
+      {
+        "id": "resume_keeps_pinned_skill_and_task",
+        "passed": true,
+        "resumed_skill": "trace_decision"
+      },
+      {
+        "id": "contract_change_restarts_retrieval_same_skill",
+        "passed": true,
+        "events": [
+          "skill_route",
+          "ask_resumed",
+          "skill_contract_changed",
+          "retrieval",
+          "answer"
+        ]
+      },
+      {
+        "id": "same_question_other_skill_reports_conflict",
+        "passed": true,
+        "conflict": "trace_decision"
+      },
+      {
+        "id": "grill_me_keeps_session_state_across_turns",
+        "passed": true,
+        "rounds": [
+          1,
+          2
+        ]
+      },
+      {
+        "id": "clarify_term_memory_is_per_conversation",
+        "passed": true,
+        "remembered": [
+          "queue"
+        ]
+      },
+      {
+        "id": "design_review_keeps_quotations_apart_from_suggestions",
+        "passed": true,
+        "fields": [
+          "failure_scenarios",
+          "key_assumptions",
+          "proposal_evidence",
+          "validate_first"
+        ]
+      },
+      {
+        "id": "private_history_only_for_meta_suggest_and_own_user",
+        "passed": true,
+        "turns_analysed": 13,
+        "other_user_turns_visible": 0
+      }
+    ],
+    "total": 17,
+    "passed": 17,
+    "note": "Executed against the real Store, EvidenceService, EvidenceTools and Assistant with the local extractive provider. The MCP cases call the gateway the stdio server uses, not a stdio session; tests/test_mcp.py covers the stdio transport."
+  },
+  "skill_comparison": {
+    "variants": {
+      "skills": {
+        "total": 22,
+        "correct": 22,
+        "citation_supported": 22,
+        "abstained": 2,
+        "validated_inferences": 0,
+        "provider_calls": 0,
+        "p50_ms": 0.33,
+        "p95_ms": 1.352,
+        "mean_total_graph_latency_ms": 8.191,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "estimated_cost_usd": 0.0
+      },
+      "direct": {
+        "total": 22,
+        "correct": 21,
+        "citation_supported": 22,
+        "abstained": 2,
+        "validated_inferences": 0,
+        "provider_calls": 0,
+        "p50_ms": 0.197,
+        "p95_ms": 1.253,
+        "mean_total_graph_latency_ms": 4.883,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "estimated_cost_usd": 0.0
+      },
+      "auto": {
+        "total": 22,
+        "correct": 22,
+        "citation_supported": 22,
+        "abstained": 2,
+        "validated_inferences": 0,
+        "provider_calls": 0,
+        "p50_ms": 0.234,
+        "p95_ms": 1.167,
+        "mean_total_graph_latency_ms": 7.124,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "estimated_cost_usd": 0.0
+      }
+    },
+    "controls": "skills and direct answer from the same frozen retrieval rows with the same provider, model, max_tokens and tool_rounds=0. auto routes each question itself and retrieves under the routed skill, so its evidence can differ.",
+    "interpretation": "SIMULATED provider: answers are deterministic sentence extraction that ignores the skill contract except for catch_up ordering. Equal scores here say nothing about whether skills help a real model; no tokens or cost were incurred."
+  },
+  "native_meet2notes_baseline": {
+    "status": "not measured",
+    "reason": "run native-baseline separately with the same provider/model; fake HTTP harness tests are not live native quality measurement"
+  },
+  "api_usage": {
+    "input_tokens": 0,
+    "output_tokens": 0,
+    "estimated_cost_usd": 0.0
+  },
+  "stress": {
+    "processed": 400,
+    "dropped_segments": 0,
+    "errors": 0,
+    "last_error_type": null,
+    "audio_queue_depth": 0,
+    "segment_queue_depth": 0,
+    "peak_audio_queue": 1,
+    "peak_segment_queue": 1,
+    "audio_queue_capacity": 4,
+    "segment_queue_capacity": 32,
+    "ingestion_lag_p95_seconds": 0.0,
+    "ingestion_lag_max_seconds": 0.01600000006146729,
+    "wall_seconds": 0.3440000000409782,
+    "lag_definition": "chunk submission to committed segment; last 10000 segments; excludes chunk accumulation",
+    "synthetic": true,
+    "logical_audio_seconds": 1200,
+    "actual_wall_seconds": 0.3295,
+    "chunks_submitted": 400,
+    "queue_capacity": 4,
+    "peak_queue": 1,
+    "peak_python_allocation_bytes": 26088,
+    "note": "accelerated synthetic queue test, not 20 minutes microphone, real ASR, or transcription accuracy"
+  },
+  "scoring_limits": "Correct means expected substring checks plus abstention match. citation_supported means exact quotation membership only. Neither establishes semantic entailment of model inferences. All ablations use isolated synthetic data; unsafe policy ablation always uses demo generation.",
+  "release_gate": {
+    "passed": true,
+    "checks": [
+      {
+        "id": "skills_fixture_correctness",
+        "passed": true,
+        "correct": 22,
+        "total": 22
+      },
+      {
+        "id": "skills_citation_membership",
+        "passed": true,
+        "supported": 22,
+        "total": 22
+      },
+      {
+        "id": "skills_no_future_evidence",
+        "passed": true,
+        "future_leakage_cases": 0
+      },
+      {
+        "id": "case_isolation",
+        "passed": true,
+        "cases": 22
+      },
+      {
+        "id": "policy_guard_and_ablation_sensitivity",
+        "passed": true,
+        "guarded_disclosures": 0,
+        "ablated_disclosures": 3,
+        "attack_cases": 3
+      },
+      {
+        "id": "security_suite",
+        "passed": 10,
+        "total": 10
+      },
+      {
+        "id": "recovery_suite",
+        "passed": 5,
+        "total": 5
+      },
+      {
+        "id": "auto_routing_fixture",
+        "passed": true,
+        "correct": 22,
+        "total": 22
+      },
+      {
+        "id": "routing_suite",
+        "passed": 36,
+        "total": 36
+      },
+      {
+        "id": "skill_controls",
+        "passed": 17,
+        "total": 17
+      },
+      {
+        "id": "temporal_ablation_sensitivity",
+        "passed": true,
+        "future_leakage_cases": 10
+      },
+      {
+        "id": "folder_ablation_sensitivity",
+        "passed": true,
+        "correct": 20,
+        "total": 22
+      }
+    ],
+    "scope": "Deterministic synthetic regression gate for workflow, access-policy, and recovery invariants; not a live-meeting, ASR, paid-provider, or semantic-quality certification."
+  },
+  "run_id": "run-930945bdc1ed4964a76efa0a626d53f0"
+}

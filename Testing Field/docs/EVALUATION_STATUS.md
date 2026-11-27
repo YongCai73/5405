@@ -70,6 +70,10 @@ In the default simulated mode that table cannot show whether skills help, becaus
 the local provider ignores the skill contract. See [MCP_SKILLS.md](MCP_SKILLS.md)
 and the [validation record](../results/mcp-skills-validation-2026-11-27.md).
 
+On `jiaxuan/discussion-skills` the same gate covers 36 routing cases and 17
+skill-control checks, including multi-turn session state, per-conversation term
+memory and private-history isolation; see [DISCUSSION_SKILLS.md](DISCUSSION_SKILLS.md).
+
 The opt-in API evaluation now issues at most 110 requests instead of 88: one more
 variant (`auto`), minus every case whose retrieval found no evidence, which now
 abstains without a provider call.

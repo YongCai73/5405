@@ -59,7 +59,9 @@ budget is exhausted the model receives a `denied` tool result and must answer fr
 what it already has, or abstain. `contract_sha256` in each answer detects a contract
 edit that forgot to bump `version`.
 
-List the live values with `python -m meeting_copilot skills`.
+List the live values with `python -m meeting_copilot skills`. The branch
+`jiaxuan/discussion-skills` adds `clarify`, `grill_me`, `design_review` and the
+internal `meta_suggest` contract; see [DISCUSSION_SKILLS.md](DISCUSSION_SKILLS.md).
 
 ## Routing
 
