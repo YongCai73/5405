@@ -390,7 +390,7 @@ def response_extension(contract, state=None, known_terms=(), preferences=()):
                          + str(state['answered_round']) + ' was ' + json.dumps(state['previous_challenge']) + '. The user message is their answer. '
                          'Put your critique of that answer in inferences with field "assessment".')
         else:
-            parts.append('This starts a challenge session on the topic in the user message.')
+            parts.append('This starts a challenge session on the topic in the user message. There is no answer to assess yet: return "inferences": [].')
         parts.append('This is the final turn: give a verdict in "assessment" and return "question": null.' if state['closing'] else
                      'Also return "question": one new challenging question for round ' + str(state['round']) + ' of ' + str(state['max_rounds'])
                      + ': a single sentence with one question mark, not a list.')

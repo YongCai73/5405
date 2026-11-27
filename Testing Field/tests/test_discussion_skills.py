@@ -67,13 +67,16 @@ async def test_clarify_remembers_explained_terms_across_snapshots_and_labels_bac
     assert set(first['fields']) == {'explanation', 'related_evidence'} and first['fields']['related_evidence'] == first['claims']
     second = await assistant.ask(store.snapshot('alice', 'm'), 'Explain how FTS5 relates to the watermark', 'c', 'auto')
     assert second['explained_terms'] == ['watermark', 'fts5'] and second['previously_explained'] == ['watermark']
+    provider.replies.append(reply(claims=[{'source_id': meeting[1], 'quote': FACTS[1]}]))
+    loose = await assistant.ask(store.snapshot('alice', 'm'), 'Clarify the watermark cut-off again', 'c', 'auto')
+    assert loose['previously_explained'] == ['watermark']
     system = provider.requests[1]['messages'][0]['content']
     assert 'Terms already explained earlier in this private conversation: ["watermark"]' in system
     assert 'is not defined again' in system and 'Keep answers brief.' in system and 'never scope or permissions' in system
     # Another private conversation starts with an empty memory.
     provider.replies.append(reply(claims=[{'source_id': meeting[1], 'quote': FACTS[1]}]))
     other = await assistant.ask(store.snapshot('alice', 'm'), 'Explain the watermark', 'other', 'auto')
-    assert other['previously_explained'] == [] and 'conversation: []' in provider.requests[2]['messages'][0]['content']
+    assert other['previously_explained'] == [] and 'conversation: []' in provider.requests[3]['messages'][0]['content']
 
 
 async def test_clarify_may_answer_from_labelled_background_but_other_skills_may_not(store, meeting, tmp_path):
@@ -93,7 +96,7 @@ async def test_grill_me_is_a_stateful_multi_turn_session(store, meeting, tmp_pat
     quote = {'source_id': meeting[0], 'quote': FACTS[0]}
     critique = {'text': 'You did not address concurrent writers.', 'source_ids': [meeting[0]], 'field': 'assessment'}
     provider = ScriptedProvider([
-        reply(claims=[quote], inferences=[], question='What happens to SQLite when two writers collide? Also, why?'),
+        reply(claims=[quote], inferences=[critique], question='What happens to SQLite when two writers collide? Also, why?'),
         reply(claims=[quote], inferences=[critique], question='Which workload would force you off SQLite?'),
         reply(claims=[quote], inferences=[{**critique, 'text': 'The single-writer limit was never tested.'}], question=None)])
     trace = Trace(tmp_path/'t.jsonl'); assistant = Assistant(store, 'alice', provider, trace)
@@ -101,6 +104,9 @@ async def test_grill_me_is_a_stateful_multi_turn_session(store, meeting, tmp_pat
     assert one['skill'] == 'grill_me' and one['session'] == {'skill': 'grill_me', 'topic': 'Grill me on the SQLite decision', 'round': 1, 'max_rounds': 5,
                                                               'awaiting': 'answer', 'challenge': 'What happens to SQLite when two writers collide?'}
     assert one['text'].endswith('Challenge 1 of 5: What happens to SQLite when two writers collide?')
+    # Round 1 has no answer to assess: an "assessment" the model volunteers is discarded.
+    assert one['inferences'] == [] and 'Assessment of your answer' not in one['text'] and one['validation_report']['inferences_rejected'] == 1
+    assert 'return "inferences": []' in provider.requests[0]['messages'][0]['content']
     # The answer contains "because", "compare" and "why"; auto routing must stay in the session.
     answer = 'Because we compare favourably: there is one writer, so why worry about SQLite locks'
     assert route(answer)['selected'] != 'grill_me'
@@ -160,6 +166,9 @@ async def test_design_review_separates_meeting_facts_from_model_suggestions(stor
     assert result['validation_report']['style_flags'] == ['great question']
     head, quotes = result['text'].split('\n\nExact supporting quotations:\n')
     assert head.startswith('Model suggestions (not meeting facts; check against the quotations):') and quotes == f'{FACTS[0]} [E{meeting[0]}]'
+    assert head.splitlines()[1:] == ['Key assumptions:', f'- Assumes a single writer. [E{meeting[0]}]', 'Failure scenarios:',
+                                     f'- Great question! Write contention stalls ingestion. [E{meeting[0]}]', 'Validate first:',
+                                     f'- Measure write latency under two writers first. [E{meeting[0]}]']
     assert result['fields']['proposal_evidence'] == [quote]
 
 

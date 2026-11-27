@@ -175,6 +175,9 @@ class Assistant:
             background=validated_background(raw,contract)
             if contract.get('memory')=='explained_terms':
                 new_terms=clean_terms((raw.get('explained_terms') if isinstance(raw.get('explained_terms'),list) else [])+[b['term'] for b in background])
+            if session and not session['answered_round']:
+                # Round 1 has no user answer yet, so there is nothing to assess.
+                rejected['inferences']+=len(inferences);inferences=[]
             if session and claims and not session['closing']:
                 challenge=validated_challenge(raw)
                 if not challenge:notes.append('The model did not return one valid question, so the session was closed.')
@@ -187,10 +190,19 @@ class Assistant:
         cites=[citation(next(e for e in evidence if e['id']==c['source_id'] and c['quote'] in e['text']),c['quote']) for c in claims]
         text='\n'.join(f"{c['quote']} [E{c['source_id']}]" for c in claims) if claims else 'Insufficient evidence in this authorized snapshot.'
         if inferences:
-            text=contract.get('inference_label','Model inference (review against quotations)')+':\n'+'\n'.join(i['text']+' '+ ' '.join(f'[E{rid}]' for rid in i['source_ids']) for i in inferences)+'\n\nExact supporting quotations:\n'+text
+            line=lambda i:i['text']+' '+' '.join(f'[E{rid}]' for rid in i['source_ids'])
+            used=[f for f in contract['output_fields'] if any(i['field']==f for i in inferences)]
+            if len(used)>1 and len(contract['output_fields'])>2:
+                # Several kinds of model wording (assumptions, failure scenarios, ...): show them by field.
+                body='\n'.join(f.replace('_',' ').capitalize()+':\n'+'\n'.join('- '+line(i) for i in inferences if i['field']==f) for f in used)
+            else:
+                body='\n'.join(line(i) for i in inferences)
+            text=contract.get('inference_label','Model inference (review against quotations)')+':\n'+body+'\n\nExact supporting quotations:\n'+text
         if background:
             text+='\n\nGeneral background (model knowledge; NOT from the meeting or project files, not verified):\n'+'\n'.join(f"{b['term']}: {b['text']}" for b in background)
-        previously=[t for t in known if re.search(r'(?<![a-z0-9])'+re.escape(t)+r'(?![a-z0-9])',state['question'].lower())]
+        # A remembered term counts as mentioned when the question shares a content word with it
+        # ("queue capacity" mentions the remembered "bounded queue").
+        asked=terms(state['question']);previously=[t for t in known if terms(t)&asked]
         if previously and simulated:
             text='Already explained earlier in this conversation (not repeated in full): '+', '.join(previously)+'\n\n'+text
         if challenge:
