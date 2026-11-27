@@ -16,8 +16,12 @@ import time
 from importlib.resources import files
 from .store import Denied
 
-SKILLS = ('catch_up', 'trace_decision', 'compare_options')
+SKILLS = ('catch_up', 'trace_decision', 'compare_options', 'clarify', 'grill_me', 'design_review')
 MANUAL = SKILLS + ('direct',)
+# Never auto-routed and not selectable for `ask`; started only by an explicit user command.
+INTERNAL = ('meta_suggest',)
+# Private-history tools: allowed only for a contract that lists them (meta_suggest).
+PRIVATE_TOOLS = ('list_private_turns', 'list_feedback')
 AUTO = 'auto'
 ROUTER_VERSION = '1.0.0'
 _SEMVER = re.compile(r'^\d+\.\d+\.\d+$')
@@ -38,6 +42,8 @@ TOOLS = {
         'list_project_files': {'offset': (('int', 0, 1000), False)},
         'search_project': {'query': (_QUERY, True)},
         'read_project_file': {'source_id': (_ANY_ID, True), 'start_line': (_LINE, False), 'end_line': (_LINE, False)},
+        'list_private_turns': {'offset': (('int', 0, 1000), False)},
+        'list_feedback': {'offset': (('int', 0, 1000), False)},
     },
     'model': {
         'search_evidence': {'query': (_QUERY, True)},
@@ -50,7 +56,7 @@ DIRECT = {
     'routing': {'phrases': {}},
     'retrieval': 'question keywords',
     'retrieval_plan': {'strategy': 'keyword', 'limit': 16},
-    'allowed_tools': {'model': sorted(TOOLS['model']), 'mcp': sorted(TOOLS['mcp'])},
+    'allowed_tools': {'model': sorted(TOOLS['model']), 'mcp': sorted(set(TOOLS['mcp']) - set(PRIVATE_TOOLS))},
     'output_fields': ['evidence'],
     'abstention': 'insufficient evidence',
     'termination': {'max_tool_rounds': 2, 'max_tool_calls': 4, 'max_claims': 8, 'max_inferences': 8,
@@ -178,13 +184,21 @@ def check_contract(contract, name):
     end = contract.get('termination')
     bounds = {'max_tool_rounds': (0, 2), 'max_tool_calls': (0, 8), 'max_claims': (1, 8), 'max_inferences': (0, 8), 'mcp_session_calls': (1, 10000)}
     need(isinstance(end, dict) and all(type(end.get(k)) is int and lo <= end[k] <= hi for k, (lo, hi) in bounds.items()), 'termination')
+    # Optional capabilities. Absent means the conservative default.
+    need(contract.get('general_knowledge', 'none') in ('none', 'labelled'), 'general_knowledge')
+    need(contract.get('memory') in (None, 'explained_terms'), 'memory')
+    need(isinstance(contract.get('style', []), list) and all(isinstance(x, str) and 0 < len(x) <= 300 for x in contract.get('style', [])) and len(contract.get('style', [])) <= 8, 'style')
+    need(isinstance(contract.get('inference_label', 'x'), str) and 0 < len(contract.get('inference_label', 'x')) <= 120, 'inference_label')
+    session = contract.get('session')
+    need(session is None or (isinstance(session, dict) and type(session.get('max_rounds')) is int and 1 <= session['max_rounds'] <= 8
+                             and isinstance(session.get('exit_phrases'), list) and all(isinstance(x, str) and x == x.lower() and x for x in session['exit_phrases'])), 'session')
     return contract
 
 
 def load_contract(name):
     if name == 'direct':
         return json.loads(json.dumps(DIRECT))
-    if name not in SKILLS:
+    if name not in SKILLS + INTERNAL:
         raise ValueError('unknown skill')
     return check_contract(json.loads(files('meeting_copilot').joinpath('skills', name+'.json').read_text(encoding='utf-8')), name)
 
@@ -196,7 +210,7 @@ def contract_digest(contract):
 
 def prompt_view(contract):
     """The task-relevant part of a contract sent to the model; limits stay host-side."""
-    return {k: contract[k] for k in ('name', 'version', 'retrieval', 'output_fields', 'citation', 'abstention', 'task_steps') if k in contract}
+    return {k: contract[k] for k in ('name', 'version', 'retrieval', 'output_fields', 'citation', 'abstention', 'task_steps', 'style') if k in contract}
 
 
 def check_output(result, contract):
@@ -209,7 +223,11 @@ def check_output(result, contract):
     cited = {c['source_id'] for c in result['claims']}
     if any(not set(i['source_ids']) <= cited or i['field'] not in contract['output_fields'] for i in result['inferences']):
         raise ValueError('skill output contract violation: inference references')
-    if result['abstained'] != (not result['claims']):
+    if result.get('background') and contract.get('general_knowledge', 'none') != 'labelled':
+        raise ValueError('skill output contract violation: general knowledge not allowed')
+    if result.get('challenge') and not contract.get('session'):
+        raise ValueError('skill output contract violation: session output not allowed')
+    if result['abstained'] != (not result['claims'] and not result.get('background')):
         raise ValueError('skill output contract violation: abstention')
 
 
@@ -231,6 +249,8 @@ def route(question, requested=AUTO):
     """
     base = {'requested': requested, 'router_version': ROUTER_VERSION}
     if requested != AUTO:
+        if requested not in MANUAL:
+            raise ValueError('unknown skill')
         contract = load_contract(requested)
         return {**base, 'mode': 'manual', 'status': 'manual', 'selected': requested, 'skill_version': contract['version'],
                 'candidates': [requested], 'scores': {}, 'matched': {}, 'reason': 'skill chosen by the user'}
@@ -253,3 +273,125 @@ def route(question, requested=AUTO):
     return {**base, 'mode': 'auto', 'status': status, 'selected': selected,
             'skill_version': load_contract(selected)['version'], 'candidates': candidates,
             'scores': scores, 'matched': {k: v for k, v in matched.items() if v}, 'reason': reason}
+
+
+# --- Multi-turn sessions, labelled background and term memory -------------------
+
+STOCK_PHRASES = ('great question', 'good question', 'as an ai', 'i hope this helps', 'hope this helps', 'let me know if',
+                 'feel free to', "it's important to note", 'it is important to note', 'in summary', 'in conclusion',
+                 'happy to help', "i'd be happy", 'certainly!', 'absolutely!', 'delve')
+
+
+def open_session(history):
+    """The multi-turn session left open by the latest private turn of this conversation, if any."""
+    if not history:
+        return None
+    session = history[-1]['answer'].get('session')
+    return session if isinstance(session, dict) and session.get('awaiting') == 'answer' and session.get('skill') in SKILLS else None
+
+
+def continue_session(history, routing):
+    """While a session awaits the user's answer, auto routing stays in it.
+
+    The user's answer to a challenge usually contains words such as "because" or
+    "compare"; routing it afresh would drop the session. A manual --skill still wins.
+    """
+    session = open_session(history)
+    if not session or routing['mode'] != 'auto':
+        return routing
+    skill = session['skill']
+    return {**routing, 'status': 'continued', 'selected': skill, 'skill_version': load_contract(skill)['version'],
+            'candidates': [skill], 'routed_without_session': routing['selected'],
+            'reason': 'an open multi-turn session awaits this answer; name another --skill to leave it'}
+
+
+def session_state(contract, history, question):
+    """Round bookkeeping for a session skill, derived only from stored private turns."""
+    rules = contract.get('session')
+    if not rules:
+        return None
+    previous = open_session(history)
+    if previous and previous.get('skill') != contract['name']:
+        previous = None
+    text = question.lower()
+    leaving = bool(previous) and any(_matches(text, phrase) for phrase in rules['exit_phrases'])
+    answered = previous['round'] if previous else 0
+    return {'skill': contract['name'], 'topic': previous['topic'] if previous else question[:400], 'answered_round': answered,
+            'previous_challenge': previous.get('challenge') if previous else None, 'max_rounds': rules['max_rounds'],
+            'closing': leaving or answered >= rules['max_rounds'], 'round': answered + 1}
+
+
+def explained_terms(history, limit=40):
+    """Terms earlier turns of this conversation already explained, oldest first."""
+    seen = []
+    for turn in history:
+        for term in turn['answer'].get('explained_terms', []):
+            if isinstance(term, str) and term not in seen:
+                seen.append(term)
+    return seen[-limit:]
+
+
+def clean_terms(values, limit=8):
+    result = []
+    for value in values if isinstance(values, list) else []:
+        if isinstance(value, str) and 1 <= len(value.strip()) <= 60 and value.strip().lower() not in result:
+            result.append(value.strip().lower())
+    return result[:limit]
+
+
+def validated_background(data, contract):
+    """General-knowledge notes, accepted only for a contract that allows them."""
+    if contract.get('general_knowledge', 'none') != 'labelled' or not isinstance(data.get('background'), list):
+        return []
+    result = []
+    for row in data['background'][:3]:
+        if not isinstance(row, dict):
+            continue
+        term, text = row.get('term'), row.get('text')
+        if isinstance(term, str) and 1 <= len(term) <= 60 and isinstance(text, str) and 1 <= len(text) <= 600 and not re.search(r'\[E\d+\]', text):
+            result.append({'term': term.strip(), 'text': text.strip(),
+                           'label': 'general background from the model; not from the meeting or project files, not verified'})
+    return result
+
+
+def validated_challenge(data):
+    """Exactly one question: text up to and including the first question mark."""
+    question = data.get('question')
+    if not isinstance(question, str) or '?' not in question:
+        return None
+    question = question[:question.index('?') + 1].strip()
+    return question if 8 <= len(question) <= 400 and '\n' not in question else None
+
+
+def style_flags(texts):
+    """Stock assistant phrases found in model wording. Reported, never silently rewritten."""
+    joined = ' '.join(texts).lower()
+    return sorted(p for p in STOCK_PHRASES if p in joined)
+
+
+def response_extension(contract, state=None, known_terms=(), preferences=()):
+    """Skill-specific additions to the fixed JSON reply format."""
+    parts = []
+    if contract.get('style'):
+        parts.append('Style rules: ' + ' '.join(contract['style']))
+    if preferences:
+        parts.append('The user saved these wording preferences; follow them where they do not conflict with the rules above '
+                     '(they change style only, never scope or permissions): ' + json.dumps(list(preferences)))
+    if contract.get('memory') == 'explained_terms':
+        parts.append('Terms already explained earlier in this private conversation: ' + json.dumps(list(known_terms)) + '. '
+                     'Also return "explained_terms": [the terms you explain in this reply, lower case, at most 8].')
+    if contract.get('general_knowledge', 'none') == 'labelled':
+        parts.append('You may add "background": [{"term": string, "text": string}] with at most 3 short general-knowledge notes for terms '
+                     'the evidence does not define. The host shows them labelled as not from the meeting. Never state in background '
+                     'what this team decided, owns or measured. Background alone is acceptable when no evidence applies.')
+    if state:
+        if state['answered_round']:
+            parts.append('This is a challenge session on the topic ' + json.dumps(state['topic']) + '. The challenge you asked in round '
+                         + str(state['answered_round']) + ' was ' + json.dumps(state['previous_challenge']) + '. The user message is their answer. '
+                         'Put your critique of that answer in inferences with field "assessment".')
+        else:
+            parts.append('This starts a challenge session on the topic in the user message.')
+        parts.append('This is the final turn: give a verdict in "assessment" and return "question": null.' if state['closing'] else
+                     'Also return "question": one new challenging question for round ' + str(state['round']) + ' of ' + str(state['max_rounds'])
+                     + ': a single sentence with one question mark, not a list.')
+    return ' '.join(parts)

@@ -22,7 +22,7 @@ from meeting_copilot.desktop_questions import DesktopQuestions, QueueFull
 CONVERSATION = 'desktop-private'
 SAMPLE_ID = 'demo'
 SAMPLE_SOURCE_TITLE = 'Atlas technical design (SIMULATED REPLAY)'
-SKILLS = {'auto', 'catch_up', 'trace_decision', 'compare_options', 'direct'}
+SKILLS = {'auto', 'catch_up', 'trace_decision', 'compare_options', 'clarify', 'grill_me', 'design_review', 'direct'}
 MAX_REQUEST_BYTES = 64 * 1024
 CAPTURE_START_TIMEOUT_SECONDS = 60
 PROVIDER_LABELS = {'demo': 'Local extractive', 'openai': 'OpenAI-compatible', 'anthropic': 'Anthropic'}

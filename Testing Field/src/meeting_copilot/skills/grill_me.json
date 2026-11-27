@@ -1,0 +1,82 @@
+{
+  "name": "grill_me",
+  "version": "1.0.0",
+  "trigger": [
+    "grill me",
+    "challenge me",
+    "poke holes"
+  ],
+  "routing": {
+    "phrases": {
+      "grill me": 5,
+      "grill": 3,
+      "challenge me": 4,
+      "challenge my": 4,
+      "challenge our": 4,
+      "poke holes": 4,
+      "devil's advocate": 4,
+      "quiz me": 3,
+      "push back": 3,
+      "stress test my": 3,
+      "stress test our": 3
+    }
+  },
+  "retrieval": "keyword evidence for the session topic and the latest answer; the topic is kept across rounds",
+  "retrieval_plan": {
+    "strategy": "keyword",
+    "limit": 8
+  },
+  "allowed_tools": {
+    "model": [
+      "search_evidence",
+      "read_evidence"
+    ],
+    "mcp": [
+      "meet2notes_status",
+      "list_meetings",
+      "get_meeting",
+      "get_transcript",
+      "find_in_transcripts",
+      "get_summary",
+      "read_evidence",
+      "search_project",
+      "read_project_file"
+    ]
+  },
+  "output_fields": [
+    "challenged_evidence",
+    "assessment"
+  ],
+  "citation": "Exact supporting quotations retain source ID/version/hash/time or original file lines. Model synthesis is separately labelled inference with IDs of validated quotations; structural validation is not semantic proof.",
+  "abstention": "Without evidence about the topic there is nothing grounded to challenge; say so instead of inventing a position",
+  "session": {
+    "max_rounds": 5,
+    "exit_phrases": [
+      "stop",
+      "end session",
+      "that is enough",
+      "that's enough",
+      "done grilling",
+      "stop grilling",
+      "wrap up"
+    ]
+  },
+  "style": [
+    "Ask exactly one question per round: one sentence, one question mark, no list of questions.",
+    "Be direct and specific. No praise, no softening, no restating the user's answer."
+  ],
+  "inference_label": "Assessment of your answer (model critique, not a meeting fact)",
+  "termination": {
+    "max_tool_rounds": 1,
+    "max_tool_calls": 3,
+    "max_claims": 4,
+    "max_inferences": 4,
+    "mcp_session_calls": 200,
+    "on_limit": "further tool calls are denied; answer from evidence already retrieved or abstain"
+  },
+  "task_steps": [
+    "Round 1: pick the weakest or least justified point in the evidence about the topic and ask one hard question about it.",
+    "Later rounds: judge the user's answer for gaps, hidden assumptions and unaddressed tradeoffs, then ask one follow-up that goes deeper.",
+    "Final round: give a short verdict on what held up and what did not; ask nothing further."
+  ]
+}
