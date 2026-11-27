@@ -9,13 +9,15 @@ Same Windows 11 laptop and Python 3.12 environment as the
 [MCP + Skills record](mcp-skills-validation-2026-11-27.md). Providers used: the local
 `demo` extractive provider, a scripted provider (fixed replies passed through the real
 prompt assembly, validation and storage), and loopback fake HTTP servers.
-**No real model or API was called.** No API key was available and the key file was not read.
+The automated runs in this record called no real model. A separate real-endpoint
+run, done afterwards with the owner's approval, is in
+[live-deepseek-validation-2026-11-27.md](live-deepseek-validation-2026-11-27.md).
 
 ## What was executed
 
 | Check | Kind | Result |
 |---|---|---|
-| Full pytest suite on mains power | deterministic | 308 passed, 10 platform skips, 0 failed, 143 s. [JUnit](tests-discussion-skills-windows.xml) |
+| Full pytest suite on mains power | deterministic | 308 passed, 10 platform skips, 0 failed, 174 s (re-run after the fixes made from real-model output). [JUnit](tests-discussion-skills-windows.xml) |
 | Same suite earlier on battery power | deterministic | 307 passed, 1 failed, 50 minutes. The laptop was throttled (module import took 26 s instead of 2 s) and the first mock-DeepSeek test hit its 120 s provider timeout during cold start. It passed in the rerun above with no code change. |
 | Desktop UI contract tests | deterministic | 10 passed |
 | `evaluate --stress --strict` | deterministic, simulated provider | gate passed, 12/12. Routing set 36/36, skill controls 17/17, fixture questions 22/22 fixed skill, 22/22 auto. [Report](discussion-skills-evaluation-2026-11-27.json) |

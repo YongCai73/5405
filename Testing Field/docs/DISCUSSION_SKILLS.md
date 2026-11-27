@@ -48,6 +48,7 @@ helps"). It reports them; it does not rewrite the answer.
 1. First message: the model picks the least justified point in the evidence and
    returns one question. The host keeps only the text up to the first question
    mark, so a list of questions becomes one.
+   Nothing is assessed in round 1; inferences the model volunteers there are dropped.
 2. Each later message is treated as the answer. The model critiques it in
    `assessment` and asks one follow-up. Retrieval keeps using the session topic.
 3. The session closes after round 5, when the message contains an exit phrase
@@ -124,8 +125,18 @@ change would help; the user decides.
 
 ## Not verified
 
-No real model was called. Everything above was exercised with a scripted provider
-(fixed replies fed through the real prompt assembly, validation and storage) or the
-local extractive mode. Whether a real model follows the style rules, asks good
-challenge questions, avoids repeating definitions, or proposes useful skills is
-**unknown** and needs a run with an API key plus human judgement on real questions.
+The automated tests use a scripted provider (fixed replies fed through the real
+prompt assembly, validation and storage) or the local extractive mode.
+
+On 2026-11-27 the skills and `suggest --use-model` were also run against the real
+`deepseek-flash` model on the synthetic sample meeting; see the
+[live record](../results/live-deepseek-validation-2026-11-27.md). All calls
+succeeded, the model kept to one question per `grill_me` turn, did not redefine
+remembered terms, and tripped no stock-phrase flag. Three defects seen only in real
+output were fixed (an "assessment" in `grill_me` round 1, ungrouped `design_review`
+output, too-strict term matching).
+
+Still unknown: whether these skills are better on the owner's real meetings and
+questions, which is the completion standard and needs his judgement; behaviour on
+long conversations and noisy ASR transcripts; and anything in a language other than
+English.

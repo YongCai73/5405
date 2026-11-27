@@ -1,0 +1,195 @@
+{
+  "for_user": "local-host",
+  "snapshot_id": "398867d476e548c0bec4789217ee079d",
+  "mode": "rules plus model suggestions; model output validated for cited turns and registered tools, not for usefulness",
+  "skill": "meta_suggest",
+  "skill_version": "1.0.0",
+  "scope": {
+    "meetings": [
+      "s"
+    ],
+    "turns_analysed": 14,
+    "feedback_rows": 1,
+    "min_support": 2
+  },
+  "signals": {
+    "turns": 14,
+    "conversations": 14,
+    "by_skill": {
+      "clarify": 4,
+      "design_review": 1,
+      "direct": 5,
+      "grill_me": 4
+    },
+    "by_route_status": {
+      "continued": 3,
+      "matched": 6,
+      "not_applicable": 5
+    },
+    "abstained": 1,
+    "abstain_reasons": {
+      "no_evidence_retrieved": 1
+    },
+    "feedback": {
+      "up": 0,
+      "down": 1
+    },
+    "rated_turns": 1
+  },
+  "saved_preferences": [],
+  "suggestions": [
+    {
+      "kind": "preference",
+      "title": "Save a wording preference",
+      "observed": "2 questions ask for this style: \"Keep answers brief.\"",
+      "recommended_action": "prefs add \"Keep answers brief.\"",
+      "evidence_turn_ids": [
+        10,
+        11
+      ],
+      "support": 2,
+      "source": "rules",
+      "preference": "Keep answers brief."
+    },
+    {
+      "kind": "use_existing_skill",
+      "title": "Use the existing skill grill_me",
+      "observed": "2 questions look like grill_me requests but matched no skill and ran as plain retrieval",
+      "recommended_action": "Ask with --skill grill_me, or add the trigger phrases below to its contract",
+      "evidence_turn_ids": [
+        13,
+        14
+      ],
+      "support": 2,
+      "source": "rules",
+      "skill": "grill_me",
+      "missing_trigger_phrases": [
+        "ask me",
+        "challenge"
+      ]
+    },
+    {
+      "kind": "new_skill",
+      "title": "Candidate new skill: who_owns",
+      "observed": "3 questions start with \"who owns\" and matched no skill",
+      "recommended_action": "Give the specification below to a developer or coding agent; it is a draft and is not enabled",
+      "evidence_turn_ids": [
+        10,
+        11,
+        12
+      ],
+      "support": 3,
+      "source": "rules",
+      "specification": {
+        "draft_contract": {
+          "name": "who_owns",
+          "version": "0.1.0",
+          "trigger": [
+            "who owns"
+          ],
+          "routing": {
+            "phrases": {
+              "who owns": 3
+            }
+          },
+          "retrieval": "Answer questions of the form \"who owns ...\" from cited evidence",
+          "retrieval_plan": {
+            "strategy": "keyword",
+            "limit": 12
+          },
+          "allowed_tools": {
+            "model": [
+              "read_evidence",
+              "search_evidence"
+            ],
+            "mcp": [
+              "meet2notes_status",
+              "list_meetings",
+              "get_meeting",
+              "get_transcript",
+              "find_in_transcripts",
+              "get_summary",
+              "read_evidence",
+              "search_project",
+              "read_project_file"
+            ]
+          },
+          "output_fields": [
+            "evidence"
+          ],
+          "citation": "Exact supporting quotations retain source ID/version/hash/time or original file lines. Model synthesis is separately labelled inference with IDs of validated quotations; structural validation is not semantic proof.",
+          "abstention": "State insufficient evidence when no supported excerpt exists",
+          "termination": {
+            "max_tool_rounds": 2,
+            "max_tool_calls": 4,
+            "max_claims": 8,
+            "max_inferences": 8,
+            "mcp_session_calls": 200,
+            "on_limit": "further tool calls are denied; answer from evidence already retrieved or abstain"
+          },
+          "task_steps": [
+            "Answer questions of the form \"who owns ...\" from cited evidence"
+          ]
+        },
+        "test_cases": [
+          {
+            "question": "Who owns evaluation?",
+            "expect": "auto routing selects who_owns; the answer cites evidence or abstains"
+          },
+          {
+            "question": "Who owns security policy? briefly",
+            "expect": "auto routing selects who_owns; the answer cites evidence or abstains"
+          },
+          {
+            "question": "Who owns microphone capture? briefly",
+            "expect": "auto routing selects who_owns; the answer cites evidence or abstains"
+          },
+          {
+            "question": "Why did we choose SQLite?",
+            "expect": "still routes to trace_decision (no regression)"
+          }
+        ],
+        "implementation_notes": [
+          "Add the contract under src/meeting_copilot/skills/ and its name to SKILLS in skill_runtime.py.",
+          "Add routing cases to routing_cases.json and run evaluate --strict.",
+          "Enable only after the user who asked for it has reviewed the output on their own questions."
+        ]
+      }
+    },
+    {
+      "kind": "adjust_skill",
+      "title": "Route challenge/hard-question phrasing to grill_me",
+      "observed": "Turns 13 ('Ask me hard questions about the timeout') and 14 ('Challenge the retry setting') were handled as direct/not_applicable; turn 14 abstained and was rated down with 'I wanted to be questioned, not answered.'",
+      "recommended_action": "Extend grill_me routing/triggers to catch 'challenge the <topic>' and 'ask me hard questions about <topic>'; when matched, ask one hard question instead of answering.",
+      "evidence_turn_ids": [
+        13,
+        14
+      ],
+      "support": 2,
+      "source": "model",
+      "skill": "grill_me"
+    },
+    {
+      "kind": "preference",
+      "title": "Honor 'briefly' for ownership questions",
+      "observed": "Turns 10 and 11 ask ownership questions ending in 'briefly'; turn 12 repeats the same ownership-question pattern.",
+      "recommended_action": "prefs add \"When the user says 'briefly' (including 'Who owns X? briefly'), answer in one or two sentences.\"",
+      "evidence_turn_ids": [
+        10,
+        11,
+        12
+      ],
+      "support": 3,
+      "source": "model",
+      "preference": "When the user says 'briefly' (including 'Who owns X? briefly'), answer in one or two sentences."
+    }
+  ],
+  "dropped_model_suggestions": {},
+  "model_usage": {
+    "input_tokens": 1797,
+    "output_tokens": 2650
+  },
+  "activation": "Nothing was changed. Preferences are saved only by the prefs command; a new skill is a draft for review and is not loaded.",
+  "privacy": "Only this user's own turns for meetings they can currently access were read. Answer text and quotations were not read.",
+  "limits": "Rules match English phrases in question text. A suggestion shows a repeated pattern, not that the change would help."
+}

@@ -166,14 +166,20 @@ What changed in `provider.py`:
    message instead of a synthetic assistant turn, because a fabricated assistant
    message has no `reasoning_content` to send back.
 
-**Verification status: mock only.** `tests/test_deepseek_protocol.py` runs the real
+**Verification status (updated 2026-11-27): checked against the real endpoint.**
+With the owner's approval, tool rounds were run against `deepseek-flash` with thinking
+on and off: 8 of 8 questions succeeded and the model's tool calls were served. A
+direct probe found the endpoint accepted follow-up requests both with and without
+the passback, so the documented HTTP 400 was not reproduced; the passback is
+harmless but was not shown to be required. Two consecutive tool rounds were not
+exercised. Details: [live record](../results/live-deepseek-validation-2026-11-27.md).
+The paragraph below describes the mock tests, which remain the regression check.
+
+`tests/test_deepseek_protocol.py` runs the real
 adapter and LiteLLM against a loopback server that imitates the rules above,
 including a negative control showing the mock returns 400 when the passback is
-missing. No request was sent to the real DeepSeek endpoint in this work: no API key
-was available in the session and the key file was deliberately not read. Whether the
-live endpoint accepts this exact request shape through LiteLLM is **unverified**.
-Keep `tool_rounds: 0` for real meetings until someone runs the check in
-[handoff.md](../handoff.md).
+missing. `tool_rounds: 0` remains the default because it costs fewer tokens; 1 is
+known to work.
 
 ## Evaluation
 
@@ -185,10 +191,13 @@ model and budget. Three checks were added to the strict release gate.
 
 With the default simulated provider the answers are deterministic sentence
 extraction, which ignores the skill contract apart from `catch_up` ordering. That
-run can show the controls execute; it cannot show that skills improve answers. An
-API run (`evaluate --api`) gives a real comparison but still scores by expected
-substrings and exact-quote membership, on 22 synthetic questions. Semantic quality
-needs human review.
+run can show the controls execute; it cannot show that skills improve answers.
+
+The real-model run (`evaluate --api`, `deepseek-flash`, 2026-11-27) scored 22/22
+for fixed skill, `direct` and `auto` alike. The fixed skill cost about 52% more
+than `direct` and wrote more inference lines. So no accuracy benefit from skills was
+measured, on questions too easy to separate the variants and with substring scoring.
+Semantic quality needs harder questions and human review.
 
 ## Demonstrations
 

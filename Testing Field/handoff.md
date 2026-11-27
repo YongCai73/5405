@@ -25,7 +25,7 @@
 | `provider` | `openai` | 当前程序通过 OpenAI-compatible 接口连接 DeepSeek；不接受 `deepseek` 作为配置值 |
 | `model` | `deepseek-flash` | 官方当前将此 API 名称路由到 V4.1-Flash-1017 |
 | `timeout_seconds` | `120` | 当前程序允许的最大值为 120，不接受 240 |
-| `tool_rounds` | `0` | 程序上限为 2。适配器现在会回传 `reasoning_content`，也支持新配置项 `"thinking": "disabled"`，但这两条路径**只通过了本地模拟协议测试，没有在真实 DeepSeek 端点上验证**，所以真实会议先保持 0；验证方法见 W6 / M6 |
+| `tool_rounds` | `0` | 程序上限为 2。2026-11-27 已在真实 DeepSeek 端点上实测：`tool_rounds` 设为 1 或 2、thinking 默认开启或加一行 `"thinking": "disabled"`，8 次提问全部成功，模型调用工具后正常作答（见[真实端点记录](results/live-deepseek-validation-2026-11-27.md)）。想让模型在回答时自己再查证据，可以把它改成 1；保持 0 更省 tokens。模型没有用到连续两轮工具，这一点仍未测到 |
 
 `tool_rounds=0` **仍会检索会议与批准的项目资料，并执行三种技能（可自动选择）、生成引用**；只关闭模型在回答中追加的工具调用。`base.en`、4096 输出上限、流式响应和 `API_KEY` 环境变量均可保留。
 
@@ -277,14 +277,14 @@ $liveAnswer.text
 & $py -m pytest --basetemp data/test-temp -q
 ```
 
-*`jiaxuan/discussion-skills` 在这台 Windows 电脑上 2026-11-27 接电源时的结果：308 通过、10 项平台相关跳过、0 失败，约两分半钟；严格评测门禁 12 项全部通过（`jiaxuan/mcp-skills` 单独是 275 通过）。用电池供电时电脑会降频，同一套测试跑了 50 分钟并有 1 项因超时失败，所以跑测试请接电源。较早的 84 通过、1 项跳过是旧提交的历史记录。个别桌面问答测试对机器负载敏感，与其他重任务同时跑时可能超时，单独重跑即可。*
+*`jiaxuan/discussion-skills` 在这台 Windows 电脑上 2026-11-27 接电源时的结果：308 通过、10 项平台相关跳过、0 失败，约三分钟；严格评测门禁 12 项全部通过（`jiaxuan/mcp-skills` 单独是 275 通过）。用电池供电时电脑会降频，同一套测试跑了 50 分钟并有 1 项因超时失败，所以跑测试请接电源。较早的 84 通过、1 项跳过是旧提交的历史记录。个别桌面问答测试对机器负载敏感，与其他重任务同时跑时可能超时，单独重跑即可。*
 
 </details>
 
 <details>
 <summary>可选（会产生少量 DeepSeek 费用）：实测工具轮次是否被真实端点接受</summary>
 
-*这一步**尚未有人在真实端点上跑过**。适配器的 `reasoning_content` 回传和 `thinking` 开关目前只通过了本地模拟协议测试（`tests/test_deepseek_protocol.py`）。*
+*2026-11-27 已按这个步骤在真实端点上跑通（thinking 开、关各 4 次提问，全部成功，见[真实端点记录](results/live-deepseek-validation-2026-11-27.md)）。供应商接口以后变化时，可以用它重新确认。*
 
 先把 `config.json` 另存一份备份，再把其中两项改为 `"tool_rounds": 1`，并新增一行 `"thinking": null`（保持 DeepSeek 默认的 thinking 模式）。在已设置 `$env:API_KEY` 的终端运行：
 
@@ -567,7 +567,7 @@ printf '%s' "$live_answer" | "$py" -c 'import json,sys; print(json.load(sys.stdi
 <details>
 <summary>可选（会产生少量 DeepSeek 费用）：实测工具轮次是否被真实端点接受</summary>
 
-*这一步**尚未有人在真实端点上跑过**。适配器的 `reasoning_content` 回传和 `thinking` 开关目前只通过了本地模拟协议测试（`tests/test_deepseek_protocol.py`）。*
+*2026-11-27 已按这个步骤在真实端点上跑通（thinking 开、关各 4 次提问，全部成功，见[真实端点记录](results/live-deepseek-validation-2026-11-27.md)）。供应商接口以后变化时，可以用它重新确认。*
 
 先把 `config.json` 另存一份备份，再把其中两项改为 `"tool_rounds": 1`，并新增一行 `"thinking": null`（保持 DeepSeek 默认的 thinking 模式）。在已 `export API_KEY` 的终端运行：
 
@@ -605,7 +605,8 @@ printf '%s' "$probe" | "$py" -c 'import json,sys; r=json.load(sys.stdin); print(
 | 项目 | 结果 / 记录 |
 |---|---|
 | MCP＋Skills（本分支，Windows，2026-11-27） | 275 通过、10 项平台相关跳过、0 失败；严格评测门禁 12/12；路由回归 24/24、技能控制 13/13，均为本地确定性结果。DeepSeek 工具轮次**仅模拟协议测试**，真实端点未测。[报告](results/mcp-skills-validation-2026-11-27.md)、[设计说明](docs/MCP_SKILLS.md) |
-| 讨论技能＋meta-suggestion（`jiaxuan/discussion-skills`，Windows，2026-11-27） | 308 通过、10 项平台跳过；严格门禁 12/12；路由回归 36/36、技能控制 17/17。全部用本地抽取模式或脚本化的假模型回复验证，**没有调用任何真实模型**，因此“解释是否直白、追问是否有用、建议是否靠谱”都未验证。[报告](results/discussion-skills-validation-2026-11-27.md)、[设计说明](docs/DISCUSSION_SKILLS.md) |
+| 讨论技能＋meta-suggestion（`jiaxuan/discussion-skills`，Windows，2026-11-27） | 308 通过、10 项平台跳过；严格门禁 12/12；路由回归 36/36、技能控制 17/17。自动化测试用本地抽取模式或脚本化的假模型回复；真实模型的试跑另见下一行。[报告](results/discussion-skills-validation-2026-11-27.md)、[设计说明](docs/DISCUSSION_SKILLS.md) |
+| 真实 DeepSeek 端点（`deepseek-flash`，2026-11-27，样例数据） | 工具轮次在 thinking 开、关两种模式下 8/8 成功；三个新技能和 `suggest --use-model` 跑通，并据真实输出修了三处；有无技能对照：固定技能、`direct`、`auto` 都是 22/22，**没有测出技能带来准确率提升**，固定技能多用约 52% 费用。合计约 0.09 美元。[真实端点记录](results/live-deepseek-validation-2026-11-27.md) |
 | Windows（历史，旧提交） | 84 通过、1 项 symlink 权限跳过；[完整记录](results/windows-validation.json)；另有[原生 junction 检查](results/windows-junction.json) |
 | Linux | 85 项通过；[验证记录](results/windows-repair3-validation.json) |
 | 本地 ASR | Windows 公开音频使用 `tiny.en` 得到 2 段；[记录](results/windows-prepared.json)。本指南改用的 `base.en` 尚未单独实测 |
@@ -613,7 +614,7 @@ printf '%s' "$probe" | "$py" -c 'import json,sys; r=json.load(sys.stdin); print(
 | Meet2Notes 复用 | 固定提交 `b75077e588f5`，24 个实现/SQL 文件逐字节核验；[来源与许可](docs/UPSTREAM_SOURCE.json) |
 | 交付 | [MCP＋Skills 分支](https://github.com/cyudaddy/5405/tree/jiaxuan/mcp-skills)（待审查，未合并 main）、[早期代码分支](https://github.com/cyudaddy/5405/tree/meeting-copilot/prototype-20261108)、[历史交付标签](https://github.com/cyudaddy/5405/tree/v0.2.0-handoff)、[交付索引](results/final-delivery.json)、[服务器已清理回执](results/server-cleanup.json) |
 
-2026-11-27 的 MCP＋Skills 更新没有使用真实 DeepSeek key、没有发起付费请求，也没有读取或修改任何现有 `config.json` 和 key 文件。新增功能的验证全部是本地确定性测试和模拟协议测试：它们说明路由、工具限制、恢复和 trace 的代码按约定执行，**不说明**真实模型在技能下回答更好，也不说明真实 DeepSeek 端点接受工具轮次。macOS、真实麦克风和 DeepSeek 付费端点仍需实机验证。
+2026-11-27 的更新分两部分验证。自动化部分是本地确定性测试和模拟协议测试，说明路由、工具限制、恢复和 trace 的代码按约定执行。真实部分经 Tony 批准，用工作区 key 文件里的 key 在真实 DeepSeek 端点上跑了样例数据（key 只进入测试进程的环境变量，没有打印、写入配置或提交；没有修改任何现有 `config.json`）。真实结果说明端点接受工具轮次、新技能能跑通；**不说明**技能让回答更好：对照评测三种方式都是 22/22，题目太简单、只按关键词计分，还需要更难的问题和人工判断。macOS、真实麦克风、真实会议内容仍需实机验证。
 
 另外核实了一点：`ask` 的回答并不经过 MCP。MCP 是给外部客户端用的 stdio 只读入口；模型的工具调用是进程内的函数调用循环。两者现在共用同一道授权、参数和技能白名单检查，但不能把内部调用说成 MCP 端到端验证。
 
@@ -622,9 +623,9 @@ printf '%s' "$probe" | "$py" -c 'import json,sys; r=json.load(sys.stdin); print(
 | 优先级 | 后续工作 | 建议负责人 |
 |---|---|---|
 | P0 | 各平台真实麦克风、拔插、20 分钟技术会议，以及 `base.en` CPU 吞吐/术语识别 | Zimo Li / Qiyan Zhai |
-| P0 | 在真实 DeepSeek 端点上跑 W6 / M6 的工具轮次实测（`reasoning_content` 回传和 `thinking: disabled` 已实现，仅模拟验证），通过后再把 `tool_rounds` 调高；人工检查答案质量 | Zimo Li / Jiaxuan Yan |
-| P1 | 用真实模型跑 `evaluate --api`，对比 `skills` / `direct` / `auto` 的质量、引用、延迟、tokens 和成本，并做人工语义复核；现有对照只在模拟模式下跑过，不能说明技能有无收益 | Jiaxuan Yan / Qiyan Zhai |
-| P0 | 用真实模型在自己的真实问题上试 `clarify` / `grill_me` / `design_review` 和 `suggest --use-model`，由提问者本人判断是否更好用；这是这批功能的完成标准，目前完全没有验证 | Jiaxuan Yan |
+| P1 | DeepSeek 工具轮次已在真实端点跑通（单轮内多次调用）；连续两轮工具、`deepseek-v4-pro` 和非流式 `ask` 还没测到 | Zimo Li / Jiaxuan Yan |
+| P1 | 真实模型的 `evaluate --api` 已跑：三种方式都是 22/22，固定技能更贵。现有 22 题是简单事实题，分不出高下；需要补更难的题目（多来源、要取舍、要追溯原因）并做人工语义复核，才能判断技能有无收益 | Jiaxuan Yan / Qiyan Zhai |
+| P0 | `clarify` / `grill_me` / `design_review` 和 `suggest --use-model` 已用真实模型在样例会议上跑通；还需要提问者本人在自己的真实会议和问题上判断是否更好用，这是这批功能的完成标准 | Jiaxuan Yan |
 | P1 | 桌面端：给三个新技能加按钮，并在窗口里试一次 `grill_me` 多轮会话（现在只能靠输入触发，应用未重新构建） | Cai Yong / Jiaxuan Yan |
 | P2 | `suggest` 的规则只匹配英文短语，用“开头两个词相同”粗略聚类；按真实提问历史校准，并考虑把确认后的草稿契约半自动落到 `skills/` | Jiaxuan Yan |
 | P2 | 路由只认英文触发词，并列时退回 `direct` 而不是询问用户；按真实提问补触发词或加交互式消歧。若需要模型工具也真正经过 MCP 客户端，需另做设计 | Jiaxuan Yan |

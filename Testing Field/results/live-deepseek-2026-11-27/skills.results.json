@@ -1,0 +1,812 @@
+[
+  {
+    "config": "skills",
+    "label": "clarify 1",
+    "question": "Explain what the bounded queue of four chunks means for audio capture",
+    "conversation": "learn",
+    "wall_s": 22.5,
+    "skill": "clarify",
+    "abstained": false,
+    "abstain_reason": null,
+    "text": "Explanation (model wording; check against the quotations):\nA bounded queue of four chunks means audio capture can hold at most four audio chunks waiting for handling, so its backlog has a fixed ceiling. [E3] [E21] [E22]\nThe queue is also required to remain independent of the API worker, so the capture side is meant to stand apart from that worker rather than share its queue. [E3]\nOnce four chunks are queued, the queue is full; the evidence does not say whether the next chunk is dropped, capture blocks, or some other policy applies. [E3] [E21] [E22]\nThe written configuration matches the spoken requirement by setting queue capacity to four. [E21] [E22]\n\nExact supporting quotations:\nAudio capture must use a bounded queue of four chunks and remain independent of the API worker. [E3]\nThe queue capacity is four chunks. [E21]\nQUEUE_CAPACITY = 4 [E22]\n\nGeneral background (model knowledge; NOT from the meeting or project files, not verified):\nbounded queue: A bounded queue has a fixed maximum number of items it can hold.\nchunk: A chunk is a block of audio or data handled as one unit.",
+    "tool_events": [],
+    "validation_report": {
+      "claims_rejected": 0,
+      "inferences_rejected": 1,
+      "tool_calls": 0,
+      "tool_calls_denied": 0,
+      "style_flags": []
+    },
+    "usage": {
+      "input_tokens": 955,
+      "output_tokens": 2490,
+      "estimated_cost_usd": 0.0032745
+    },
+    "latency_ms": 19278.673,
+    "task_id": "01a5e12667594f0fab7793a822677161",
+    "explained_terms": [
+      "bounded queue",
+      "chunk"
+    ],
+    "previously_explained": [],
+    "session": null,
+    "background": [
+      {
+        "term": "bounded queue",
+        "text": "A bounded queue has a fixed maximum number of items it can hold.",
+        "label": "general background from the model; not from the meeting or project files, not verified"
+      },
+      {
+        "term": "chunk",
+        "text": "A chunk is a block of audio or data handled as one unit.",
+        "label": "general background from the model; not from the meeting or project files, not verified"
+      }
+    ],
+    "notes": null,
+    "snapshot_id": "353da4b3cb584680831f76b16756a543",
+    "route": "matched",
+    "claims": 3,
+    "inferences": [
+      {
+        "field": "explanation",
+        "text": "A bounded queue of four chunks means audio capture can hold at most four audio chunks waiting for handling, so its backlog has a fixed ceiling."
+      },
+      {
+        "field": "explanation",
+        "text": "The queue is also required to remain independent of the API worker, so the capture side is meant to stand apart from that worker rather than share its queue."
+      },
+      {
+        "field": "explanation",
+        "text": "Once four chunks are queued, the queue is full; the evidence does not say whether the next chunk is dropped, capture blocks, or some other policy applies."
+      },
+      {
+        "field": "related_evidence",
+        "text": "The written configuration matches the spoken requirement by setting queue capacity to four."
+      }
+    ],
+    "tool_trace": []
+  },
+  {
+    "config": "skills",
+    "label": "clarify 2 (queue already explained)",
+    "question": "Clarify how the queue capacity relates to the API worker",
+    "conversation": "learn",
+    "wall_s": 15.8,
+    "skill": "clarify",
+    "abstained": false,
+    "abstain_reason": null,
+    "text": "Explanation (model wording; check against the quotations):\nThe four-chunk ceiling is on the audio capture queue; the API worker is named only as a component the capture queue must stay independent from. [E3] [E21]\nThe written configuration sets that queue capacity to four, but no source gives the API worker its own capacity or says the two share a queue. [E3] [E21] [E22]\n\nExact supporting quotations:\nAudio capture must use a bounded queue of four chunks and remain independent of the API worker. [E3]\nThe queue capacity is four chunks. [E21]\nQUEUE_CAPACITY = 4 [E22]",
+    "tool_events": [],
+    "validation_report": {
+      "claims_rejected": 0,
+      "inferences_rejected": 0,
+      "tool_calls": 0,
+      "tool_calls_denied": 0,
+      "style_flags": []
+    },
+    "usage": {
+      "input_tokens": 1345,
+      "output_tokens": 1216,
+      "estimated_cost_usd": 0.0018627000000000001
+    },
+    "latency_ms": 12551.977,
+    "task_id": "a2cccf1acb6e4749a9b140d4d3be223c",
+    "explained_terms": [
+      "bounded queue",
+      "chunk"
+    ],
+    "previously_explained": [],
+    "session": null,
+    "background": null,
+    "notes": null,
+    "snapshot_id": "c6dc764f5bc949749d2aab8fe12f372d",
+    "route": "matched",
+    "claims": 3,
+    "inferences": [
+      {
+        "field": "explanation",
+        "text": "The four-chunk ceiling is on the audio capture queue; the API worker is named only as a component the capture queue must stay independent from."
+      },
+      {
+        "field": "related_evidence",
+        "text": "The written configuration sets that queue capacity to four, but no source gives the API worker its own capacity or says the two share a queue."
+      }
+    ],
+    "tool_trace": []
+  },
+  {
+    "config": "skills",
+    "label": "clarify 3 (needs background)",
+    "question": "Explain what FTS5 is and why it matters here",
+    "conversation": "learn",
+    "wall_s": 14.0,
+    "skill": "clarify",
+    "abstained": false,
+    "abstain_reason": null,
+    "text": "Explanation (model wording; check against the quotations):\nFTS5 is SQLite's full-text search module: it lets you match words in text stored in a SQLite database instead of scanning every row. In Atlas it is the chosen baseline for keyword retrieval, so it is the reference point any other retrieval approach would be measured against. [E21]\nIt matters because it sits inside local retrieval, which carries the stated p95 under two seconds target excluding API generation. The sources do not give FTS5's own measured latency, so whether it meets that target is open. [E21] [E11]\nSnapshots read retained content and refresh is explicit, so what FTS5 can match depends on what the connector has already retained; the evidence does not say which fields are indexed or how results are ranked. [E21]\n\nExact supporting quotations:\nSQLite FTS5 is the keyword retrieval baseline. [E21]\nThe latency target is p95 below two seconds for local retrieval, excluding API generation. [E11]\nFile refresh is explicit; snapshots read retained content. [E21]\n\nGeneral background (model knowledge; NOT from the meeting or project files, not verified):\nfts5: FTS5 is a full-text search extension bundled with SQLite. It builds an inverted index over text columns so keyword queries return matching rows without a full table scan.",
+    "tool_events": [],
+    "validation_report": {
+      "claims_rejected": 0,
+      "inferences_rejected": 0,
+      "tool_calls": 0,
+      "tool_calls_denied": 0,
+      "style_flags": []
+    },
+    "usage": {
+      "input_tokens": 1539,
+      "output_tokens": 963,
+      "estimated_cost_usd": 0.0016173
+    },
+    "latency_ms": 10883.461,
+    "task_id": "23a97f517d714e37bd5a5bc9f1394adc",
+    "explained_terms": [
+      "bounded queue",
+      "chunk",
+      "fts5"
+    ],
+    "previously_explained": [],
+    "session": null,
+    "background": [
+      {
+        "term": "fts5",
+        "text": "FTS5 is a full-text search extension bundled with SQLite. It builds an inverted index over text columns so keyword queries return matching rows without a full table scan.",
+        "label": "general background from the model; not from the meeting or project files, not verified"
+      }
+    ],
+    "notes": null,
+    "snapshot_id": "462fbf76abcc4a6cb275a6f0773e813d",
+    "route": "matched",
+    "claims": 3,
+    "inferences": [
+      {
+        "field": "explanation",
+        "text": "FTS5 is SQLite's full-text search module: it lets you match words in text stored in a SQLite database instead of scanning every row. In Atlas it is the chosen baseline for keyword retrieval, so it is the reference point any other retrieval approach would be measured against."
+      },
+      {
+        "field": "related_evidence",
+        "text": "It matters because it sits inside local retrieval, which carries the stated p95 under two seconds target excluding API generation. The sources do not give FTS5's own measured latency, so whether it meets that target is open."
+      },
+      {
+        "field": "related_evidence",
+        "text": "Snapshots read retained content and refresh is explicit, so what FTS5 can match depends on what the connector has already retained; the evidence does not say which fields are indexed or how results are ranked."
+      }
+    ],
+    "tool_trace": []
+  },
+  {
+    "config": "skills",
+    "label": "clarify 4 (no evidence at all)",
+    "question": "Define raft consensus",
+    "conversation": "learn2",
+    "wall_s": 11.3,
+    "skill": "clarify",
+    "abstained": false,
+    "abstain_reason": null,
+    "text": "Insufficient evidence in this authorized snapshot.\n\nGeneral background (model knowledge; NOT from the meeting or project files, not verified):\nraft consensus: Raft is a consensus algorithm for keeping a replicated log consistent across a cluster of machines. One node is elected leader and handles all writes.\nleader election: Nodes start as followers. If a follower stops hearing from the leader, it becomes a candidate, requests votes, and a node winning a majority becomes the new leader for a term.\ncommit: The leader appends each entry to its log and sends it to followers. An entry is committed once a majority store it; then it is applied to the state machine and the result is safe against leader failure.",
+    "tool_events": [],
+    "validation_report": {
+      "claims_rejected": 0,
+      "inferences_rejected": 0,
+      "tool_calls": 0,
+      "tool_calls_denied": 0,
+      "style_flags": []
+    },
+    "usage": {
+      "input_tokens": 769,
+      "output_tokens": 256,
+      "estimated_cost_usd": 0.0005379
+    },
+    "latency_ms": 8151.433,
+    "task_id": "99fe0ecfeb2c4cd3842a160bbfe5c509",
+    "explained_terms": [
+      "raft consensus",
+      "leader election",
+      "commit"
+    ],
+    "previously_explained": [],
+    "session": null,
+    "background": [
+      {
+        "term": "raft consensus",
+        "text": "Raft is a consensus algorithm for keeping a replicated log consistent across a cluster of machines. One node is elected leader and handles all writes.",
+        "label": "general background from the model; not from the meeting or project files, not verified"
+      },
+      {
+        "term": "leader election",
+        "text": "Nodes start as followers. If a follower stops hearing from the leader, it becomes a candidate, requests votes, and a node winning a majority becomes the new leader for a term.",
+        "label": "general background from the model; not from the meeting or project files, not verified"
+      },
+      {
+        "term": "commit",
+        "text": "The leader appends each entry to its log and sends it to followers. An entry is committed once a majority store it; then it is applied to the state machine and the result is safe against leader failure.",
+        "label": "general background from the model; not from the meeting or project files, not verified"
+      }
+    ],
+    "notes": null,
+    "snapshot_id": "055ee404af004159bd47c69f82919ded",
+    "route": "matched",
+    "claims": 0,
+    "inferences": [],
+    "tool_trace": []
+  },
+  {
+    "config": "skills",
+    "label": "grill round 1",
+    "question": "Grill me on the decision to use SQLite as the evidence store",
+    "conversation": "grill",
+    "wall_s": 13.3,
+    "skill": "grill_me",
+    "abstained": false,
+    "abstain_reason": null,
+    "text": "Assessment of your answer (model critique, not a meeting fact):\nThe recorded justification for SQLite is a single operational property, no database service to deploy; the evidence states no comparison against alternative stores and no requirement it fails to meet. [E1]\nBecause SQLite is designated authoritative rather than a cache, every downstream citation ultimately depends on this store, yet the sources contain nothing on backup, corruption recovery, or durability guarantees. [E1] [E21]\nThe retrieval layer is recorded only as an FTS5 keyword baseline, so the store decision is documented without any stated retrieval-quality target that it was chosen to satisfy. [E21]\nWrite throughput is a plausible constraint given a four-chunk queue capacity combined with a single embedded database file, but no evidence indicates whether concurrency, locking, or multi-writer access was assessed. [E1] [E21]\n\nExact supporting quotations:\nAtlas chooses SQLite as the authoritative evidence store because deployment needs no database service. [E1]\nSQLite FTS5 is the keyword retrieval baseline. [E21]\nThe queue capacity is four chunks. [E21]\nFile refresh is explicit; snapshots read retained content. [E21]\n\nChallenge 1 of 5: If avoiding a database service is the only recorded reason, what happens to the authoritative store when concurrent ingestion workers write through a four-chunk queue?",
+    "tool_events": [],
+    "validation_report": {
+      "claims_rejected": 0,
+      "inferences_rejected": 1,
+      "tool_calls": 0,
+      "tool_calls_denied": 0,
+      "style_flags": []
+    },
+    "usage": {
+      "input_tokens": 723,
+      "output_tokens": 704,
+      "estimated_cost_usd": 0.0010617
+    },
+    "latency_ms": 10182.414,
+    "task_id": "0ddace32a08443ddbf33d38ba548f111",
+    "explained_terms": null,
+    "previously_explained": null,
+    "session": {
+      "skill": "grill_me",
+      "topic": "Grill me on the decision to use SQLite as the evidence store",
+      "round": 1,
+      "max_rounds": 5,
+      "awaiting": "answer",
+      "challenge": "If avoiding a database service is the only recorded reason, what happens to the authoritative store when concurrent ingestion workers write through a four-chunk queue?"
+    },
+    "background": null,
+    "notes": null,
+    "snapshot_id": "f1bda4a0b34e45fd8c552db3508bfb39",
+    "route": "matched",
+    "claims": 4,
+    "inferences": [
+      {
+        "field": "challenged_evidence",
+        "text": "The recorded justification for SQLite is a single operational property, no database service to deploy; the evidence states no comparison against alternative stores and no requirement it fails to meet."
+      },
+      {
+        "field": "challenged_evidence",
+        "text": "Because SQLite is designated authoritative rather than a cache, every downstream citation ultimately depends on this store, yet the sources contain nothing on backup, corruption recovery, or durability guarantees."
+      },
+      {
+        "field": "assessment",
+        "text": "The retrieval layer is recorded only as an FTS5 keyword baseline, so the store decision is documented without any stated retrieval-quality target that it was chosen to satisfy."
+      },
+      {
+        "field": "assessment",
+        "text": "Write throughput is a plausible constraint given a four-chunk queue capacity combined with a single embedded database file, but no evidence indicates whether concurrency, locking, or multi-writer access was assessed."
+      }
+    ],
+    "tool_trace": []
+  },
+  {
+    "config": "skills",
+    "label": "grill round 2 (answer)",
+    "question": "Because we only have one writer process and deployment must not need a database service",
+    "conversation": "grill",
+    "wall_s": 15.6,
+    "skill": "grill_me",
+    "abstained": false,
+    "abstain_reason": null,
+    "text": "Assessment of your answer (model critique, not a meeting fact):\nThe single-writer premise does not appear anywhere in the supplied evidence; it is asserted as a design property rather than shown to be measured or enforced, so the concurrency question is answered by stipulation. [E1] [E3]\nA single writer sits awkwardly with the recorded requirement that audio capture remain independent of the API worker, because at least two processes are named and the answer never states which one holds the SQLite write handle. [E3]\nThe second half of the answer simply restates the deployment constraint that was already the only recorded justification, adding no durability, backup or recovery evidence for a store designated authoritative. [E1]\nA four-chunk queue bounds buffering, but nothing in the evidence says what happens to chunks arriving while the sole writer is restarting or blocked, so bounding the queue does not answer the failure case. [E3] [E21]\n\nExact supporting quotations:\nAtlas chooses SQLite as the authoritative evidence store because deployment needs no database service. [E1]\nAudio capture must use a bounded queue of four chunks and remain independent of the API worker. [E3]\nThe queue capacity is four chunks. [E21]\nSQLite FTS5 is the keyword retrieval baseline. [E21]\n\nChallenge 2 of 5: If a single writer process is the premise, which process actually owns the SQLite write handle when audio capture keeps enqueuing chunks while the API worker restarts mid-write?",
+    "tool_events": [],
+    "validation_report": {
+      "claims_rejected": 2,
+      "inferences_rejected": 1,
+      "tool_calls": 0,
+      "tool_calls_denied": 0,
+      "style_flags": []
+    },
+    "usage": {
+      "input_tokens": 1334,
+      "output_tokens": 1193,
+      "estimated_cost_usd": 0.0018318
+    },
+    "latency_ms": 12386.832,
+    "task_id": "09df6664523a42e986cebd399658fc0b",
+    "explained_terms": null,
+    "previously_explained": null,
+    "session": {
+      "skill": "grill_me",
+      "topic": "Grill me on the decision to use SQLite as the evidence store",
+      "round": 2,
+      "max_rounds": 5,
+      "awaiting": "answer",
+      "challenge": "If a single writer process is the premise, which process actually owns the SQLite write handle when audio capture keeps enqueuing chunks while the API worker restarts mid-write?"
+    },
+    "background": null,
+    "notes": null,
+    "snapshot_id": "f842b9fc8ea74ef999d1656d9a9c76d3",
+    "route": "continued",
+    "claims": 4,
+    "inferences": [
+      {
+        "field": "assessment",
+        "text": "The single-writer premise does not appear anywhere in the supplied evidence; it is asserted as a design property rather than shown to be measured or enforced, so the concurrency question is answered by stipulation."
+      },
+      {
+        "field": "assessment",
+        "text": "A single writer sits awkwardly with the recorded requirement that audio capture remain independent of the API worker, because at least two processes are named and the answer never states which one holds the SQLite write handle."
+      },
+      {
+        "field": "assessment",
+        "text": "The second half of the answer simply restates the deployment constraint that was already the only recorded justification, adding no durability, backup or recovery evidence for a store designated authoritative."
+      },
+      {
+        "field": "assessment",
+        "text": "A four-chunk queue bounds buffering, but nothing in the evidence says what happens to chunks arriving while the sole writer is restarting or blocked, so bounding the queue does not answer the failure case."
+      }
+    ],
+    "tool_trace": []
+  },
+  {
+    "config": "skills",
+    "label": "grill round 3 (answer)",
+    "question": "We would compare write latency under two writers before changing anything",
+    "conversation": "grill",
+    "wall_s": 15.8,
+    "skill": "grill_me",
+    "abstained": false,
+    "abstain_reason": null,
+    "text": "Assessment of your answer (model critique, not a meeting fact):\nThe answer proposes a measurement but still never names which process holds the write handle, so the ownership gap that round 2 asked about is deferred rather than closed. [E1]\nWrite latency has no recorded threshold: the only latency target in evidence is p95 under two seconds for local retrieval excluding API generation, so a two-writer write-latency comparison has no acceptance criterion attached to it. [E11]\nFraming the comparison as something to do \"before changing anything\" treats the current single-writer configuration as valid by default, even though no evidence records that the configuration was ever measured or tested under restart. [E1] [E21]\nA four-chunk queue bounds buffering, which means the observable symptom of a blocked or restarting writer is backpressure on capture, not elevated write latency, so a latency benchmark can pass while the restart case stays broken. [E21]\n\nExact supporting quotations:\nAtlas chooses SQLite as the authoritative evidence store because deployment needs no database service. [E1]\nThe latency target is p95 below two seconds for local retrieval, excluding API generation. [E11]\nThe queue capacity is four chunks. [E21]\n\nChallenge 3 of 5: If the two-writer comparison shows acceptable write latency, what tells you the authoritative store is still consistent after an interrupted write, given that latency was never the recorded risk?",
+    "tool_events": [],
+    "validation_report": {
+      "claims_rejected": 0,
+      "inferences_rejected": 1,
+      "tool_calls": 0,
+      "tool_calls_denied": 0,
+      "style_flags": []
+    },
+    "usage": {
+      "input_tokens": 1614,
+      "output_tokens": 1068,
+      "estimated_cost_usd": 0.0017657999999999999
+    },
+    "latency_ms": 12579.937,
+    "task_id": "ba2f442d4781405faae54678e18a23e2",
+    "explained_terms": null,
+    "previously_explained": null,
+    "session": {
+      "skill": "grill_me",
+      "topic": "Grill me on the decision to use SQLite as the evidence store",
+      "round": 3,
+      "max_rounds": 5,
+      "awaiting": "answer",
+      "challenge": "If the two-writer comparison shows acceptable write latency, what tells you the authoritative store is still consistent after an interrupted write, given that latency was never the recorded risk?"
+    },
+    "background": null,
+    "notes": null,
+    "snapshot_id": "a337c6c0feff4d66b0cbecf78721d175",
+    "route": "continued",
+    "claims": 3,
+    "inferences": [
+      {
+        "field": "assessment",
+        "text": "The answer proposes a measurement but still never names which process holds the write handle, so the ownership gap that round 2 asked about is deferred rather than closed."
+      },
+      {
+        "field": "assessment",
+        "text": "Write latency has no recorded threshold: the only latency target in evidence is p95 under two seconds for local retrieval excluding API generation, so a two-writer write-latency comparison has no acceptance criterion attached to it."
+      },
+      {
+        "field": "assessment",
+        "text": "Framing the comparison as something to do \"before changing anything\" treats the current single-writer configuration as valid by default, even though no evidence records that the configuration was ever measured or tested under restart."
+      },
+      {
+        "field": "assessment",
+        "text": "A four-chunk queue bounds buffering, which means the observable symptom of a blocked or restarting writer is backpressure on capture, not elevated write latency, so a latency benchmark can pass while the restart case stays broken."
+      }
+    ],
+    "tool_trace": []
+  },
+  {
+    "config": "skills",
+    "label": "grill close",
+    "question": "ok that's enough, wrap up",
+    "conversation": "grill",
+    "wall_s": 13.3,
+    "skill": "grill_me",
+    "abstained": false,
+    "abstain_reason": null,
+    "text": "Assessment of your answer (model critique, not a meeting fact):\nVerdict: the decision held up only as an operational choice — no database service to deploy is the single recorded reason, and nothing in the evidence weighs it against an alternative store. [E1]\nThe durability case did not hold up. SQLite is designated authoritative, yet the sources record nothing on backup, corruption recovery, checkpointing or interrupted-write consistency, so every downstream citation rests on an unexamined guarantee. [E1] [E21]\nThe closing answer also did not hold up: a two-writer write-latency comparison has no recorded threshold to be judged against, since the only latency target concerns local retrieval excluding API generation. [E11]\nThe latency framing measures the wrong signal. With a four-chunk queue the symptom of a blocked or restarting writer is backpressure at capture, so a benchmark can pass while the interrupted-write case stays unresolved. [E21]\n\nExact supporting quotations:\nAtlas chooses SQLite as the authoritative evidence store because deployment needs no database service. [E1]\nThe latency target is p95 below two seconds for local retrieval, excluding API generation. [E11]\nSQLite FTS5 is the keyword retrieval baseline. [E21]\nThe queue capacity is four chunks. [E21]\n\nChallenge session closed.",
+    "tool_events": [],
+    "validation_report": {
+      "claims_rejected": 1,
+      "inferences_rejected": 3,
+      "tool_calls": 0,
+      "tool_calls_denied": 0,
+      "style_flags": []
+    },
+    "usage": {
+      "input_tokens": 1955,
+      "output_tokens": 769,
+      "estimated_cost_usd": 0.0015092999999999999
+    },
+    "latency_ms": 10148.049,
+    "task_id": "87985c9af83241a4a7229a173fd1755b",
+    "explained_terms": null,
+    "previously_explained": null,
+    "session": {
+      "skill": "grill_me",
+      "topic": "Grill me on the decision to use SQLite as the evidence store",
+      "round": 3,
+      "max_rounds": 5,
+      "awaiting": null,
+      "challenge": null
+    },
+    "background": null,
+    "notes": null,
+    "snapshot_id": "9f58c7400bb240d8afee123c2ab0430f",
+    "route": "continued",
+    "claims": 4,
+    "inferences": [
+      {
+        "field": "assessment",
+        "text": "Verdict: the decision held up only as an operational choice — no database service to deploy is the single recorded reason, and nothing in the evidence weighs it against an alternative store."
+      },
+      {
+        "field": "assessment",
+        "text": "The durability case did not hold up. SQLite is designated authoritative, yet the sources record nothing on backup, corruption recovery, checkpointing or interrupted-write consistency, so every downstream citation rests on an unexamined guarantee."
+      },
+      {
+        "field": "assessment",
+        "text": "The closing answer also did not hold up: a two-writer write-latency comparison has no recorded threshold to be judged against, since the only latency target concerns local retrieval excluding API generation."
+      },
+      {
+        "field": "assessment",
+        "text": "The latency framing measures the wrong signal. With a four-chunk queue the symptom of a blocked or restarting writer is backpressure at capture, so a benchmark can pass while the interrupted-write case stays unresolved."
+      }
+    ],
+    "tool_trace": []
+  },
+  {
+    "config": "skills",
+    "label": "design_review",
+    "question": "What could go wrong with the bounded queue design, and what should we validate first?",
+    "conversation": "review",
+    "wall_s": 16.5,
+    "skill": "design_review",
+    "abstained": false,
+    "abstain_reason": null,
+    "text": "Model suggestions (not meeting facts; check against the quotations):\nValidate first what happens when audio arrives faster than four chunks can drain: confirm whether producers block, drop or error, because no overflow policy appears anywhere in the supplied evidence. [E3] [E22]\nSecond, test the independence claim against a stalled or slow API worker and confirm capture fails visibly rather than silently filling the queue. [E3]\nA burst longer than four chunks, combined with RETRIES = 0 and a 20-second timeout, could lose or stall audio with no documented recovery path. [E22] [E3]\nBecause capture is deliberately decoupled from the API worker, a full queue may produce no backpressure signal to the capture side and could go unnoticed without monitoring that the evidence does not describe. [E3]\nThe design assumes four chunks is adequate buffering for worst-case audio bursts; the evidence states the capacity but gives no sizing rationale. [E3] [E21]\nThe design assumes a 20-second timeout with zero retries is acceptable, meaning a failed or timed-out chunk need not be re-sent. [E22]\nAs described, the current proposal is a bounded audio capture queue of four chunks held independent of the API worker. [E3] [E21]\nThe evidence does not describe monitoring, load tests, or a drop-versus-block rule for the full-queue case, so those parts of the proposal remain undocumented. [E3] [E22]\n\nExact supporting quotations:\nAudio capture must use a bounded queue of four chunks and remain independent of the API worker. [E3]\nQUEUE_CAPACITY = 4\r\nTIMEOUT_SECONDS = 20\r\nRETRIES = 0 [E22]\nThe queue capacity is four chunks. [E21]",
+    "tool_events": [],
+    "validation_report": {
+      "claims_rejected": 0,
+      "inferences_rejected": 0,
+      "tool_calls": 0,
+      "tool_calls_denied": 0,
+      "style_flags": []
+    },
+    "usage": {
+      "input_tokens": 711,
+      "output_tokens": 1412,
+      "estimated_cost_usd": 0.0019076999999999998
+    },
+    "latency_ms": 13366.843,
+    "task_id": "ea40cb246c594a2291e9c764cf9f9e3d",
+    "explained_terms": null,
+    "previously_explained": null,
+    "session": null,
+    "background": null,
+    "notes": null,
+    "snapshot_id": "82ecb5ad913e4029a3ef1260030cd65c",
+    "route": "matched",
+    "claims": 3,
+    "inferences": [
+      {
+        "field": "validate_first",
+        "text": "Validate first what happens when audio arrives faster than four chunks can drain: confirm whether producers block, drop or error, because no overflow policy appears anywhere in the supplied evidence."
+      },
+      {
+        "field": "validate_first",
+        "text": "Second, test the independence claim against a stalled or slow API worker and confirm capture fails visibly rather than silently filling the queue."
+      },
+      {
+        "field": "failure_scenarios",
+        "text": "A burst longer than four chunks, combined with RETRIES = 0 and a 20-second timeout, could lose or stall audio with no documented recovery path."
+      },
+      {
+        "field": "failure_scenarios",
+        "text": "Because capture is deliberately decoupled from the API worker, a full queue may produce no backpressure signal to the capture side and could go unnoticed without monitoring that the evidence does not describe."
+      },
+      {
+        "field": "key_assumptions",
+        "text": "The design assumes four chunks is adequate buffering for worst-case audio bursts; the evidence states the capacity but gives no sizing rationale."
+      },
+      {
+        "field": "key_assumptions",
+        "text": "The design assumes a 20-second timeout with zero retries is acceptable, meaning a failed or timed-out chunk need not be re-sent."
+      },
+      {
+        "field": "proposal_evidence",
+        "text": "As described, the current proposal is a bounded audio capture queue of four chunks held independent of the API worker."
+      },
+      {
+        "field": "proposal_evidence",
+        "text": "The evidence does not describe monitoring, load tests, or a drop-versus-block rule for the full-queue case, so those parts of the proposal remain undocumented."
+      }
+    ],
+    "tool_trace": []
+  },
+  {
+    "config": "skills",
+    "label": "habit: Who owns microphone capture? briefly",
+    "question": "Who owns microphone capture? briefly",
+    "conversation": "habits",
+    "wall_s": 10.4,
+    "skill": "direct",
+    "abstained": false,
+    "abstain_reason": null,
+    "text": "Model inference (review against quotations):\nZimo owns microphone capture. [E4]\n\nExact supporting quotations:\nZimo owns microphone capture and local ASR integration. [E4]",
+    "tool_events": [],
+    "validation_report": {
+      "claims_rejected": 0,
+      "inferences_rejected": 0,
+      "tool_calls": 0,
+      "tool_calls_denied": 0,
+      "style_flags": []
+    },
+    "usage": {
+      "input_tokens": 528,
+      "output_tokens": 119,
+      "estimated_cost_usd": 0.0003012
+    },
+    "latency_ms": 7161.35,
+    "task_id": "382050bb426547dfa36c8a53716155a6",
+    "explained_terms": null,
+    "previously_explained": null,
+    "session": null,
+    "background": null,
+    "notes": null,
+    "snapshot_id": "0e404a9931b645fa8f4d665c3a13020f",
+    "route": "not_applicable",
+    "claims": 1,
+    "inferences": [
+      {
+        "field": "evidence",
+        "text": "Zimo owns microphone capture."
+      }
+    ],
+    "tool_trace": []
+  },
+  {
+    "config": "skills",
+    "label": "habit: Who owns security policy? briefly",
+    "question": "Who owns security policy? briefly",
+    "conversation": "habits",
+    "wall_s": 10.1,
+    "skill": "direct",
+    "abstained": false,
+    "abstain_reason": null,
+    "text": "Model inference (review against quotations):\nCai owns security policy. [E7]\n\nExact supporting quotations:\nCai owns security policy and access revocation checks. [E7]",
+    "tool_events": [],
+    "validation_report": {
+      "claims_rejected": 0,
+      "inferences_rejected": 0,
+      "tool_calls": 0,
+      "tool_calls_denied": 0,
+      "style_flags": []
+    },
+    "usage": {
+      "input_tokens": 587,
+      "output_tokens": 77,
+      "estimated_cost_usd": 0.0002685
+    },
+    "latency_ms": 6973.825,
+    "task_id": "7427e12627b946248fccff81f34920ac",
+    "explained_terms": null,
+    "previously_explained": null,
+    "session": null,
+    "background": null,
+    "notes": null,
+    "snapshot_id": "8353617be9124e73bd7f05dcbf6cf83f",
+    "route": "not_applicable",
+    "claims": 1,
+    "inferences": [
+      {
+        "field": "evidence",
+        "text": "Cai owns security policy."
+      }
+    ],
+    "tool_trace": []
+  },
+  {
+    "config": "skills",
+    "label": "habit: Who owns evaluation?",
+    "question": "Who owns evaluation?",
+    "conversation": "habits",
+    "wall_s": 10.6,
+    "skill": "direct",
+    "abstained": false,
+    "abstain_reason": null,
+    "text": "Model inference (review against quotations):\nQiyan owns evaluation. [E8]\n\nExact supporting quotations:\nQiyan owns evaluation and frozen replay questions. [E8]",
+    "tool_events": [],
+    "validation_report": {
+      "claims_rejected": 0,
+      "inferences_rejected": 0,
+      "tool_calls": 0,
+      "tool_calls_denied": 0,
+      "style_flags": []
+    },
+    "usage": {
+      "input_tokens": 695,
+      "output_tokens": 126,
+      "estimated_cost_usd": 0.0003597
+    },
+    "latency_ms": 7525.067,
+    "task_id": "b9276cff47c840d38aa846d71caa6716",
+    "explained_terms": null,
+    "previously_explained": null,
+    "session": null,
+    "background": null,
+    "notes": null,
+    "snapshot_id": "f6f44866266743fda42c22fbee417d15",
+    "route": "not_applicable",
+    "claims": 1,
+    "inferences": [
+      {
+        "field": "evidence",
+        "text": "Qiyan owns evaluation."
+      }
+    ],
+    "tool_trace": []
+  },
+  {
+    "config": "skills",
+    "label": "habit: Ask me hard questions about the timeout",
+    "question": "Ask me hard questions about the timeout",
+    "conversation": "habits",
+    "wall_s": 17.6,
+    "skill": "direct",
+    "abstained": false,
+    "abstain_reason": null,
+    "text": "Model inference (review against quotations):\nHard question: is the twenty seconds a per-attempt transport budget or an end-to-end budget that includes time spent waiting in the worker queue? The config shows a queue capacity of four but no queue-wait allowance, so worst-case latency for a queued request is undefined. [E20] [E22]\nHard question: with retries disabled, what exactly should the caller see when the twenty-second limit is hit — a surfaced error, a partial result, or a fallback path? No source describes the failure behavior, only that no retry follows. [E20] [E22]\nHard question: do the spoken 'transport timeout' and the file's TIMEOUT_SECONDS refer to the same layer and the same clock? They agree on twenty, but neither source states whether the file value is the transport timeout or a separate worker-level setting. [E20] [E22]\nHard question: what was the value before the correction, and what is the documented reason for twenty seconds? The evidence records the correction and the final figure but contains no prior value and no rationale or tradeoff analysis. [E10] [E20]\nHard question: does any client-side deadline exceed the twenty-second transport timeout, or does the client give up first and mask the transport behavior? The supplied evidence says nothing about client-side timing. [E20]\nHard question: is there a frozen replay or evaluation case that exercises the twenty-second timeout combined with zero retries, given that evaluation and replay questions are owned by Qiyan? No test or replay artifact appears in the evidence. [E8] [E20]\nHard question: who owns the timeout value and who can change it? The sources state the agreed and remaining value but name no owner for it. [E10] [E20]\nHard question: is twenty seconds a final decision or still open? The wording indicates agreement and an unchanged final value, so the decision appears settled, but the evidence does not show whether queue capacity four and zero retries were decided jointly with it or separately. [E10] [E20] [E22]\n\nExact supporting quotations:\nthe agreed timeout is twenty seconds [E10]\nthe transport timeout remains twenty seconds; retries are disabled [E20]\nTIMEOUT_SECONDS = 20 [E22]\nRETRIES = 0 [E22]\nQUEUE_CAPACITY = 4 [E22]\nQiyan owns evaluation and frozen replay questions. [E8]",
+    "tool_events": [],
+    "validation_report": {
+      "claims_rejected": 0,
+      "inferences_rejected": 0,
+      "tool_calls": 0,
+      "tool_calls_denied": 0,
+      "style_flags": []
+    },
+    "usage": {
+      "input_tokens": 743,
+      "output_tokens": 1664,
+      "estimated_cost_usd": 0.0022197
+    },
+    "latency_ms": 14491.019,
+    "task_id": "fef7b106afaf4ffca95eec38ced51425",
+    "explained_terms": null,
+    "previously_explained": null,
+    "session": null,
+    "background": null,
+    "notes": null,
+    "snapshot_id": "ceaf400afa56425f976532e2906daca3",
+    "route": "not_applicable",
+    "claims": 6,
+    "inferences": [
+      {
+        "field": "evidence",
+        "text": "Hard question: is the twenty seconds a per-attempt transport budget or an end-to-end budget that includes time spent waiting in the worker queue? The config shows a queue capacity of four but no queue-wait allowance, so worst-case latency for a queued request is undefined."
+      },
+      {
+        "field": "evidence",
+        "text": "Hard question: with retries disabled, what exactly should the caller see when the twenty-second limit is hit — a surfaced error, a partial result, or a fallback path? No source describes the failure behavior, only that no retry follows."
+      },
+      {
+        "field": "evidence",
+        "text": "Hard question: do the spoken 'transport timeout' and the file's TIMEOUT_SECONDS refer to the same layer and the same clock? They agree on twenty, but neither source states whether the file value is the transport timeout or a separate worker-level setting."
+      },
+      {
+        "field": "evidence",
+        "text": "Hard question: what was the value before the correction, and what is the documented reason for twenty seconds? The evidence records the correction and the final figure but contains no prior value and no rationale or tradeoff analysis."
+      },
+      {
+        "field": "evidence",
+        "text": "Hard question: does any client-side deadline exceed the twenty-second transport timeout, or does the client give up first and mask the transport behavior? The supplied evidence says nothing about client-side timing."
+      },
+      {
+        "field": "evidence",
+        "text": "Hard question: is there a frozen replay or evaluation case that exercises the twenty-second timeout combined with zero retries, given that evaluation and replay questions are owned by Qiyan? No test or replay artifact appears in the evidence."
+      },
+      {
+        "field": "evidence",
+        "text": "Hard question: who owns the timeout value and who can change it? The sources state the agreed and remaining value but name no owner for it."
+      },
+      {
+        "field": "evidence",
+        "text": "Hard question: is twenty seconds a final decision or still open? The wording indicates agreement and an unchanged final value, so the decision appears settled, but the evidence does not show whether queue capacity four and zero retries were decided jointly with it or separately."
+      }
+    ],
+    "tool_trace": []
+  },
+  {
+    "config": "skills",
+    "label": "habit: Challenge the retry setting",
+    "question": "Challenge the retry setting",
+    "conversation": "habits",
+    "wall_s": 1.9,
+    "skill": "direct",
+    "abstained": true,
+    "abstain_reason": "no_evidence_retrieved",
+    "text": "Insufficient evidence in this authorized snapshot.",
+    "tool_events": [],
+    "validation_report": {
+      "claims_rejected": 0,
+      "inferences_rejected": 0,
+      "tool_calls": 0,
+      "tool_calls_denied": 0,
+      "style_flags": []
+    },
+    "usage": {
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "estimated_cost_usd": 0.0
+    },
+    "latency_ms": 0.925,
+    "task_id": "3ab5c415af264113be6597771e5f07d4",
+    "explained_terms": null,
+    "previously_explained": null,
+    "session": null,
+    "background": null,
+    "notes": null,
+    "snapshot_id": "a3ba568c5e3d41a4bf1670b9878c09ce",
+    "route": "not_applicable",
+    "claims": 0,
+    "inferences": [],
+    "tool_trace": []
+  },
+  {
+    "config": "skills",
+    "label": "clarify with saved preference (two sentences)",
+    "question": "Explain what immutable question snapshots are for",
+    "conversation": "learn3",
+    "wall_s": 17.1,
+    "skill": "clarify",
+    "abstained": false,
+    "abstain_reason": null,
+    "text": "Explanation (model wording; check against the quotations):\nAn immutable question snapshot is a question record that is not changed after it is made; it reads retained content, so an explicit file refresh does not alter that stored content. [E5] [E21]\n\nExact supporting quotations:\nXiaolong owns versioned memory and immutable question snapshots. [E5]\nFile refresh is explicit; snapshots read retained content. [E21]",
+    "tool_events": [],
+    "validation_report": {
+      "claims_rejected": 0,
+      "inferences_rejected": 0,
+      "tool_calls": 0,
+      "tool_calls_denied": 0,
+      "style_flags": []
+    },
+    "usage": {
+      "input_tokens": 906,
+      "output_tokens": 1272,
+      "estimated_cost_usd": 0.0017981999999999998
+    },
+    "latency_ms": 13975.242,
+    "task_id": "e5e43ba0856544bfb7b6eddfea69f003",
+    "explained_terms": [
+      "immutable question snapshot"
+    ],
+    "previously_explained": [],
+    "session": null,
+    "background": null,
+    "notes": null,
+    "snapshot_id": "8f6cad5b4ab04d0aae6df35ade10dcd1",
+    "route": "matched",
+    "claims": 2,
+    "inferences": [
+      {
+        "field": "explanation",
+        "text": "An immutable question snapshot is a question record that is not changed after it is made; it reads retained content, so an explicit file refresh does not alter that stored content."
+      }
+    ],
+    "tool_trace": []
+  }
+]
