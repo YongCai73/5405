@@ -1,17 +1,67 @@
 {
   "name": "compare_options",
+  "version": "1.1.0",
   "trigger": [
     "compare",
     "versus",
     "options"
   ],
+  "routing": {
+    "phrases": {
+      "compare": 3,
+      "comparison": 3,
+      "compared": 3,
+      "versus": 3,
+      "vs": 3,
+      "tradeoff": 3,
+      "tradeoffs": 3,
+      "trade-off": 3,
+      "trade-offs": 3,
+      "pros and cons": 3,
+      "difference between": 3,
+      "differences between": 3,
+      "options": 2,
+      "alternatives": 2,
+      "better": 1
+    }
+  },
   "retrieval": "same snapshot keyword evidence for both options; include approved project files",
+  "retrieval_plan": {
+    "strategy": "keyword",
+    "limit": 16
+  },
+  "allowed_tools": {
+    "model": [
+      "search_evidence",
+      "read_evidence"
+    ],
+    "mcp": [
+      "meet2notes_status",
+      "list_meetings",
+      "get_meeting",
+      "get_transcript",
+      "find_in_transcripts",
+      "get_summary",
+      "read_evidence",
+      "list_project_files",
+      "search_project",
+      "read_project_file"
+    ]
+  },
   "output_fields": [
     "option_evidence",
     "tradeoff_evidence"
   ],
   "citation": "Exact supporting quotations retain source ID/version/hash/time or original file lines. Model synthesis is separately labelled inference with IDs of validated quotations; structural validation is not semantic proof.",
   "abstention": "If one option lacks evidence, label that comparison incomplete",
+  "termination": {
+    "max_tool_rounds": 2,
+    "max_tool_calls": 6,
+    "max_claims": 8,
+    "max_inferences": 8,
+    "mcp_session_calls": 200,
+    "on_limit": "further tool calls are denied; answer from evidence already retrieved or abstain"
+  },
   "task_steps": [
     "Describe each named option separately, including any missing evidence for an option.",
     "Compare tradeoffs on dimensions actually mentioned: deployment, complexity, latency, capacity or constraints.",
