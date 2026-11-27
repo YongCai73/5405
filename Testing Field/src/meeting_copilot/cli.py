@@ -10,6 +10,7 @@ from .config import Config
 from .store import Store
 from .trace import Trace
 from .private_files import private_directory, write_private_text
+from .skill_runtime import INTERNAL, MANUAL
 
 def output(value):print(json.dumps(value,ensure_ascii=False,indent=2,default=str))
 
@@ -30,7 +31,7 @@ def parser():
     for name in ('grant','revoke'):
         c=sub.add_parser(name);c.add_argument('meeting');c.add_argument('principal')
     c=sub.add_parser('snapshot');c.add_argument('meeting');c.add_argument('--previous',action='append',default=[]);c.add_argument('--folder',action='append',default=[])
-    c=sub.add_parser('ask');c.add_argument('meeting');c.add_argument('question');c.add_argument('--snapshot');c.add_argument('--previous',action='append',default=[]);c.add_argument('--folder',action='append',default=[]);c.add_argument('--conversation',default='default');c.add_argument('--skill',choices=['auto','catch_up','trace_decision','compare_options','direct'],default='auto',help='auto (default) routes by the trigger phrases in the skill contracts; name a skill to choose it yourself')
+    c=sub.add_parser('ask');c.add_argument('meeting');c.add_argument('question');c.add_argument('--snapshot');c.add_argument('--previous',action='append',default=[]);c.add_argument('--folder',action='append',default=[]);c.add_argument('--conversation',default='default');c.add_argument('--skill',choices=['auto',*MANUAL],default='auto',help='auto (default) routes by the trigger phrases in the skill contracts; name a skill to choose it yourself')
     c=sub.add_parser('route',help='explain which skill auto routing would choose; reads no evidence and calls no model');c.add_argument('question')
     sub.add_parser('skills',help='list skill contracts: version, allowed tools and limits')
     c=sub.add_parser('summary');c.add_argument('snapshot')
@@ -46,8 +47,13 @@ def parser():
     c.add_argument('--low-latency',action='store_true',help='opt-in preset measured on Windows: 4 ASR threads, 300 ms pause cut')
     c=sub.add_parser('asr');c.add_argument('meeting');c.add_argument('audio');c.add_argument('--download-model',action='store_true')
     c.add_argument('--terms');c.add_argument('--terms-file')
-    c=sub.add_parser('mcp');c.add_argument('snapshot');c.add_argument('--skill',choices=['catch_up','trace_decision','compare_options','direct'],default='direct',help='bind the session to one skill: calls to tools outside its allowlist are refused and traced')
+    c=sub.add_parser('mcp');c.add_argument('snapshot');c.add_argument('--skill',choices=[*MANUAL,*INTERNAL],default='direct',help='bind the session to one skill: calls to tools outside its allowlist are refused and traced')
     c=sub.add_parser('trace-export');c.add_argument('output')
+    c=sub.add_parser('feedback',help='rate one of your stored answers; used only by suggest');c.add_argument('snapshot');c.add_argument('question');c.add_argument('--rating',choices=['up','down'],required=True);c.add_argument('--note',default='');c.add_argument('--conversation',default='default')
+    c=sub.add_parser('prefs',help='your saved wording preferences (style only), sent with API questions');c.add_argument('action',choices=['list','add','remove','clear']);c.add_argument('value',nargs='?')
+    c=sub.add_parser('suggest',help='on request, analyse your own question history and suggest preferences, skill changes or a new skill; changes nothing')
+    c.add_argument('meeting');c.add_argument('--previous',action='append',default=[]);c.add_argument('--min-support',type=int,default=2);c.add_argument('--output')
+    c.add_argument('--use-model',action='store_true',help='also send your question texts to the configured provider for suggestions; may incur cost')
     c=sub.add_parser('trace-show',help='print the local trace events of one task or snapshot');c.add_argument('--task');c.add_argument('--snapshot')
     c=sub.add_parser('evaluate');c.add_argument('--output',default='results/report.json');c.add_argument('--stress',action='store_true')
     c.add_argument('--strict',action='store_true',help='exit nonzero when deterministic workflow, policy, or recovery gate fails')
@@ -173,6 +179,27 @@ def run(a):
             # One task ID per MCP session groups its tool calls in the local trace.
             with task_trace_context(task_id='mcp-'+uuid.uuid4().hex,skill=contract['name'],skill_version=contract['version']):
                 service.info();server(service).run(transport='stdio')
+        elif a.command=='feedback':
+            from .meta_suggest import add_feedback
+            output(add_feedback(store,user,a.snapshot,a.conversation,a.question,a.rating,a.note))
+        elif a.command=='prefs':
+            from .meta_suggest import preferences,set_preferences
+            current=preferences(store,user)
+            if a.action=='add':
+                if not a.value:raise ValueError('prefs add needs the preference text')
+                current=set_preferences(store,user,current+[a.value])
+            elif a.action=='remove':
+                if not a.value or not a.value.isdigit() or not 1<=int(a.value)<=len(current):raise ValueError('prefs remove needs the number shown by prefs list')
+                current=set_preferences(store,user,current[:int(a.value)-1]+current[int(a.value):])
+            elif a.action=='clear':current=set_preferences(store,user,[])
+            output({'preferences':[{'number':n,'text':t} for n,t in enumerate(current,1)],'applies_to':'wording of API answers only; never scope, tools or permissions'})
+        elif a.command=='suggest':
+            from .meta_suggest import suggest
+            if a.use_model and c.provider=='demo':raise ValueError('--use-model needs a configured API provider')
+            sid=store.snapshot(user,a.meeting,previous=a.previous)
+            report=asyncio.run(suggest(store,user,sid,trace,Provider(c) if a.use_model else None,a.min_support))
+            if a.output:write_private_text(a.output,json.dumps(report,indent=2,ensure_ascii=False));output({'report':a.output,'suggestions':[{k:s[k] for k in ('kind','title','support')} for s in report['suggestions']]})
+            else:output(report)
         elif a.command=='trace-show':
             if not a.task and not a.snapshot:raise ValueError('give --task or --snapshot')
             output(trace.rows(a.task,a.snapshot,lambda sid:store.snapshot_info(user,sid)))

@@ -7,7 +7,8 @@ from .skill_runtime import guarded_call, load_contract, policy_for
 # MCP tool name -> host-scoped method. Arguments are validated in skill_runtime.
 MCP_METHODS={'meet2notes_status':'info','list_meetings':'list_meetings','get_meeting':'get_meeting','get_transcript':'get_transcript',
     'find_in_transcripts':'find_in_transcripts','get_summary':'summary','read_evidence':'raw','list_project_files':'list_project_files',
-    'search_project':'search_project','read_project_file':'read_project_file'}
+    'search_project':'search_project','read_project_file':'read_project_file',
+    'list_private_turns':'private_turns','list_feedback':'feedback'}
 MCP_ARGUMENTS={'get_meeting':{'meeting_id':'meeting'}}
 
 class EvidenceService:
@@ -37,6 +38,13 @@ class EvidenceService:
     def find_in_transcripts(self,query):self.info();return self.store.evidence(self.user,self.snapshot,kind='segment',query=query,limit=30)
     def raw(self,source_id):self.info();return self.store.raw(self.user,self.snapshot,source_id)
     def summary(self):self.info();return self.store.summary_get(self.user,self.snapshot)
+    def private_turns(self,offset=0):
+        """The host-bound user's own question history (metadata, no answer text). meta_suggest only."""
+        from .meta_suggest import private_turns
+        self.info();return private_turns(self.store,self.user,self.snapshot,offset)
+    def feedback(self,offset=0):
+        from .meta_suggest import feedback_rows
+        self.info();return feedback_rows(self.store,self.user,self.snapshot,offset)
     def project(self,query=None,offset=0):
         self.info()
         if not 0<=offset<=1000:raise ValueError('offset limit')

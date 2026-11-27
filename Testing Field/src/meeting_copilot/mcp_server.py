@@ -61,4 +61,14 @@ def server(service):
     def read_project_file(source_id:int,start_line:Annotated[int,Field(ge=1)]=1,end_line:Annotated[int,Field(ge=1)]=100) -> dict:
         """Read bounded lines from retained text; no filesystem paths accepted."""
         return service.call('read_project_file',{'source_id':source_id,'start_line':start_line,'end_line':end_line})
+    # Private-history tools. Registered like the others, but only the meta_suggest contract
+    # allows them: every other session, including an unbound one, is refused by the gateway.
+    @mcp.tool(annotations=READ_ONLY)
+    def list_private_turns(offset: Annotated[int,Field(ge=0,le=1000)]=0) -> list[dict]:
+        """List the host user's own private questions with routing metadata; no answer text."""
+        return service.call('list_private_turns',{'offset':offset})
+    @mcp.tool(annotations=READ_ONLY)
+    def list_feedback(offset: Annotated[int,Field(ge=0,le=1000)]=0) -> list[dict]:
+        """List the host user's own answer ratings and notes."""
+        return service.call('list_feedback',{'offset':offset})
     return mcp
