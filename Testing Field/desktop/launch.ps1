@@ -89,7 +89,14 @@ function Get-SourceFingerprint([string]$Python) {
 
 function Test-BundleCurrent([string]$Python) {
     if (-not (Test-Path -LiteralPath $bundleMarker -PathType Leaf)) { return $false }
-    return (Get-Content -LiteralPath $bundleMarker -Raw).Trim() -eq (Get-SourceFingerprint $Python)
+    $built = (Get-Content -LiteralPath $bundleMarker -Raw).Trim()
+    $now = Get-SourceFingerprint $Python
+    if (-not $Python) {
+        # Without a Python environment only the source part can be compared.
+        $built = $built.Substring(0, $built.LastIndexOf(':'))
+        $now = $now.Substring(0, $now.LastIndexOf(':'))
+    }
+    return $built -eq $now
 }
 
 function Test-AppRunning {

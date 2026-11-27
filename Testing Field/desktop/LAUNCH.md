@@ -83,11 +83,13 @@ the app it starts, so the bundle always runs its own copied backend.
 
 ## Validation status
 
-Recorded 2026-11-27 on Windows 11. Verified: the credential tests, a real
-Windows Credential Manager round trip with a dummy value, `doctor`, `help`,
-error reporting, and the launcher's build, rebuild-on-change and
-replace-existing-bundle logic using a stand-in for `dotnet publish`. Not yet
-verified: a real `dotnet publish` through the launcher (the machine had no .NET
-SDK), a real-provider request using a saved key, and everything in `launch.sh`
-and `Start Meeting Copilot.command` beyond a shell syntax check, because no Mac
-was available.
+Recorded 2026-11-27 on Windows 11 with the .NET SDK 8.0.428. Verified: the
+credential tests, a real Windows Credential Manager round trip with a dummy
+value, `doctor`, `help` and error reporting. `build` produced a real bundle
+through `dotnet publish`; `demo` and `run` opened it with no Meeting Copilot
+environment variables set, the window rendered the sample meeting, the Python
+bridge started from the bundle's own runtime, and closing the window ended both
+processes. Editing a source file made the next `run` rebuild and replace the
+bundle. Not yet verified: a real-provider request using a saved key, and
+everything in `launch.sh` and `Start Meeting Copilot.command` beyond a shell
+syntax check, because no Mac was available.
