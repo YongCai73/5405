@@ -176,6 +176,42 @@ def skill_control_suite(root):
                     and again['text'] == original['text'] and 'skill_conflict' not in same and turns('ctl-conflict') == 1,
                     'conflict': again.get('skill_conflict', {}).get('answered_with')}
 
+        def grounded_session():
+            one = asyncio.run(assistant.ask(store.snapshot('alice', 'm'), 'Grill me on the SQLite decision', 'ctl-grill', 'auto'))
+            two = asyncio.run(assistant.ask(store.snapshot('alice', 'm'), 'Because there is no broker to compare or operate', 'ctl-grill', 'auto'))
+            end = asyncio.run(assistant.ask(store.snapshot('alice', 'm'), 'stop', 'ctl-grill', 'auto'))
+            after = asyncio.run(assistant.ask(store.snapshot('alice', 'm'), 'Why was Kafka rejected?', 'ctl-grill', 'auto'))
+            rounds = [one['session']['round'], two['session']['round']]
+            return {'passed': one['skill'] == 'grill_me' and two['routing']['status'] == 'continued' and rounds == [1, 2]
+                    and one['challenge']['question'].count('?') == 1 and one['challenge']['question'] != two['challenge']['question']
+                    and end['session']['awaiting'] is None and after['skill'] == 'trace_decision' and bool(one['citations']), 'rounds': rounds}
+
+        def term_memory():
+            first = asyncio.run(assistant.ask(store.snapshot('alice', 'm'), 'Explain the bounded queue', 'ctl-clarify', 'auto'))
+            again = asyncio.run(assistant.ask(store.snapshot('alice', 'm'), 'Clarify the queue capacity', 'ctl-clarify', 'auto'))
+            fresh = asyncio.run(assistant.ask(store.snapshot('alice', 'm'), 'Clarify the queue capacity', 'ctl-clarify-other', 'auto'))
+            return {'passed': first['skill'] == 'clarify' and 'queue' in first['explained_terms'] and again['previously_explained'] == ['queue']
+                    and fresh['previously_explained'] == [] and 'background' not in first, 'remembered': again['previously_explained']}
+
+        def review_fields():
+            result = asyncio.run(assistant.ask(store.snapshot('alice', 'm'), 'What could go wrong with the bounded queue design?', 'ctl-review', 'auto'))
+            fields = result['fields']
+            return {'passed': result['skill'] == 'design_review' and fields['proposal_evidence'] == result['claims'] and bool(result['claims'])
+                    and fields['key_assumptions'] == fields['failure_scenarios'] == fields['validate_first'] == [], 'fields': sorted(fields)}
+
+        def private_history_scope():
+            from .meta_suggest import suggest
+            sid2 = store.snapshot('alice', 'm')
+            default = reason(lambda: EvidenceService(store, 'alice', sid2, trace).call('list_private_turns', {}))
+            report = asyncio.run(suggest(store, 'alice', sid2, trace))
+            store.create('mallory', 'other', 'Unrelated'); other = store.snapshot('mallory', 'other')
+            foreign = asyncio.run(suggest(store, 'mallory', other, trace))
+            cited = {i for s in report['suggestions'] for i in s['evidence_turn_ids']}
+            mine = {t['turn_id'] for t in EvidenceService(store, 'alice', sid2, None, policy_for(load_contract('meta_suggest'), 'mcp')).call('list_private_turns', {})}
+            return {'passed': default == 'tool_not_allowed_for_skill' and report['scope']['turns_analysed'] > 0 and cited <= mine
+                    and foreign['scope']['turns_analysed'] == 0 and [s['kind'] for s in foreign['suggestions']] == ['no_change'],
+                    'turns_analysed': report['scope']['turns_analysed'], 'other_user_turns_visible': foreign['scope']['turns_analysed']}
+
         record('model_unknown_tool_denied', unknown_tool)
         record('model_tool_outside_skill_denied', outside_skill)
         record('model_identity_argument_denied', identity_argument)
@@ -189,6 +225,10 @@ def skill_control_suite(root):
         record('resume_keeps_pinned_skill_and_task', resume_pinned)
         record('contract_change_restarts_retrieval_same_skill', contract_changed)
         record('same_question_other_skill_reports_conflict', conflict)
+        record('grill_me_keeps_session_state_across_turns', grounded_session)
+        record('clarify_term_memory_is_per_conversation', term_memory)
+        record('design_review_keeps_quotations_apart_from_suggestions', review_fields)
+        record('private_history_only_for_meta_suggest_and_own_user', private_history_scope)
     finally:
         store.close()
     return {'cases': cases, 'total': len(cases), 'passed': sum(c['passed'] for c in cases),

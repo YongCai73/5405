@@ -16,7 +16,7 @@ async def test_actual_stdio_tools_scope_and_revocation(tmp_path,event):
             async with ClientSession(read,write) as session:
                 initialized=await session.initialize();assert initialized.server_info.name=='Meeting Copilot'
                 listed=await session.list_tools();tools={t.name:t for t in listed.tools}
-                assert len(tools)==10
+                assert len(tools)==12  # ten evidence tools plus two private-history tools that only meta_suggest may call
                 for t in tools.values():
                     schema=t.input_schema
                     assert not ({'user','principal','snapshot','root','command'} & set(schema.get('properties',{})))
@@ -44,7 +44,7 @@ async def test_stdio_session_bound_to_a_skill_allows_only_its_tools_and_traces_r
         async with stdio_client(params) as (read,write):
             async with ClientSession(read,write) as session:
                 await session.initialize()
-                assert len((await session.list_tools()).tools)==10
+                assert len((await session.list_tools()).tools)==12
                 good=await session.call_tool('get_transcript',{'offset':0});assert not good.is_error and 'SQLite' in json.dumps(good.model_dump())
                 # A registered tool outside the bound skill is refused by the gateway.
                 for tool,args in [('search_project',{'query':'SQLite'}),('find_in_transcripts',{'query':'SQLite'}),('list_project_files',{})]:

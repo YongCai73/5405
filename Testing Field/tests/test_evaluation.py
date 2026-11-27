@@ -20,8 +20,8 @@ def test_frozen_runner_controls_and_synthetic_ablations(tmp_path):
         'temporal_ablation_sensitivity', 'folder_ablation_sensitivity',
         'auto_routing_fixture', 'routing_suite', 'skill_controls',
     }
-    assert summary['auto_correct'] == 22 and r['routing']['passed'] == r['routing']['total'] == 24
-    assert r['skill_controls']['passed'] == r['skill_controls']['total'] == 13
+    assert summary['auto_correct'] == 22 and r['routing']['passed'] == r['routing']['total'] == 36
+    assert r['skill_controls']['passed'] == r['skill_controls']['total'] == 17
     auto = r['configurations']['auto']
     assert auto['routing']['status_counts'] == {'matched': 6, 'not_applicable': 16}
     assert {c['skill'] for c in auto['cases']} == {'catch_up', 'compare_options', 'direct', 'trace_decision'}
