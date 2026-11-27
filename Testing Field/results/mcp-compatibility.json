@@ -1,0 +1,75 @@
+{
+  "upstream_commit": "b75077e588f5623d48d9c9bac05aa428b4257c52",
+  "method_1": {
+    "operation": "import original native MCPServer registration with mcp 2.3.0",
+    "status": "passed",
+    "note": "SDK is compatible; full desktop not started"
+  },
+  "method_2": {
+    "operation": "original gateway, controlled completed-active transcript rewrite via MockTransport",
+    "status": "passed",
+    "before": {
+      "meeting_id": 1,
+      "transcription": {
+        "id": 1,
+        "title": "fixture",
+        "language": null,
+        "status": "completed",
+        "is_active": true,
+        "segment_count": 1,
+        "completed_at": null
+      },
+      "segments": [
+        {
+          "segment_index": 0,
+          "start_ms": 0,
+          "end_ms": 1000,
+          "speaker": "Speaker",
+          "text": "active rewrite version 1",
+          "text_truncated": false
+        }
+      ],
+      "truncated": false,
+      "next_cursor": null
+    },
+    "after": {
+      "meeting_id": 1,
+      "transcription": {
+        "id": 2,
+        "title": "fixture",
+        "language": null,
+        "status": "completed",
+        "is_active": true,
+        "segment_count": 1,
+        "completed_at": null
+      },
+      "segments": [
+        {
+          "segment_index": 0,
+          "start_ms": 0,
+          "end_ms": 1000,
+          "speaker": "Speaker",
+          "text": "active rewrite version 2",
+          "text_truncated": false
+        }
+      ],
+      "truncated": false,
+      "next_cursor": null
+    },
+    "requests": [
+      "http://127.0.0.1:1/api/mcp/status",
+      "http://127.0.0.1:1/api/meetings/1/transcript?cursor=-1&limit=20",
+      "http://127.0.0.1:1/api/mcp/status",
+      "http://127.0.0.1:1/api/meetings/1/transcript?cursor=-1&limit=20"
+    ],
+    "finding": "No snapshot/watermark/principal parameter in native request; repeated active read returns new rewrite. First mock omitted required title/status/segment_count and was corrected against schemas.py."
+  },
+  "method_3": {
+    "operation": "adapt native registration to host-scoped service and test actual stdio",
+    "status": "passed",
+    "test": "tests/test_mcp.py::test_actual_stdio_tools_scope_and_revocation",
+    "tools": 10,
+    "finding": "Selected: native read-only registration style plus retained store policy. No desktop API or extra historical generator running."
+  },
+  "native_baseline": "not measured"
+}

@@ -1,0 +1,32 @@
+{
+  "runtime_version": "0.2.0",
+  "handoff_tag": "v0.2.0-handoff",
+  "handoff_tag_url": "https://github.com/cyudaddy/5405/tree/v0.2.0-handoff",
+  "branch": "meeting-copilot/prototype-20261108",
+  "tested_source_and_tests_commit": "c763c1489c66b826251cf0ae93712a42a0edfa81",
+  "docs_base_commit": "69d3dbafae34794927daa39a39e22a5efc994970",
+  "runtime_files_unchanged": 54,
+  "source_and_tests_files_hash_verified": 64,
+  "windows": {
+    "passed": 84,
+    "skipped": 1,
+    "failures": 0,
+    "errors": 0,
+    "report": "windows-validation.json"
+  },
+  "linux_source": {
+    "passed": 85,
+    "report": "windows-repair3-validation.json"
+  },
+  "server_cleanup": "server-cleanup.json",
+  "local_ready": "windows-prepared.json",
+  "native_windows_junction": "windows-junction.json",
+  "source_manifest": "windows-source-manifest.json",
+  "local_copy_contains_full_git_checkout": false,
+  "remaining_manual_validation": [
+    "macOS hardware/install",
+    "real microphone and device-unplug",
+    "real paid API and human model/ASR quality"
+  ],
+  "exact_final_commit": "Resolve the handoff tag on origin; omitted here to avoid self-referential commit metadata."
+}

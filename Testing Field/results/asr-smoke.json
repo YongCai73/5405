@@ -1,0 +1,22 @@
+{
+  "status": "passed",
+  "fixture_url": "https://raw.githubusercontent.com/SYSTRAN/faster-whisper/master/tests/data/jfk.flac",
+  "fixture_sha256": "63a4b1e4c1dc655ac70961ffbf518acd249df237e5a0152faae9a4a836949715",
+  "model": "tiny.en",
+  "device": "cpu",
+  "compute_type": "int8",
+  "cpu_threads": 2,
+  "segments": 2,
+  "text": "And so my fellow Americans ask not what your country can do for you ask what you can do for your country",
+  "audio_seconds": 11.0,
+  "elapsed_seconds": 2.053593280725181,
+  "pyav": "16.1.0",
+  "platform": "Linux-6.8.0-138-generic-aarch64-with-glibc2.39",
+  "method": "actual vendored upstream FasterWhisperEngine, compatible PyAV dependency",
+  "measurement": "recorded fixture local ASR smoke; not microphone, technical-term accuracy, WER or sustained real-time test",
+  "microphone_check": {
+    "error_type": "OSError",
+    "message": "PortAudio library not found",
+    "status": "not validated; missing PortAudio and no hardware mic"
+  }
+}

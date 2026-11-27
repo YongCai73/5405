@@ -1,0 +1,1 @@
+<testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="0" skipped="0" tests="1" time="10.759" timestamp="2026-11-08T02:39:12.794398-05:00" hostname="validation-host"><testcase classname="tests.test_live_processes" name="test_separate_cli_process_asks_while_ingestion_and_summaries_continue" time="10.642" /></testsuite></testsuites>

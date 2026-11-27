@@ -1,0 +1,52 @@
+{
+  "events": [
+    {"seq":1,"segment_id":"s1","text":"Atlas chooses SQLite as the authoritative evidence store because deployment needs no database service.","start_ms":0,"end_ms":5000},
+    {"seq":2,"segment_id":"s2","text":"We rejected Kafka for the prototype because operating a broker adds deployment complexity.","start_ms":20000,"end_ms":25000},
+    {"seq":3,"segment_id":"s3","text":"Audio capture must use a bounded queue of four chunks and remain independent of the API worker.","start_ms":45000,"end_ms":50000},
+    {"seq":4,"segment_id":"s4","text":"Zimo owns microphone capture and local ASR integration.","start_ms":70000,"end_ms":74000},
+    {"seq":5,"segment_id":"s5","text":"Xiaolong owns versioned memory and immutable question snapshots.","start_ms":95000,"end_ms":99000},
+    {"seq":6,"segment_id":"s6","text":"Jiaxuan owns MCP tools and task skills. All exposed tools are read only.","start_ms":120000,"end_ms":126000},
+    {"seq":7,"segment_id":"s7","text":"Cai owns security policy and access revocation checks.","start_ms":150000,"end_ms":154000},
+    {"seq":8,"segment_id":"s8","text":"Qiyan owns evaluation and frozen replay questions.","start_ms":180000,"end_ms":184000},
+    {"seq":9,"segment_id":"s9","text":"The agreed timeout is thirty seconds.","start_ms":210000,"end_ms":214000,"final":false},
+    {"seq":10,"segment_id":"s9","revision":2,"text":"Correction: the agreed timeout is twenty seconds.","start_ms":210000,"end_ms":214000,"final":true},
+    {"seq":11,"segment_id":"s10","text":"The latency target is p95 below two seconds for local retrieval, excluding API generation.","start_ms":260000,"end_ms":266000},
+    {"seq":12,"segment_id":"s11","text":"OpenAI Chat Completions and Anthropic Messages need distinct wire protocol tests.","start_ms":290000,"end_ms":296000},
+    {"seq":13,"segment_id":"s12","text":"Recordings require participant consent before opening the microphone.","start_ms":320000,"end_ms":325000},
+    {"seq":14,"segment_id":"s13","text":"Previous meetings require explicit opt in and current authorization.","start_ms":350000,"end_ms":355000},
+    {"seq":15,"segment_id":"s14","text":"API credentials belong in environment variables and never in traces or git.","start_ms":380000,"end_ms":385000},
+    {"seq":16,"segment_id":"s15","text":"Private assistant answers must never become shared meeting facts without explicit user promotion.","start_ms":420000,"end_ms":426000},
+    {"seq":17,"segment_id":"s16","text":"Late report: the launch budget is five hundred dollars.","start_ms":30000,"end_ms":35000},
+    {"seq":18,"segment_id":"s17","text":"Embeddings are deferred until retrieval evaluation justifies their footprint.","start_ms":800000,"end_ms":805000},
+    {"seq":19,"segment_id":"s18","text":"The final milestone is a cited CLI demonstration on December eleven.","start_ms":1100000,"end_ms":1106000},
+    {"seq":20,"segment_id":"s19","text":"Final transcript rewrite: the transport timeout remains twenty seconds; retries are disabled.","start_ms":1190000,"end_ms":1200000}
+  ],
+  "project": {
+    "architecture.md":"# Atlas implementation\nSQLite FTS5 is the keyword retrieval baseline.\nThe queue capacity is four chunks.\nFile refresh is explicit; snapshots read retained content.\nThe connector excludes credentials and binary files.\n",
+    "worker.py":"# Local worker configuration\nQUEUE_CAPACITY = 4\nTIMEOUT_SECONDS = 20\nRETRIES = 0\n"
+  },
+  "questions": [
+    {"id":"q01","at":1,"question":"Why does Atlas choose SQLite?","expected":["deployment","service"],"skill":"trace_decision"},
+    {"id":"q02","at":2,"question":"Why was Kafka rejected?","expected":["broker","complexity"],"skill":"trace_decision"},
+    {"id":"q03","at":3,"question":"What queue capacity is configured in worker.py?","expected":["QUEUE_CAPACITY = 4"],"folder":true,"skill":"compare_options"},
+    {"id":"q04","at":4,"question":"Who owns microphone capture?","expected":["Zimo"],"skill":"trace_decision"},
+    {"id":"q05","at":5,"question":"Who owns immutable snapshots?","expected":["Xiaolong"],"skill":"trace_decision"},
+    {"id":"q06","at":6,"question":"What does Jiaxuan own?","expected":["MCP","skills"],"skill":"trace_decision"},
+    {"id":"q07","at":7,"question":"Who owns security policy?","expected":["Cai"],"skill":"trace_decision"},
+    {"id":"q08","at":8,"question":"Who owns frozen replay evaluation?","expected":["Qiyan"],"skill":"trace_decision"},
+    {"id":"q09","at":9,"question":"What timeout was agreed?","expected":["thirty"],"skill":"trace_decision"},
+    {"id":"q10","at":10,"question":"What timeout was agreed after correction?","expected":["twenty"],"skill":"trace_decision"},
+    {"id":"q11","at":11,"question":"What is the local retrieval latency target?","expected":["p95","two seconds"],"skill":"trace_decision"},
+    {"id":"q12","at":12,"question":"Which wire protocols require tests?","expected":["OpenAI","Anthropic"],"skill":"compare_options"},
+    {"id":"q13","at":13,"question":"What do recordings require?","expected":["consent"],"skill":"trace_decision"},
+    {"id":"q14","at":14,"question":"What do previous meetings require?","expected":["opt in","authorization"],"skill":"trace_decision"},
+    {"id":"q15","at":15,"question":"Where do API credentials belong?","expected":["environment variables"],"skill":"trace_decision"},
+    {"id":"q16","at":16,"question":"Can private answers become shared facts?","expected":["explicit user promotion"],"skill":"trace_decision"},
+    {"id":"q17","at":16,"question":"What is the launch budget?","expected":[],"abstain":true,"skill":"trace_decision"},
+    {"id":"q18","at":17,"question":"What is the launch budget?","expected":["five hundred"],"skill":"trace_decision"},
+    {"id":"q19","at":20,"question":"What FTS5 retrieval baseline does architecture.md specify?","expected":["keyword"],"folder":true,"skill":"trace_decision"},
+    {"id":"q20","at":20,"question":"What is the cafeteria sandwich price?","expected":[],"abstain":true,"skill":"trace_decision"},
+    {"id":"q21","at":20,"question":"Catch up on the current discussion","expected":["twenty seconds"],"skill":"catch_up"},
+    {"id":"q22","at":2,"question":"Compare SQLite and Kafka deployment","expected":["SQLite","Kafka"],"skill":"compare_options"}
+  ]
+}

@@ -1,0 +1,253 @@
+{
+  "created_at_utc": "2026-11-08T07:18:28Z",
+  "version": "0.2.0",
+  "platform": "Linux-6.8.0-138-generic-aarch64-with-glibc2.39",
+  "test_suites": {
+    "source": {
+      "tests": 73,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "seconds": 57.306,
+      "artifact": "results/tests-audit.xml"
+    },
+    "independent_wheel_without_audio": {
+      "tests": 73,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "seconds": 57.816,
+      "artifact": "results/tests-audit-wheel.xml"
+    },
+    "readme_linux": {
+      "tests": 73,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "seconds": 52.789,
+      "artifact": "results/tests-audit-readme.xml"
+    }
+  },
+  "protocol_contract_tests": {
+    "total": 24,
+    "test_names": [
+      "test_wire_protocol_roles_usage_cost[openai]",
+      "test_wire_protocol_roles_usage_cost[anthropic]",
+      "test_errors_redacted[openai]",
+      "test_errors_redacted[anthropic]",
+      "test_timeout_and_cancellation[openai]",
+      "test_timeout_and_cancellation[anthropic]",
+      "test_no_key_no_upload_opt_in",
+      "test_quote_validation_rejects_invented_and_wrong_source",
+      "test_stream_text_usage_and_synthesis[openai]",
+      "test_stream_text_usage_and_synthesis[anthropic]",
+      "test_tool_round_normalization_host_scope_and_usage[False-openai]",
+      "test_tool_round_normalization_host_scope_and_usage[False-anthropic]",
+      "test_tool_round_normalization_host_scope_and_usage[True-openai]",
+      "test_tool_round_normalization_host_scope_and_usage[True-anthropic]",
+      "test_model_identity_injection_is_denied_over_wire[openai]",
+      "test_model_identity_injection_is_denied_over_wire[anthropic]",
+      "test_stream_timeout_and_cancel_close[openai]",
+      "test_stream_timeout_and_cancel_close[anthropic]",
+      "test_anthropic_midstream_error_redacted",
+      "test_native_upstream_service_replay_harness_over_wire[openai]",
+      "test_native_upstream_service_replay_harness_over_wire[anthropic]",
+      "test_opt_in_api_evaluator_runs_same_fixture_variants",
+      "test_missing_provider_usage_is_unknown_not_fabricated[False]",
+      "test_missing_provider_usage_is_unknown_not_fabricated[True]"
+    ],
+    "mode": "local loopback fake HTTP only; not live paid providers"
+  },
+  "native_runner_contract": {
+    "upstream_service_executed": true,
+    "questions_per_protocol": 22,
+    "protocols": [
+      "OpenAI-compatible",
+      "Anthropic"
+    ],
+    "live_quality_measured": false
+  },
+  "augmented_api_runner_contract": {
+    "requests": 88,
+    "mode": "fake HTTP endpoint, no quality claim"
+  },
+  "synthetic_evaluation": {
+    "qa_questions": 22,
+    "skills_correct": 22,
+    "future_leakage_cases": 0,
+    "defined_security": {
+      "cases": [
+        {
+          "id": "cross_meeting_metadata",
+          "passed": true
+        },
+        {
+          "id": "metadata_list_scope",
+          "passed": true
+        },
+        {
+          "id": "raw_cross_snapshot",
+          "passed": true
+        },
+        {
+          "id": "search_cross_snapshot",
+          "passed": true
+        },
+        {
+          "id": "private_conversation_checkpoint",
+          "passed": true
+        },
+        {
+          "id": "summary_policy",
+          "passed": true
+        },
+        {
+          "id": "secret_file_exclusion",
+          "passed": true
+        },
+        {
+          "id": "prompt_injection_no_authority",
+          "passed": true
+        },
+        {
+          "id": "revoked_folder_old_snapshot",
+          "passed": true
+        },
+        {
+          "id": "revocation_cache_raw_export",
+          "passed": true
+        }
+      ],
+      "total": 10,
+      "passed": 10,
+      "unauthorized_disclosures": 0,
+      "note": "defined application attack suite only; not a general security proof"
+    },
+    "policy_ablation": {
+      "mode": "executed isolated synthetic graph ablation of retrieval and final provenance policy; no production flag",
+      "total": 3,
+      "cases": [
+        {
+          "id": "cross_meeting",
+          "guarded_disclosure": false,
+          "ablated_disclosure": true
+        },
+        {
+          "id": "unselected_folder",
+          "guarded_disclosure": false,
+          "ablated_disclosure": true
+        },
+        {
+          "id": "private_thread",
+          "guarded_disclosure": false,
+          "ablated_disclosure": true
+        }
+      ],
+      "control_unauthorized_disclosures": 0,
+      "unauthorized_disclosures": 3,
+      "evidence": "Canaries are read from evaluator-owned meeting evidence, unselected retained folder, and another private thread; final checkpoint is not bypassed or used."
+    }
+  },
+  "clean_install": {
+    "commands": 22,
+    "audio_extra_installed": false,
+    "version_consistent": true,
+    "pip_check": "No broken requirements found.",
+    "source_unchanged": true
+  },
+  "scale_check": {
+    "mode": "SYNTHETIC scale/lookup check, not 60-minute wall-clock or semantic model evaluation",
+    "package_version": "0.2.0",
+    "platform": "Linux-6.8.0-138-generic-aarch64-with-glibc2.39",
+    "transcript_segments": 1200,
+    "logical_meeting_seconds": 3600,
+    "project_files": 300,
+    "target_file_bytes": 129023,
+    "target_line": 3001,
+    "setup_ms": 954.4022344052792,
+    "source_hashes_unchanged": true,
+    "revoked_export_denied": true,
+    "cited_sources_in_export": true,
+    "concurrent_load": "Separate prerecorded real-ASR soaks running"
+  },
+  "upstream_unmodified_files": 24,
+  "acl_swap_regression": {
+    "pre_fix_installed_wheel": "failed as expected: did not deny",
+    "fixed_source_and_wheel": "passed",
+    "evidence": "logs/audit-pre-atomic-control.log and final JUnit"
+  },
+  "multi_view_regression": {
+    "pre_fix_installed_wheel": "failed as expected: only the last quotation survived",
+    "fixed_source_and_wheel": "passed",
+    "evidence": "logs/audit-multiview-pre-fix.log and final JUnit"
+  },
+  "wheel": {
+    "path": "tmp/audit-wheels/meeting_copilot_prototype-0.2.0-py3-none-any.whl",
+    "bytes": 101374,
+    "sha256": "a399f1c798cce5aff5aa32f719bed02e621c1bf81cd295d02e372ca374651dc1"
+  },
+  "warnings": "15 dependency warnings (LiteLLM/Pydantic typing/deprecations); no test skips/errors/failures",
+  "live_paid_api": false,
+  "real_microphone": false,
+  "windows_macos_executed": false,
+  "final_soak": {
+    "mode": "ACTUAL LOCAL ASR / wall-clock prerecorded repeated audio; SIMULATED 5-second provider QA and summaries",
+    "started_at_utc": "2026-11-08T06:58:03Z",
+    "completed": true,
+    "requested_wall_seconds": 1200,
+    "actual_wall_seconds": 1200.3360312180594,
+    "audio_fixture_sha256": "63a4b1e4c1dc655ac70961ffbf518acd249df237e5a0152faae9a4a836949715",
+    "fixture_audio_seconds": 11.0,
+    "chunks_submitted": 399,
+    "chunk_audio_seconds": 3,
+    "replayed_audio_seconds": 1197,
+    "asr": {
+      "model": "tiny.en",
+      "device": "cpu",
+      "compute_type": "int8",
+      "cpu_threads": 2,
+      "vad_filter": false
+    },
+    "pipeline": {
+      "processed": 399,
+      "dropped_segments": 0,
+      "errors": 0,
+      "last_error_type": null,
+      "audio_queue_depth": 0,
+      "segment_queue_depth": 0,
+      "peak_audio_queue": 1,
+      "peak_segment_queue": 1,
+      "audio_queue_capacity": 4,
+      "segment_queue_capacity": 32,
+      "ingestion_lag_p95_seconds": 1.1148379826918244,
+      "ingestion_lag_max_seconds": 1.4447038490325212,
+      "wall_seconds": 1200.0471181478351,
+      "lag_definition": "chunk submission to committed segment; last 10000 segments; excludes chunk accumulation"
+    },
+    "summary_completed": 79,
+    "summary_failures": 0,
+    "summary_last_error": null,
+    "qa_submitted": 119,
+    "qa_completed": 119,
+    "qa_errors": [],
+    "qa_future_evidence_violations": 0,
+    "qa_p95_seconds": 5.128309777006507,
+    "peak_rss_bytes": 319311872,
+    "platform": "Linux-6.8.0-138-generic-aarch64-with-glibc2.39",
+    "limitations": "Repeated public JFK recording, not microphone or technical discussion; no WER/technical-term or live LLM quality measurement; lag measured from chunk submission, excludes 3-second capture accumulation."
+  },
+  "soak_source_verification": {
+    "all_captured_source_hashes_match_final": true,
+    "exercised_core_modules_match_final": [
+      "__init__.py",
+      "assistant.py",
+      "audio.py",
+      "config.py",
+      "provider.py",
+      "retrieval.py",
+      "store.py",
+      "trace.py"
+    ],
+    "note": "No runtime source changed after final soak started; exercised modules match the final release. Multi-view tool citation behavior is separately tested because the slow soak provider does not call model tools."
+  }
+}

@@ -1,0 +1,122 @@
+{
+  "created_at_utc": "2026-11-08T07:26:16.236631+00:00",
+  "audited_runtime_commit": "58319129f85795d4e7b2619bf08ac61a345119a1",
+  "repair_commit_location": "Build-root WINDOWS_REPAIR.json records the pushed head_commit after this evidence is committed.",
+  "scope": "Tests, test endpoint fixture, documentation and sanitized validation artifacts only.",
+  "runtime_files_changed": [],
+  "tests_changed": [
+    "tests/test_audit_regressions.py",
+    "tests/test_live_processes.py",
+    "tests/test_project.py",
+    "tests/test_protocols.py"
+  ],
+  "source_package_versions": {
+    "source": "0.2.0",
+    "pyproject": "0.2.0",
+    "installed_distribution": "0.2.0"
+  },
+  "runtime_byte_hashes_unchanged": true,
+  "runtime_files_verified": 54,
+  "runtime_matches_coordinator_frozen_candidate_manifest": true,
+  "coordinator_manifest_differences_before_repair": [
+    "docs/AUDIT_MODIFIED_FILES.txt",
+    "docs/INDEPENDENT_REVIEW.md",
+    "results/audit-soak-final.json",
+    "results/audit-validation.json"
+  ],
+  "manifest_difference_note": "Final audit documentation/soak reporting completed after the Windows candidate freeze; every runtime source hash matches.",
+  "platform": {
+    "system": "Linux",
+    "machine": "aarch64",
+    "python": "3.12.3"
+  },
+  "linux_suites": {
+    "targeted": {
+      "tests": 7,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "seconds": 8.503,
+      "exit_code": 0,
+      "junit": "results/tests-windows-repair-linux-targeted.xml",
+      "stdout": "results/tests-windows-repair-linux-targeted.stdout.log"
+    },
+    "full": {
+      "tests": 76,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "seconds": 56.475,
+      "exit_code": 0,
+      "junit": "results/tests-windows-repair-linux-full.xml",
+      "stdout": "results/tests-windows-repair-linux-full.stdout.log"
+    },
+    "cold-start": {
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "seconds": 42.844,
+      "exit_code": 0,
+      "junit": "results/tests-windows-repair-linux-cold-start.xml",
+      "stdout": "results/tests-windows-repair-linux-cold-start.stdout.log"
+    }
+  },
+  "targeted_command": "PYTHONPATH=src ../../.venv-audit/bin/python -m pytest tests/test_audit_regressions.py tests/test_project.py tests/test_live_processes.py -k 'late_file_identifier or tool_reads_preserve or refresh_retains or separate_cli' -q --junitxml=../../tmp/windows-repair-targeted.xml",
+  "full_command": "PYTHONPATH=src ../../.venv-audit/bin/python -m pytest -q --junitxml=../../tmp/windows-repair-full.xml",
+  "command_cwd": "Testing Field",
+  "cold_start_experiment": {
+    "command_cwd": "build root",
+    "command": "PYTHONPATH='tmp:team/Testing Field/src' .venv-audit/bin/python -m pytest -p windows_cold_start_plugin 'team/Testing Field/tests/test_live_processes.py::test_separate_cli_process_asks_while_ingestion_and_summaries_continue' -q --junitxml=tmp/windows-repair-cold-start.xml",
+    "capture_delay_seconds": 13,
+    "ask_delay_seconds": 21,
+    "method": "Temporary pytest fixture wraps Popen with a sleep then os.execv of the unchanged original interpreter arguments; Linux exec preserves child PID. Actual CLI answer and all original strengthened assertions run.",
+    "plugin_path_in_build_root": "tmp/windows_cold_start_plugin.py",
+    "plugin_source": "\"\"\"Linux-only controlled delay experiment; no application source modification.\"\"\"\nimport subprocess\nimport sys\nimport pytest\n\n@pytest.fixture(autouse=True)\ndef delay_actual_children(request, monkeypatch):\n    if request.node.name != 'test_separate_cli_process_asks_while_ingestion_and_summaries_continue':\n        return\n    original = subprocess.Popen\n    def delayed_popen(args, *positional, **kwargs):\n        delay = 13 if any(str(arg).endswith('capture.py') for arg in args) else 21\n        # exec preserves the process identity and executes the original Python CLI arguments.\n        code = 'import os,sys,time;time.sleep(float(sys.argv[1]));os.execv(sys.executable,[sys.executable]+sys.argv[2:])'\n        return original([sys.executable, '-c', code, str(delay), *args[1:]], *positional, **kwargs)\n    monkeypatch.setattr(subprocess, 'Popen', delayed_popen)\n",
+    "limitations": "Controlled Linux startup-delay test, not Windows execution or ASR/microphone validation."
+  },
+  "original_windows": {
+    "platform": "Windows 11",
+    "python": "3.12.14",
+    "cases": 73,
+    "passed": 68,
+    "failed": 4,
+    "skipped": 1,
+    "init_demo_evaluation_mic_enumeration_passed": true,
+    "repaired_suite_status": "pending coordinator rerun"
+  },
+  "windows_expected_collection": {
+    "targeted": 7,
+    "full": 76,
+    "if_native_symlink_permission_unavailable": {
+      "passed": 75,
+      "skipped": 1
+    }
+  },
+  "native_symlink_result": "Skipped: native symlink permission unavailable; not a pass.",
+  "earlier_junction_result": {
+    "source_commit": "b42ddcf8a22217ca5757fc5e577c77d42a8d2fb0",
+    "platform": "Windows 11 x64",
+    "junction_scan_escape_blocked": true,
+    "junction_root_rejected": true,
+    "indexed_paths": [
+      "readme.md"
+    ],
+    "junction_removed_nonrecursively": true,
+    "outside_target_canary_unchanged": true,
+    "note": "Native NTFS junction within coordinator-owned test directories; no microphone or real private data used."
+  },
+  "final_runtime_soak": {
+    "report": "results/audit-soak-final.json",
+    "rerun": false,
+    "unchanged_runtime_result_retained": true,
+    "actual_wall_seconds": 1200.3360312180594
+  },
+  "validation_limits": {
+    "windows_repaired_suite_executed": false,
+    "new_microphone_recording": false,
+    "paid_api_calls": false
+  },
+  "upstream_attribution_unchanged": true,
+  "sanitization": "New JUnit hostnames replaced with validation-host; stdout build-root prefixes replaced with <BUILD_ROOT>; original coordinator paths and raw failure logs are not copied into repository artifacts."
+}

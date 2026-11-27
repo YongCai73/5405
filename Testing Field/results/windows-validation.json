@@ -1,0 +1,54 @@
+{
+  "source_commit": "c763c1489c66b826251cf0ae93712a42a0edfa81",
+  "platform": "Windows-11-10.0.26200-SP0",
+  "python": "3.12.14",
+  "runtime_version": "0.2.0",
+  "source_and_tests_match_pushed_repo": true,
+  "files_sha256_verified": 64,
+  "cases": 85,
+  "passed": 84,
+  "failures": 0,
+  "errors": 0,
+  "skipped": [
+    "test_excluded_paths_and_source_unchanged"
+  ],
+  "skip_reason": "Native symlink permission unavailable; separate NTFS junction check supplied.",
+  "commands": [
+    {
+      "name": "tests",
+      "exit_code": 0,
+      "seconds": 434.89,
+      "summary": [
+        "84 passed, 1 skipped, 15 warnings in 411.50s (0:06:51)"
+      ]
+    },
+    {
+      "name": "init",
+      "exit_code": 0,
+      "seconds": 4.578
+    },
+    {
+      "name": "demo",
+      "exit_code": 0,
+      "seconds": 15.11
+    },
+    {
+      "name": "evaluate",
+      "exit_code": 0,
+      "seconds": 19.906
+    },
+    {
+      "name": "mic-list",
+      "exit_code": 0,
+      "seconds": 16.469,
+      "enumerated_sources": 3,
+      "recorded_audio": false
+    }
+  ],
+  "recorded_microphone": false,
+  "paid_api_called": false,
+  "actual_asr_report": "windows-prepared.json",
+  "junit": "tests-windows.xml",
+  "concurrency_junit": "tests-windows-concurrency.xml",
+  "note": "Full real Windows run. Functional normal-load test and deliberate overload/drop-accounting tests are distinct."
+}

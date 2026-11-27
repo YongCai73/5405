@@ -1,0 +1,219 @@
+{
+  "created_at_utc": "2026-11-08T07:41:07.048424+00:00",
+  "base_repair_commit": "097fec38dfefee4aed526a0e1c44c94d88db5844",
+  "final_head_location": "Build-root WINDOWS_REPAIR2.json records the final pushed commit after this evidence is committed.",
+  "changed_runtime_files": [],
+  "changed_test_files": [
+    "tests/test_live_processes.py",
+    "tests/test_protocols.py"
+  ],
+  "runtime_hashes_unchanged": true,
+  "runtime_matches_windows_frozen_candidate_manifest": true,
+  "runtime_files_verified": 54,
+  "runtime_sha256": {
+    "src/local_meeting_ai/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "src/local_meeting_ai/adapters/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "src/local_meeting_ai/adapters/audio_capture/__init__.py": "52c16adf31d235d4313dfe59b5dbc7dac63d67b24bb7b6c043b02a59aed41130",
+    "src/local_meeting_ai/adapters/audio_capture/combined.py": "cbdbf4b43055c97fe9468fb2e5612839d570f4f500b1bc17908a297d1bcd20f1",
+    "src/local_meeting_ai/adapters/audio_capture/factory.py": "e437ab49fd26ad8fca008aada55c92e6131d074dad294af9b6235273407429b2",
+    "src/local_meeting_ai/adapters/audio_capture/mixer.py": "f0168c6e96e7a5c6bc2474093f93f0ef3dd424c1447aab0bd771783d116cc494",
+    "src/local_meeting_ai/adapters/audio_capture/portaudio.py": "68f38066055484a78cf9841738ef40240369bb755d065d3b66c0c4bed158940c",
+    "src/local_meeting_ai/adapters/audio_capture/unavailable.py": "e8b01c6564c4b7792fdafb70b89b7ecc68c73a3192058f314e458cbb5e501775",
+    "src/local_meeting_ai/adapters/audio_capture/windows_wasapi.py": "960ba2c0f9b366d36c85ad3de755bf57f11a244b5fd69a1527e1bc3c43174d3e",
+    "src/local_meeting_ai/adapters/litellm_compat.py": "ee318d2e75579a87151d4f248f58431290ad9426f4eac97c4ca436675c1e22ed",
+    "src/local_meeting_ai/adapters/model_files.py": "cf62664a12a771162517993f71d7170958d12bcc44560c97281720a8f42d3185",
+    "src/local_meeting_ai/adapters/transcription/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "src/local_meeting_ai/adapters/transcription/faster_whisper.py": "24e8c583ba4c195215b825725f5a15bc55364fe7225fdb48e20f1834f9b21790",
+    "src/local_meeting_ai/application/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "src/local_meeting_ai/application/live_assistant.py": "579cdebcc950ecec1762bd321b4531329d077cbe193c12c85cd01d63f2ad83de",
+    "src/local_meeting_ai/application/transcription_config.py": "9fe0102cf4156318d223247c8e69aa8382891ac00737ecbea816263168a6e849",
+    "src/local_meeting_ai/domain/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "src/local_meeting_ai/domain/entities.py": "90f714a8799b93464d6143de498b8f64e31f0245932f13c44ee2914ac36675ec",
+    "src/local_meeting_ai/domain/enums.py": "59eecd2daa133d469a8631395d5b177d1b1cfa4db8a0f3f0280db492cd6634d6",
+    "src/local_meeting_ai/domain/errors.py": "cf352b8a583c7762c625ba1d29049c423de59278e36af0c74ca2bf20024cd054",
+    "src/local_meeting_ai/domain/live_assistant.py": "8069f0b56806028280b31b0fd50e596a169f2279c81ac32e377c7eafd399bfb9",
+    "src/local_meeting_ai/domain/meeting_text.py": "9a4c9f162ca3a235add0685584fcebd63a744a8fe69df795f915a71b94a54b00",
+    "src/local_meeting_ai/domain/protocols.py": "56debf91fdfcdef0b1a543d020744144392fed8ec5ed2b6e5460bc929c7c9751",
+    "src/local_meeting_ai/infrastructure/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "src/local_meeting_ai/infrastructure/database/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "src/local_meeting_ai/infrastructure/database/connection.py": "4655c508fcd6d9f2898299f0de8bf999a3d1c93dc2309703cc41ad28cd9befa5",
+    "src/local_meeting_ai/infrastructure/database/live_assistant.py": "f2c7e12c17bd473d5b4d652814479be84da141503b98076696582c57f3c66ba9",
+    "src/local_meeting_ai/infrastructure/database/repositories.py": "31dc9bf0ba8352717ca0c448a8f7b5754c848f2a02fc5591ecec24bdecfad9ed",
+    "src/local_meeting_ai/infrastructure/database/sql/010_live_assistant.sql": "042a8c45830499d5dcd4e9cb394dc40952402f0390a58cc326265e6b17409b92",
+    "src/local_meeting_ai/infrastructure/linux_cuda.py": "0f282dd512602d05dcf25fb2cae77c767ea0ef717e27a2dee7f43c72b26237c7",
+    "src/local_meeting_ai/infrastructure/live_assistant_credentials.py": "b734b3f7357e52cf0a4d0b5b5780b88264b7c5e35f709afdd39c47b93e07c299",
+    "src/local_meeting_ai/infrastructure/storage.py": "5a10fbad893f24e2740e879dabff36c32f43ec769616aa7efaeadc0784cd293f",
+    "src/local_meeting_ai/paths.py": "e2847c43c407db33b77f3dcd8964748e5cf2d8b236e770c11f21daedab781253",
+    "src/meeting_copilot/__init__.py": "a7a96a8845636166a5373e86c0ec65e391e00b6dfe132ccc049bbd1a4742d69c",
+    "src/meeting_copilot/__main__.py": "cf7390a2508a0fcad4777a4a629fc5212ab655cb45845975995f835676a834e3",
+    "src/meeting_copilot/assistant.py": "a90abdd194ed9f17b7e94934d5418f657e0af83bea72b2f9e55193f329594c9f",
+    "src/meeting_copilot/audio.py": "585263d863180fe1c76a94988e68efa22af7c43f06f38701fe63abfaa8620568",
+    "src/meeting_copilot/cli.py": "ebf56bf161bb2cfe0e6914e7e9157eb433ac90ba1666b92ff0c1a24b5ca257cf",
+    "src/meeting_copilot/config.py": "cd58ed79eb749b877366d6f93dc11bf76eaba4b41f208bcdeb984dbd12d17799",
+    "src/meeting_copilot/evaluation.py": "0c25fcf4813892b818b45d4a393cff1de8869658c3fbefc97098e41896b27bbf",
+    "src/meeting_copilot/fixtures.json": "2db287461ef6c6a05cdbbe18f677c2d56458868c6359775fc7214d1a13c67423",
+    "src/meeting_copilot/mcp_server.py": "6e201dcfad858aada775272c50c3ff6639e877e74b7d7f0f1f98e1b494a2d369",
+    "src/meeting_copilot/model_tools.py": "12295c8e77c2a9c29bb1191d416aebc4562252de9c9e50af1806348aae476442",
+    "src/meeting_copilot/native_baseline.py": "ec1bb36de9f26077a1a10782a0f782d3a42bdd2151ef3d14636fe59062df4c78",
+    "src/meeting_copilot/project.py": "eddc84fbe9d238266ce256318473043f8d5a9cf81b43646c223ce2c5463077cd",
+    "src/meeting_copilot/provider.py": "46f3a785023a0c306eccfaa191f3fd11965c292764c0f50207f16494566b81ad",
+    "src/meeting_copilot/replay.py": "8dfcb61ccb2ac7787bed66173d58ed993e4ddb40ab91607827e4f5182bad41ce",
+    "src/meeting_copilot/retrieval.py": "f96439ba115778d17d942ae18aa253c5e17a116b2c0b7f49635a548fcfda02ff",
+    "src/meeting_copilot/service.py": "7a42380f5b7480db0f501cac0740b333c86d4722b9becd6bd3192fa16db3d053",
+    "src/meeting_copilot/skills/catch_up.json": "c3341543981ec500d427c75dc784db05055638d8b4b712ae105ad10e8c0ada9f",
+    "src/meeting_copilot/skills/compare_options.json": "c2808835773850d27749e3e5ca870c5f5df5618313e8a0df416a287ff93508f1",
+    "src/meeting_copilot/skills/trace_decision.json": "2a50d97c9a529eb12975bf7b3a52f222cc11e6ad36069fb0df894a6562c6e58c",
+    "src/meeting_copilot/store.py": "8632d615f9998218cde3e16d1ff858fa38c39e4e14aec3d87a66658c1f764dc0",
+    "src/meeting_copilot/trace.py": "f1b4282e4cb0ff6a471ac758a455e82b1cb675a1b30659b4f544e41eb9eced05"
+  },
+  "source_package_versions": {
+    "source": "0.2.0",
+    "package": "0.2.0"
+  },
+  "upstream_attribution_unchanged": true,
+  "platform": {
+    "system": "Linux",
+    "machine": "aarch64",
+    "python": "3.12.3"
+  },
+  "actual_linux_tests": {
+    "targeted": {
+      "tests": 22,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "seconds": 16.244,
+      "exit_code": 0,
+      "junit": "results/tests-windows-repair2-linux-targeted.xml",
+      "stdout": "results/tests-windows-repair2-linux-targeted.stdout.log"
+    },
+    "full": {
+      "tests": 85,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "seconds": 60.468,
+      "exit_code": 0,
+      "junit": "results/tests-windows-repair2-linux-full.xml",
+      "stdout": "results/tests-windows-repair2-linux-full.stdout.log"
+    },
+    "redirector": {
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "seconds": 10.759,
+      "exit_code": 0,
+      "junit": "results/tests-windows-repair2-linux-redirector.xml",
+      "stdout": "results/tests-windows-repair2-linux-redirector.stdout.log"
+    },
+    "cold-start": {
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "seconds": 42.05,
+      "exit_code": 0,
+      "junit": "results/tests-windows-repair2-linux-cold-start.xml",
+      "stdout": "results/tests-windows-repair2-linux-cold-start.stdout.log"
+    },
+    "provider-cold-start": {
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "seconds": 25.358,
+      "exit_code": 0,
+      "junit": "results/tests-windows-repair2-linux-provider-cold-start.xml",
+      "stdout": "results/tests-windows-repair2-linux-provider-cold-start.stdout.log"
+    }
+  },
+  "command_cwd": "Testing Field",
+  "targeted_command": "PYTHONPATH=src ../../.venv-audit/bin/python -m pytest tests/test_live_processes.py tests/test_protocols.py tests/test_audit_regressions.py tests/test_project.py -k 'capture_identity or separate_cli or late_file_identifier or tool_reads_preserve or refresh_retains or wire_protocol or timeout or cancel' -q --basetemp=../../tmp/repair2-targeted-temp --junitxml=../../tmp/repair2-targeted.xml",
+  "full_command": "PYTHONPATH=src ../../.venv-audit/bin/python -m pytest -q --basetemp=../../tmp/repair2-full-temp --junitxml=../../tmp/repair2-full.xml",
+  "experiments": {
+    "redirector": {
+      "plugin_path": "tmp/windows_redirector_shape_plugin.py",
+      "plugin_source": "\"\"\"Linux integration experiment: launcher waits for a real interpreter child.\"\"\"\nimport subprocess\nimport sys\nimport pytest\n\n@pytest.fixture(autouse=True)\ndef redirect_capture(request, monkeypatch):\n    if request.node.name != 'test_separate_cli_process_asks_while_ingestion_and_summaries_continue':\n        return\n    original = subprocess.Popen\n    def redirected_popen(args, *positional, **kwargs):\n        if any(str(arg).endswith('capture.py') for arg in args):\n            code = 'import subprocess,sys;sys.exit(subprocess.call([sys.executable]+sys.argv[1:]))'\n            return original([sys.executable, '-c', code, *args[1:]], *positional, **kwargs)\n        return original(args, *positional, **kwargs)\n    monkeypatch.setattr(subprocess, 'Popen', redirected_popen)\n",
+      "command_cwd": "build root",
+      "command": "PYTHONPATH='tmp:team/Testing Field/src' .venv-audit/bin/python -m pytest -p windows_redirector_shape_plugin 'team/Testing Field/tests/test_live_processes.py::test_separate_cli_process_asks_while_ingestion_and_summaries_continue' -q --basetemp=tmp/repair2-redirector-temp --junitxml=tmp/repair2-redirector.xml",
+      "limits": "Controlled Linux experiment using fake HTTP; not native Windows or paid/live provider validation."
+    },
+    "cold-start": {
+      "plugin_path": "tmp/windows_cold_start_plugin.py",
+      "plugin_source": "\"\"\"Linux-only controlled delay experiment; no application source modification.\"\"\"\nimport subprocess\nimport sys\nimport pytest\n\n@pytest.fixture(autouse=True)\ndef delay_actual_children(request, monkeypatch):\n    if request.node.name != 'test_separate_cli_process_asks_while_ingestion_and_summaries_continue':\n        return\n    original = subprocess.Popen\n    def delayed_popen(args, *positional, **kwargs):\n        delay = 13 if any(str(arg).endswith('capture.py') for arg in args) else 21\n        # exec preserves the process identity and executes the original Python CLI arguments.\n        code = 'import os,sys,time;time.sleep(float(sys.argv[1]));os.execv(sys.executable,[sys.executable]+sys.argv[2:])'\n        return original([sys.executable, '-c', code, str(delay), *args[1:]], *positional, **kwargs)\n    monkeypatch.setattr(subprocess, 'Popen', delayed_popen)\n",
+      "command_cwd": "build root",
+      "command": "PYTHONPATH='tmp:team/Testing Field/src' .venv-audit/bin/python -m pytest -p windows_cold_start_plugin 'team/Testing Field/tests/test_live_processes.py::test_separate_cli_process_asks_while_ingestion_and_summaries_continue' -q --basetemp=tmp/repair2-cold-start-temp --junitxml=tmp/repair2-cold-start.xml",
+      "limits": "Controlled Linux experiment using fake HTTP; not native Windows or paid/live provider validation."
+    },
+    "provider-cold-start": {
+      "plugin_path": "tmp/windows_provider_cold_start_plugin.py",
+      "plugin_source": "\"\"\"Bounded Linux experiment: delay actual first provider startup by 21 seconds.\"\"\"\nimport asyncio\nimport pytest\nfrom meeting_copilot.provider import Provider\n\n@pytest.fixture(autouse=True)\ndef delay_first_provider_startup(monkeypatch):\n    original = Provider._request\n    first = True\n    async def delayed(self, *args, **kwargs):\n        nonlocal first\n        if first:\n            first = False\n            await asyncio.sleep(21)\n        return await original(self, *args, **kwargs)\n    monkeypatch.setattr(Provider, '_request', delayed)\n",
+      "command_cwd": "build root",
+      "command": "PYTHONPATH='tmp:team/Testing Field/src' .venv-audit/bin/python -m pytest -p windows_provider_cold_start_plugin 'team/Testing Field/tests/test_protocols.py::test_wire_protocol_roles_usage_cost[openai]' -q --basetemp=tmp/repair2-provider-cold-start-temp --junitxml=tmp/repair2-provider-cold-start.xml",
+      "limits": "Controlled Linux experiment using fake HTTP; not native Windows or paid/live provider validation."
+    }
+  },
+  "identity_contract": {
+    "direct": "pid == launcher_pid and ppid == test_parent_pid",
+    "redirected": "pid != launcher_pid and ppid == launcher_pid",
+    "nonce": "fresh parent-generated 32-byte token echoed by capture",
+    "progress_and_cutoff_assertions_retained": true,
+    "final_child_identity_checked": true,
+    "windows_tree_cleanup_fallback_executed_on_native_windows": false
+  },
+  "timeout_contract": {
+    "successful_fake_wire_and_cli_seconds": 120,
+    "runtime_default_seconds_unchanged": 20,
+    "explicit_nonstream_timeout_seconds": 0.1,
+    "explicit_stream_timeout_seconds": 0.15,
+    "pre_http_startup_cancellation_regressions": [
+      "chat",
+      "complete"
+    ],
+    "synchronous_import_caveat": "asyncio deadlines cannot preempt blocking synchronous imports; native cold-start distribution not profiled",
+    "native_unawaited_coroutine_warning": "Observed after old Windows first-call timeout; dependency internals unchanged, new native outcome pending"
+  },
+  "windows_observed_at_base": {
+    "tests": 76,
+    "passed": 73,
+    "failed": 2,
+    "skipped": 1,
+    "cli_init_demo_evaluate_mic_list_passed": true,
+    "recorded_audio": false,
+    "paid_api": false,
+    "capture_launcher_pid": 9048,
+    "capture_interpreter_pid": 20584,
+    "reported_processed_at_least": 10,
+    "reported_summaries_greater_than": 5,
+    "first_openai_timeout_endpoint_requests": 0,
+    "all_recorded_lf_crlf_cases_passed": true,
+    "inputs": [
+      "inputs/windows-repaired-summary.json",
+      "inputs/windows-repaired-tests.xml",
+      "inputs/windows-repaired-tests.stdout.log"
+    ]
+  },
+  "windows_second_repair_status": "PENDING coordinator rerun. No native Windows pass claimed.",
+  "windows_expected_collection": {
+    "targeted": 22,
+    "full": 85,
+    "if_symlink_permission_unavailable": {
+      "passed": 84,
+      "skipped": 1
+    }
+  },
+  "platform_facts": {
+    "symlink": "Original Windows permission skip remains distinct from earlier native NTFS junction success.",
+    "junction_source_commit": "b42ddcf8a22217ca5757fc5e577c77d42a8d2fb0",
+    "no_new_recording_or_paid_api": true
+  },
+  "soak": {
+    "report": "results/audit-soak-final.json",
+    "rerun": false,
+    "unchanged_runtime_result_retained": true,
+    "actual_wall_seconds": 1200.3360312180594
+  },
+  "scope": "Tests/docs/validation only; no runtime, package/version, attribution, auth/global or unrelated-file changes.",
+  "sanitization": "New JUnit hostname replaced with validation-host and build root with <BUILD_ROOT>; original Windows logs remain in inputs only."
+}

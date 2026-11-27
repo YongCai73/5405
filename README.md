@@ -4,7 +4,25 @@
 
 A privacy-conscious meeting assistant that combines continuous transcription with private, evidence-grounded Q&A, meeting memory, controlled tools, and reproducible evaluation.
 
-> **Status:** Proposal / research stage. No working transcription or agent pipeline is claimed yet.
+## Xiaolong 的 macOS 桌面版更新
+
+这个分支把现有 Meeting Copilot 原型接入 macOS 桌面应用。开会时可以录音、看转录和提问，结束后可以直接阅读纪要并核对原文。
+
+| 更新 | 用途 |
+|---|---|
+| **桌面工作区** | 在同一个窗口新建会议、选择麦克风录音或导入音频，并按关键词搜索带时间戳的转录。语音转写由本机的 Faster Whisper 处理。界面用正红标出主要操作和选中状态，阅读区采用浅色底。 |
+| **会后自动生成纪要** | 停止录音后，应用等转写收尾，再打开 **Summary**。有转录时会生成概览、讨论议题、决定、待办和待确认问题中有原文支持的内容。点击时间戳可以核对原文。导入音频后可在 **Summary** 点 **Generate summary**。 |
+| **带引用的会议问答和导出** | 在 **Ask Copilot** 里追问会议决定或讨论内容，点引用可查看依据。**Export** 可把会议转录和已生成的纪要保存为 JSON。 |
+| **合并 Zimo 的实时转写改进** | 录音按语音停顿切片，结合语音活动检测（VAD）识别语音，跳过纯静音切片，并记录延迟和音频丢失情况，便于排查漏转和延迟。Zimo 的 WASAPI 缓冲区调整和实验数据适用于 Windows。 |
+| **可选低延迟与音频状态提示** | 录音前可勾选 **Low latency**，默认关闭；录音中显示实际生效的预设、线程数和停顿时间。暂时收不到麦克风音频时持续提示，音频恢复后清除，等待期间仍可停止录音。Mac 上的延迟改善仍需实测。 |
+
+### 在 Mac 上试用
+
+检出当前桌面分支后，按 [桌面版构建指南](Testing%20Field/desktop/README.md#build-and-open) 在本机生成 `Meeting Copilot.app`，需要 macOS、Python 3.11 及以上和 Xcode Command Line Tools。构建后可以在 Finder 双击打开。点 **Open sample meeting** 可查看样例转录和纪要，并试用带引用的问答，样例无需 API key。实际录音需要授予麦克风权限，首次转写可能会下载英语模型。
+
+相关资料 · [原型与 CLI](Testing%20Field/README.md) · [交接文档](Testing%20Field/handoff.md) · [需求状态](Testing%20Field/results/requirements-current.json) · [Zimo 的 ASR 实验记录](Testing%20Field/results/asr-chunking-experiment.md)
+
+> The sections below preserve the team's original project plan and proposed architecture.
 
 ## Product scenario
 
@@ -31,7 +49,7 @@ During a small in-person technical meeting, a user can privately ask questions s
 | Security & Guardrails | Authorization, private/shared separation, prompt-injection defense, approval policy | Deterministic execution checks; research Invariant/AgentDojo |
 | Evaluation & Observability | Replayable tests, trace IDs, baseline comparison, metrics | Langfuse, custom scorers, optional DeepEval |
 
-This is a **five-workstream plan**, not a claim of confirmed individual assignments.
+This original **five-workstream plan** is preserved. The current proposal assignments and developer TODO owners are recorded in the prototype handoff.
 
 ## Architecture (proposed)
 
@@ -67,7 +85,7 @@ The `src/` directory is intentionally a lightweight placeholder. Add a prototype
 
 ## Open-source provenance
 
-We are evaluating [Meet2Notes](https://github.com/estebanstifli/Meet2Notes) as a reference or potential base. **This repository does not include copied Meet2Notes code.** If the team later forks or imports upstream code, preserve the relevant license, notices and attribution, document changes, and distinguish upstream features from original contributions.
+We are evaluating [Meet2Notes](https://github.com/estebanstifli/Meet2Notes) as a reference or potential base. The original planning repository did not include copied Meet2Notes code. This branch now includes attributed prototype reuse under `Testing Field/`; see its [upstream provenance](Testing%20Field/docs/UPSTREAM_SOURCE.json) and [MIT notice](Testing%20Field/docs/UPSTREAM_LICENSE.txt). Preserve license, notices and attribution, document changes, and distinguish upstream features from original contributions.
 
 ## Research/evaluation principles
 
@@ -78,3 +96,9 @@ We are evaluating [Meet2Notes](https://github.com/estebanstifli/Meet2Notes) as a
 ## License
 
 No license has been chosen for the team's original code yet. Decide this before making the project public or accepting external contributions. Third-party components retain their respective licenses.
+
+## Security hardening
+
+See [Yong's Security and Guardrails handoff](Testing%20Field/docs/SECURITY.md) for
+private local artifacts, pre-retention credential exclusion, permission/recovery
+regressions, retention and deletion limits, and teammate integration guidance.

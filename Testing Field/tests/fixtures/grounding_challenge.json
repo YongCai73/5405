@@ -1,0 +1,79 @@
+
+{
+  "benchmark_version": "1.1-challenge",
+  "description": "Synthetic meeting cases testing revisions, ownership, conditional decisions, causality, and unsupported details.",
+  "cases": [
+    {
+      "id": "C01",
+      "evidence": "At 09:10, the team proposed SQLite for the pilot. At 09:45, the team changed the plan and made a final decision to use PostgreSQL for the pilot.",
+      "claim": "PostgreSQL is the final database choice for the pilot.",
+      "label": "supported"
+    },
+    {
+      "id": "C02",
+      "evidence": "Sara said, 'I will prepare the initial security checklist.' Leo replied, 'I will review Sara's draft, but I am not writing it.'",
+      "claim": "Sara is responsible for drafting the initial security checklist.",
+      "label": "supported"
+    },
+    {
+      "id": "C03",
+      "evidence": "Deployment in December is possible if vendor testing passes. For now, the approved deployment target remains January.",
+      "claim": "The currently approved deployment target is January.",
+      "label": "supported"
+    },
+    {
+      "id": "C04",
+      "evidence": "The team agreed that 95th-percentile response latency must not exceed 2 seconds. No average latency target has been established.",
+      "claim": "The p95 response latency target is at most 2 seconds.",
+      "label": "supported"
+    },
+    {
+      "id": "C05",
+      "evidence": "The initial plan assigned API integration to Arun. In the final ownership review, Mei took over API integration and Arun was assigned to testing support.",
+      "claim": "Arun is the current owner of API integration.",
+      "label": "contradicted"
+    },
+    {
+      "id": "C06",
+      "evidence": "The team decided not to retain raw audio recordings after the meeting. Text transcripts will be retained for 30 days.",
+      "claim": "Raw meeting audio will be retained for 30 days.",
+      "label": "contradicted"
+    },
+    {
+      "id": "C07",
+      "evidence": "The demonstration was originally planned for December 5. The updated and approved schedule moves it to December 12.",
+      "claim": "The current demonstration date is December 5.",
+      "label": "contradicted"
+    },
+    {
+      "id": "C08",
+      "evidence": "The team explicitly rejected automatically sending extracted action items. Every action item must be reviewed before it is sent.",
+      "claim": "The team approved sending extracted action items without human review.",
+      "label": "contradicted"
+    },
+    {
+      "id": "C09",
+      "evidence": "The team compared OpenAI and Anthropic as possible evaluation providers. One member reported lower latency with Anthropic in an initial experiment.",
+      "claim": "The team selected Anthropic as its official evaluation provider.",
+      "label": "insufficient"
+    },
+    {
+      "id": "C10",
+      "evidence": "After the code update, the integration test passed. The team did not investigate which specific change affected the outcome.",
+      "claim": "The code update was proven to be the cause of the test passing.",
+      "label": "insufficient"
+    },
+    {
+      "id": "C11",
+      "evidence": "Authentication has been added to the application, and the team confirmed support for single sign-on.",
+      "claim": "The application implements SAML 2.0 single sign-on.",
+      "label": "insufficient"
+    },
+    {
+      "id": "C12",
+      "evidence": "Maya presented a proposed project budget of $5,000 during the meeting. The team discussed the proposal and associated cost categories.",
+      "claim": "The team formally approved a project budget of $5,000.",
+      "label": "insufficient"
+    }
+  ]
+}
