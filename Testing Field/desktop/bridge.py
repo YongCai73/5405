@@ -22,7 +22,7 @@ from meeting_copilot.desktop_questions import DesktopQuestions, QueueFull
 CONVERSATION = 'desktop-private'
 SAMPLE_ID = 'demo'
 SAMPLE_SOURCE_TITLE = 'Atlas technical design (SIMULATED REPLAY)'
-SKILLS = {'catch_up', 'trace_decision', 'compare_options', 'direct'}
+SKILLS = {'auto', 'catch_up', 'trace_decision', 'compare_options', 'direct'}
 MAX_REQUEST_BYTES = 64 * 1024
 CAPTURE_START_TIMEOUT_SECONDS = 60
 PROVIDER_LABELS = {'demo': 'Local extractive', 'openai': 'OpenAI-compatible', 'anthropic': 'Anthropic'}
@@ -602,7 +602,10 @@ class DesktopBridge:
                 'id': source_id, 'kind': source['kind'], 'label': label,
                 'quote': claim['quote'], 'meetingId': source['meeting'],
             })
-        return {'text': answer['text'], 'citations': citations, 'mode': answer['mode'], **self._answer_mode(meeting)}
+        routing = answer.get('routing') or {}
+        return {'text': answer['text'], 'citations': citations, 'mode': answer['mode'],
+                'skill': answer.get('skill'), 'skillRoute': routing.get('status'), 'taskId': answer.get('task_id'),
+                **self._answer_mode(meeting)}
 
     def _summarize(self, snapshot, assistant):
         result = asyncio.run(assistant.summary_graph.ainvoke({'snapshot': snapshot}))['result']

@@ -705,7 +705,8 @@ async function submitQuestion(action, payload) {
   }
 }
 
-async function ask(question, skill = "trace_decision") {
+// Typed questions are routed automatically; the prompt buttons name their skill.
+async function ask(question, skill = "auto") {
   const meetingId = state.meeting?.id;
   if (!question || !meetingId || !state.meeting.segments.length) return;
   await submitQuestion("beginQuestion", { meetingId, question, skill });
