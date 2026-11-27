@@ -100,7 +100,9 @@ async def test_unknown_abstention_and_skill_contracts(store,event,assistant):
     r=await assistant.ask(sid,'cafeteria sandwich price')
     assert r['abstained'] and r['citations']==[]
     for skill in ['catch_up','trace_decision','compare_options']:
-        r=await assistant.ask(sid,'SQLite',skill=skill)
+        # One conversation per skill: a stored answer is keyed by question, not skill
+        # (docs/RECOVERY_STORAGE.md), so the same question again would reuse it.
+        r=await assistant.ask(sid,'SQLite','skill-'+skill,skill=skill)
         assert r['contract']['name']==skill and r['claims'] and r['contract']['abstention']
         assert set(r['fields'])==set(r['contract']['output_fields'])
 
