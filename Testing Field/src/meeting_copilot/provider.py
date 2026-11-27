@@ -8,6 +8,9 @@ from local_meeting_ai.adapters.litellm_compat import _filter_supported_parameter
 from local_meeting_ai.domain.meeting_text import evidence_system_message
 
 
+REASONING_LIMIT = 262144
+
+
 class ProviderError(RuntimeError):
     def __init__(self, code):
         self.code = code
@@ -23,6 +26,9 @@ class Completion:
     tool_calls: list = field(default_factory=list)
     evidence: list = field(default_factory=list)
     tool_events: list = field(default_factory=list)
+    # Provider reasoning text (DeepSeek thinking mode). Held only for the duration of
+    # one tool loop so it can be passed back; never traced, stored or returned to users.
+    reasoning_content: str = ''
 
 
 class Provider:
@@ -57,6 +63,8 @@ class Provider:
             args['tools'] = list(schemas)
         args = _filter_supported_parameters(litellm, args, args['model'])
         args['drop_params'] = True
+        if c.thinking and c.provider == 'openai':
+            args['extra_body'] = {'thinking': {'type': c.thinking}}
         response = await litellm.acompletion(**args)
         if not c.streaming:
             message = response.choices[0].message
@@ -66,8 +74,13 @@ class Provider:
             # Missing non-stream usage is normalized by some LiteLLM paths to
             # an all-zero object. Treat that ambiguous sentinel as unknown.
             if inp==0 and out==0:inp=out=None
-            return Completion(message.content or '', inp, out, tool_calls=calls)
-        text = ''; calls = {}; inp = out = None
+            reasoning = getattr(message, 'reasoning_content', None)
+            if not isinstance(reasoning, str):
+                reasoning = ''
+            if len(reasoning) > REASONING_LIMIT:
+                raise ProviderError('response_size_limit')
+            return Completion(message.content or '', inp, out, tool_calls=calls, reasoning_content=reasoning)
+        text = ''; calls = {}; inp = out = None; reasoning = ''
         try:
             async for chunk in response:
                 usage = getattr(chunk, 'usage', None)
@@ -77,6 +90,9 @@ class Provider:
                 for choice in chunk.choices:
                     delta = choice.delta
                     text += delta.content or ''
+                    part = getattr(delta, 'reasoning_content', None)
+                    if isinstance(part, str):
+                        reasoning += part
                     for part in delta.tool_calls or []:
                         if not isinstance(part.index, int) or not 0 <= part.index < 4:
                             raise ProviderError('tool_call_limit')
@@ -89,7 +105,7 @@ class Provider:
                             call['function']['arguments'] += part.function.arguments or ''
                         if len(json.dumps(call)) > 8192:
                             raise ProviderError('tool_argument_limit')
-                if len(text) > 65536:
+                if len(text) > 65536 or len(reasoning) > REASONING_LIMIT:
                     raise ProviderError('response_size_limit')
         finally:
             await response.aclose()
@@ -97,7 +113,7 @@ class Provider:
         # usage. Do not report those as provider measurements or cost inputs.
         if not any(getattr(chunk,'usage',None) is not None for chunk in getattr(response,'chunks',())):
             inp=out=None
-        return Completion(text, inp, out, tool_calls=[calls[i] for i in sorted(calls)])
+        return Completion(text, inp, out, tool_calls=[calls[i] for i in sorted(calls)], reasoning_content=reasoning)
 
     async def chat(self, messages, schemas=()):
         """Normalized low-level request, also used by the isolated native runner."""
@@ -135,12 +151,22 @@ class Provider:
             'Task contract: '+json.dumps(contract)+'\n'+evidence_system_message(json.dumps(evidence))
         )
         messages = [{'role': 'system', 'content': system}]
-        if history:
+        schemas = tool_context.schemas if tool_context else ()
+        # A skill may allow fewer tool rounds than the host configuration, never more.
+        rounds = min(self.config.tool_rounds, getattr(tool_context, 'max_rounds', self.config.tool_rounds)) if tool_context else 0
+        if not schemas:
+            rounds = 0
+        passback = self.config.provider == 'openai'
+        if history and rounds and passback:
+            # With tools, thinking-mode endpoints require reasoning_content on every prior
+            # assistant message. A fabricated assistant turn has none, so the context is
+            # folded into the user message instead of a synthetic exchange.
+            question = ('UNTRUSTED PRIVATE CONVERSATION CONTEXT (interpretation only, not evidence):\n'
+                        + json.dumps(history) + '\n\nCURRENT QUESTION:\n' + question)
+        elif history:
             messages.append({'role': 'user', 'content': 'UNTRUSTED PRIVATE CONVERSATION CONTEXT:\n'+json.dumps(history)})
             messages.append({'role': 'assistant', 'content': 'I will use that only to interpret the follow-up, not as evidence.'})
         messages.append({'role': 'user', 'content': question})
-        schemas = tool_context.schemas if tool_context else ()
-        rounds = self.config.tool_rounds if tool_context else 0
         totals = [0, 0]; events = []; seen = set()
 
         async def run():
@@ -157,14 +183,22 @@ class Provider:
                     return reply
                 if round_index >= rounds or len(reply.tool_calls) > 4:
                     raise ProviderError('tool_round_limit')
-                messages.append({'role': 'assistant', 'content': reply.content or None, 'tool_calls': reply.tool_calls})
+                turn = {'role': 'assistant', 'content': reply.content or None, 'tool_calls': reply.tool_calls}
+                if reply.reasoning_content and passback:
+                    # DeepSeek thinking mode returns HTTP 400 on the next request unless the
+                    # reasoning of this tool-calling turn is sent back unchanged.
+                    turn['reasoning_content'] = reply.reasoning_content
+                messages.append(turn)
                 for call in reply.tool_calls:
                     cid = call.get('id'); fn = call.get('function', {})
                     if not isinstance(cid, str) or not cid or len(cid) > 200 or cid in seen:
                         raise ProviderError('invalid_tool_call')
                     seen.add(cid)
                     result = tool_context.call(fn.get('name'), fn.get('arguments'))
-                    events.append({'name': fn.get('name'), 'status': result.get('status', 'ok')})
+                    event = {'name': fn.get('name'), 'status': result.get('status', 'ok')}
+                    if result.get('reason'):
+                        event['reason'] = result['reason']
+                    events.append(event)
                     messages.append({'role': 'tool', 'tool_call_id': cid, 'content': json.dumps(result)})
         try:
             return await asyncio.wait_for(run(), self.config.timeout_seconds)
