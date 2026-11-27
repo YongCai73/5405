@@ -25,6 +25,14 @@ local Session Health card: the effective preset plus allowlisted operational
 counters and timings. Unknown fields, transcript text, questions and raw errors
 are never rendered by this view.
 
+## Open with one click
+
+Double-click **Start Meeting Copilot.cmd** in `Testing Field`. It builds the
+developer bundle when needed and opens it, with no environment variables.
+`desktop\launch.cmd doctor` reports anything missing, and
+[LAUNCH.md](../LAUNCH.md) lists every launcher command, including saving an API
+key in Windows Credential Manager. The first build needs the .NET 8 SDK.
+
 ## Run on Windows
 
 Install the .NET 8 SDK and the Microsoft Edge WebView2 Runtime, then create the

@@ -5,6 +5,11 @@ from meeting_copilot.provider import Provider
 from meeting_copilot.assistant import Assistant
 from meeting_copilot.trace import Trace
 
+@pytest.fixture(autouse=True)
+def no_os_credential_store(monkeypatch):
+    # Tests must never read a real provider key saved on the developer's machine.
+    monkeypatch.setenv('MEETING_COPILOT_KEYRING','0')
+
 @pytest.fixture
 def store(tmp_path):
     s=Store(tmp_path/'runtime'/'evidence.db');s.create('alice','m','Meeting');yield s;s.close()

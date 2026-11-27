@@ -35,7 +35,8 @@ class Provider:
             raise ValueError('demo selection is handled deterministically by graph')
         if not c.send_evidence:
             raise ProviderError('evidence_upload_not_enabled')
-        key = os.environ.get(c.api_key_env)
+        from meeting_copilot.credentials import api_key
+        key = api_key(c.api_key_env)
         if not key:
             raise ProviderError('missing_api_key')
         os.environ.setdefault('LITELLM_LOCAL_MODEL_COST_MAP', 'True')
