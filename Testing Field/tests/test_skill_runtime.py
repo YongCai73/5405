@@ -287,3 +287,13 @@ def test_general_answers_setting_is_a_validated_boolean(tmp_path):
     path.write_text(json.dumps({'general_answers': 'yes'}), encoding='utf-8')
     with pytest.raises(ValueError, match='general_answers'):
         Config.load(path)
+
+
+async def test_the_host_tells_the_model_which_model_it_is(store, sid, tmp_path):
+    """Asked through the app, a real model named the wrong maker; the host states what it actually called."""
+    provider = ScriptedProvider([open_reply(general='I am the Meeting Copilot assistant, running on the model scripted.')],
+                                base_url='https://api.example.invalid/v1')
+    await Assistant(store, 'alice', provider, Trace(tmp_path/'trace.jsonl')).ask(sid, 'What model are you?', 'c', 'auto')
+    system = provider.requests[0]['messages'][0]['content']
+    assert system.startswith('Identity: you are the Meeting Copilot assistant, running on the model "scripted" served from api.example.invalid.')
+    assert 'claim no other' in system
