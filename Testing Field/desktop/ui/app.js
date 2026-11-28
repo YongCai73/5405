@@ -48,7 +48,20 @@ const state = {
   endingMeetings: new Set(),
   summaryRequests: new Map(),
   initialError: null,
+  skills: [],
+  skill: "auto",
+  feedbackTurn: null,
 };
+
+// Used until the backend's skill list arrives, and if an older backend has none.
+const fallbackSkills = [
+  { name: "auto", label: "Auto" },
+  { name: "catch_up", label: "Catch up" },
+  { name: "trace_decision", label: "Trace decision" },
+  { name: "compare_options", label: "Compare options" },
+  { name: "direct", label: "Direct" },
+];
+const routeLabels = { manual: "chosen", matched: "auto", continued: "session continues", ambiguous: "auto, no clear match", not_applicable: "auto, no match" };
 
 const prompts = [
   { question: "Catch me up on the discussion.", label: "Catch me up", skill: "catch_up" },
@@ -557,6 +570,7 @@ function renderConversation(scrollToEnd = false) {
         }
         answer.append(sources);
       }
+      if (turn.id !== undefined) answer.append(answerMeta(turn));
     }
     section.append(answer);
     container.append(section);
@@ -575,6 +589,7 @@ function updateComposer() {
     && !state.questionSubmissions.has(state.meeting?.id)
     && !currentTurns().some((turn) => turn.pending);
   field.disabled = !enabled;
+  byId("skill-select").disabled = !enabled;
   byId("send-question").disabled = !enabled || !field.value.trim();
   byId("prompt-list").querySelectorAll("button").forEach((button) => { button.disabled = !enabled; });
 }
@@ -890,11 +905,219 @@ byId("question").addEventListener("keydown", (event) => {
 });
 byId("ask-form").addEventListener("submit", (event) => {
   event.preventDefault();
-  void ask(byId("question").value.trim());
+  void ask(byId("question").value.trim(), state.skill);
 });
+byId("skill-select").addEventListener("change", (event) => {
+  const chosen = event.target.value;
+  state.skill = (state.skills.length ? state.skills : fallbackSkills).some((skill) => skill.name === chosen) ? chosen : "auto";
+});
+byId("feedback-form").addEventListener("submit", (event) => {
+  event.preventDefault();
+  const turn = state.feedbackTurn;
+  byId("feedback-dialog").close();
+  if (turn) void rate(turn.meetingId, turn.id, "down", byId("feedback-note").value.trim());
+});
+byId("open-settings").addEventListener("click", () => { void openSettings(); });
+byId("key-form").addEventListener("submit", (event) => {
+  event.preventDefault();
+  const field = byId("api-key-input");
+  const key = field.value.trim();
+  // Clear the field before anything else so the key never lingers in the page.
+  field.value = "";
+  if (!key) return;
+  void settingsAction(async () => {
+    renderSettings(await bridge("saveApiKey", { key }));
+    toast("API key saved.");
+  });
+});
+byId("remove-key").addEventListener("click", () => {
+  void settingsAction(async () => {
+    renderSettings(await bridge("deleteApiKey"));
+    toast("Saved API key removed.");
+  });
+});
+byId("preference-form").addEventListener("submit", (event) => {
+  event.preventDefault();
+  const field = byId("preference-input");
+  const value = field.value.trim();
+  if (!value) return;
+  void settingsAction(async () => {
+    renderPreferences(await bridge("preferences", { action: "add", value }));
+    field.value = "";
+  });
+});
+byId("open-suggest").addEventListener("click", () => {
+  if (!state.meeting) return;
+  byId("suggest-use-model").checked = false;
+  byId("suggest-status").textContent = "";
+  byId("suggest-results").replaceChildren();
+  byId("suggest-dialog").showModal();
+});
+byId("run-suggest").addEventListener("click", () => { void runSuggest(); });
+
+function skillLabel(name) {
+  const known = (state.skills.length ? state.skills : fallbackSkills).find((skill) => skill.name === name);
+  return known ? known.label : String(name).replace(/_/g, " ");
+}
+
+function renderSkillPicker() {
+  const select = byId("skill-select");
+  const skills = state.skills.length ? state.skills : fallbackSkills;
+  if (!skills.some((skill) => skill.name === state.skill)) state.skill = "auto";
+  select.replaceChildren(...skills.map((skill) => {
+    const option = make("option", "", skill.label);
+    option.value = skill.name;
+    option.selected = skill.name === state.skill;
+    const triggers = (skill.triggers || []).join(", ");
+    option.title = skill.name === "auto" ? "Chooses a skill from the words in your question"
+      : triggers ? "Auto picks this for: " + triggers : "";
+    return option;
+  }));
+  select.value = state.skill;
+}
+
+async function loadSkills() {
+  renderSkillPicker();
+  try {
+    const result = await bridge("skills");
+    if (Array.isArray(result?.skills) && result.skills.length) state.skills = result.skills;
+  } catch {
+    // The fallback list keeps the composer usable.
+  }
+  renderSkillPicker();
+}
+
+function answerMeta(turn) {
+  const meta = make("div", "answer-meta");
+  const skill = turn.answer.skill;
+  const route = routeLabels[turn.answer.skillRoute];
+  meta.append(make("span", "skill-tag", skill ? skillLabel(skill) + (route ? " · " + route : "") : ""));
+  const meetingId = state.meeting.id;
+  for (const [rating, symbol, label] of [["up", "👍", "Helpful"], ["down", "👎", "Not helpful"]]) {
+    const button = make("button", "rate-button" + (turn.rating === rating ? " selected" : ""), symbol);
+    button.type = "button";
+    button.title = label;
+    button.setAttribute("aria-label", label);
+    button.setAttribute("aria-pressed", String(turn.rating === rating));
+    button.addEventListener("click", () => {
+      if (rating === "up") {
+        void rate(meetingId, turn.id, "up", "");
+        return;
+      }
+      state.feedbackTurn = { meetingId, id: turn.id };
+      byId("feedback-note").value = "";
+      byId("feedback-dialog").showModal();
+    });
+    meta.append(button);
+  }
+  return meta;
+}
+
+async function rate(meetingId, questionId, rating, note) {
+  try {
+    await bridge("feedback", { meetingId, questionId, rating, note });
+    await refreshQuestions(meetingId);
+    toast(rating === "up" ? "Marked as helpful." : "Rating saved.");
+  } catch (error) {
+    toast(error.message, true);
+  }
+}
+
+function renderSettings(settings) {
+  const local = settings.provider === "demo";
+  byId("settings-provider").textContent = local
+    ? "No model is configured, so answers use local excerpts. To use a model, set provider, model and send_evidence in config.json in " + settings.configFolder + " and reopen the app. A key saved here is used once a provider is configured."
+    : settings.providerLabel + " · " + settings.model + (settings.baseUrl ? " · " + settings.baseUrl : "")
+      + (settings.sendEvidence ? "" : ". send_evidence is off in config.json, so the model is not called yet.");
+  let status = settings.keySaved ? "A key is saved for " + settings.keyName + "." : "No key is saved for " + settings.keyName + ".";
+  if (settings.keyInEnvironment) status = "The environment variable " + settings.keyName + " is set and takes priority." + (settings.keySaved ? " A saved key also exists." : "");
+  if (!settings.keyStoreAvailable) status += " The credential store is unavailable in this build, so a key cannot be saved here.";
+  byId("settings-key-status").textContent = status;
+  byId("api-key-input").disabled = !settings.keyStoreAvailable;
+  byId("save-key").disabled = !settings.keyStoreAvailable;
+  byId("remove-key").disabled = !settings.keySaved;
+}
+
+function renderPreferences(result) {
+  const list = byId("preference-list");
+  const saved = result.preferences || [];
+  list.replaceChildren(...(saved.length ? saved.map((text, index) => {
+    const item = make("li");
+    item.append(make("span", "", text));
+    const remove = make("button", "close-button", "×");
+    remove.type = "button";
+    remove.setAttribute("aria-label", "Remove preference: " + text);
+    remove.addEventListener("click", () => {
+      void settingsAction(async () => { renderPreferences(await bridge("preferences", { action: "remove", index })); });
+    });
+    item.append(remove);
+    return item;
+  }) : [make("li", "empty", "No preferences saved.")]));
+  const full = saved.length >= (result.limit || 5);
+  byId("preference-input").disabled = full;
+  byId("add-preference").disabled = full;
+}
+
+async function settingsAction(work) {
+  try {
+    await work();
+  } catch (error) {
+    toast(error.message, true);
+  }
+}
+
+async function openSettings() {
+  byId("api-key-input").value = "";
+  await settingsAction(async () => {
+    const [settings, preferences] = await Promise.all([bridge("settings"), bridge("preferences", { action: "list" })]);
+    renderSettings(settings);
+    renderPreferences(preferences);
+    byId("settings-dialog").showModal();
+  });
+}
+
+async function runSuggest() {
+  const meetingId = state.meeting?.id;
+  if (!meetingId) return;
+  const status = byId("suggest-status");
+  const results = byId("suggest-results");
+  const button = byId("run-suggest");
+  button.disabled = true;
+  status.textContent = "Analysing your questions…";
+  results.replaceChildren();
+  try {
+    const report = await bridge("suggest", { meetingId, useModel: byId("suggest-use-model").checked });
+    status.textContent = report.turnsAnalysed + " question(s) and " + report.feedbackRows + " rating(s) analysed. " + report.activation;
+    results.replaceChildren(...report.suggestions.map((suggestion) => {
+      const card = make("section", "suggestion");
+      card.append(make("p", "suggestion-kind", String(suggestion.kind).replace(/_/g, " ") + (suggestion.support ? " · seen " + suggestion.support + " times" : "")));
+      card.append(make("h3", "", suggestion.title));
+      if (suggestion.observed) card.append(make("p", "", suggestion.observed));
+      if (suggestion.action) card.append(make("p", "", suggestion.action));
+      if (suggestion.kind === "preference" && suggestion.preference) {
+        const save = make("button", "button button-outline", "Save this preference");
+        save.type = "button";
+        save.addEventListener("click", () => {
+          void settingsAction(async () => {
+            await bridge("preferences", { action: "add", value: suggestion.preference });
+            save.disabled = true;
+            save.textContent = "Saved";
+          });
+        });
+        card.append(save);
+      }
+      return card;
+    }));
+  } catch (error) {
+    status.textContent = error.message;
+  } finally {
+    button.disabled = false;
+  }
+}
 
 async function boot() {
   render();
+  void loadSkills();
   try {
     applyCollection(await bridge("bootstrap"));
   } catch (error) {

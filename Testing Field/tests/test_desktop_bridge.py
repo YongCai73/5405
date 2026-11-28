@@ -189,3 +189,167 @@ def test_final_minutes_persist_with_sources_and_follow_transcript_revisions(tmp_
     loaded, refreshed = run_bridge(workspace, [('meeting', request), ('summary', request)])
     assert loaded['result']['minutes'] is None and 'ship' not in loaded['result']['summary']
     assert refreshed['ok'] and 'delay the final desktop build' in refreshed['result']['text']
+
+
+def test_skills_come_from_contracts_and_new_skills_route_through_the_desktop(tmp_path):
+    from meeting_copilot.skill_runtime import MANUAL
+
+    replies = run_bridge(tmp_path / 'data', [
+        ('bootstrap', {}),
+        ('skills', {}),
+        ('ask', {'meetingId': 'demo', 'question': 'Grill me on the SQLite decision', 'skill': 'auto'}),
+        ('ask', {'meetingId': 'demo', 'question': 'Because it needs no database service.', 'skill': 'auto'}),
+        ('ask', {'meetingId': 'demo', 'question': 'Explain FTS5 in plain language', 'skill': 'clarify'}),
+        ('ask', {'meetingId': 'demo', 'question': 'Why SQLite?', 'skill': 'not_a_skill'}),
+    ])
+    assert [reply['ok'] for reply in replies] == [True, True, True, True, True, False]
+    offered = replies[1]['result']['skills']
+    assert [skill['name'] for skill in offered] == ['auto', *MANUAL]
+    assert next(skill for skill in offered if skill['name'] == 'grill_me')['rounds'] == 5
+    first, second, manual = (reply['result'] for reply in replies[2:5])
+    assert (first['skill'], first['skillRoute']) == ('grill_me', 'matched')
+    assert 'Challenge 1 of 5' in first['text']
+    # The second message has no trigger phrase; auto routing stays in the open session.
+    assert second['skill'] == 'grill_me' and 'Challenge 2 of 5' in second['text']
+    assert (manual['skill'], manual['skillRoute']) == ('clarify', 'manual')
+
+
+def test_feedback_preferences_and_suggest_actions(tmp_path):
+    data = tmp_path / 'data'
+    question = 'Why did we choose SQLite?'
+    replies = run_bridge(data, [
+        ('bootstrap', {}),
+        ('ask', {'meetingId': 'demo', 'question': question, 'skill': 'trace_decision'}),
+        ('questionHistory', {'meetingId': 'demo'}),
+    ])
+    snapshot = replies[2]['result']['turns'][0]['id']
+    replies = run_bridge(data, [
+        ('feedback', {'meetingId': 'demo', 'questionId': snapshot, 'rating': 'down'}),
+        ('feedback', {'meetingId': 'demo', 'questionId': 'missing', 'rating': 'up'}),
+        ('preferences', {'action': 'add', 'value': 'Keep answers brief.'}),
+        ('preferences', {'action': 'add', 'value': 'two\nlines'}),
+        ('preferences', {'action': 'list'}),
+        ('preferences', {'action': 'remove', 'index': 0}),
+        ('preferences', {'action': 'remove', 'index': 0}),
+        ('suggest', {'meetingId': 'demo'}),
+        ('suggest', {'meetingId': 'demo', 'useModel': True}),
+    ])
+    assert [reply['ok'] for reply in replies] == [True, False, True, False, True, True, False, True, False]
+    assert replies[4]['result'] == {'preferences': ['Keep answers brief.'], 'limit': 5}
+    assert replies[5]['result']['preferences'] == []
+    report = replies[7]['result']
+    assert report['suggestions'] and 'Nothing was changed' in report['activation']
+    assert 'command' not in report['activation'] + report['suggestions'][0]['action']
+    assert 'sample' in replies[8]['error']
+
+
+def test_rating_a_background_answer_appears_in_history(tmp_path):
+    import time
+
+    data = tmp_path / 'data'
+    bridge = subprocess.Popen([sys.executable, '-u', str(BRIDGE), '--data-dir', str(data)],
+                              stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
+
+    def call(number, action, payload):
+        bridge.stdin.write(json.dumps({'id': number, 'action': action, 'payload': payload}) + '\n')
+        bridge.stdin.flush()
+        reply = json.loads(bridge.stdout.readline())
+        assert reply['id'] == number
+        return reply
+
+    try:
+        assert call(0, 'bootstrap', {})['ok']
+        started = call(1, 'beginQuestion', {'meetingId': 'demo', 'question': 'Why did we choose SQLite?', 'skill': 'auto'})
+        question_id = started['result']['id']
+        deadline = time.monotonic() + 30
+        while True:
+            turn = call(2, 'questionHistory', {'meetingId': 'demo'})['result']['turns'][0]
+            if 'answer' in turn or time.monotonic() > deadline:
+                break
+            time.sleep(0.2)
+        assert turn['answer']['skill'] == 'trace_decision' and 'rating' not in turn
+        assert call(3, 'feedback', {'meetingId': 'demo', 'questionId': question_id, 'rating': 'down', 'note': 'too long'})['ok']
+        assert call(4, 'feedback', {'meetingId': 'demo', 'questionId': question_id, 'rating': 'sideways'})['ok'] is False
+        assert call(5, 'questionHistory', {'meetingId': 'demo'})['result']['turns'][0]['rating'] == 'down'
+    finally:
+        bridge.stdin.close()
+        bridge.wait(timeout=30)
+
+
+def test_settings_report_key_status_without_exposing_the_key(tmp_path, monkeypatch):
+    workspace = tmp_path / 'workspace'
+    workspace.mkdir()
+    (workspace / 'config.json').write_text(json.dumps({
+        'provider': 'openai', 'model': 'test-model', 'base_url': 'https://example.invalid/v1',
+        'send_evidence': True, 'api_key_env': 'TEST_DESKTOP_SETTINGS_KEY',
+    }), encoding='utf-8')
+    secret = 'sk-test-environment-secret-value'
+    monkeypatch.setenv('TEST_DESKTOP_SETTINGS_KEY', secret)
+    replies = run_bridge(workspace, [
+        ('settings', {}),
+        ('saveApiKey', {'key': 'short'}),
+        ('saveApiKey', {'key': 'has a space inside it'}),
+        ('saveApiKey', {'key': 'sk-test-another-secret-value'}),
+        ('deleteApiKey', {}),
+    ])
+    settings = replies[0]['result']
+    assert settings['provider'] == 'openai' and settings['model'] == 'test-model'
+    assert settings['keyName'] == 'TEST_DESKTOP_SETTINGS_KEY' and settings['keyInEnvironment'] is True
+    # The test suite disables the OS credential store, so saving is refused with guidance.
+    assert settings['keyStoreAvailable'] is False and settings['keySaved'] is False
+    assert [reply['ok'] for reply in replies[1:]] == [False, False, False, True]
+    assert 'valid API key' in replies[1]['error'] and 'valid API key' in replies[2]['error']
+    assert 'credential store is unavailable' in replies[3]['error']
+    assert secret not in json.dumps(replies) and 'another-secret' not in json.dumps(replies)
+
+
+def test_save_and_delete_key_through_the_bridge(tmp_path, monkeypatch):
+    """Drive the handlers in process with an in-memory stand-in for the OS credential store."""
+    import importlib.util
+    import types
+
+    from meeting_copilot import credentials
+    from meeting_copilot.config import Config
+
+    saved = {}
+    fake = types.ModuleType('keyring')
+    fake.get_password = lambda service, name: saved.get((service, name))
+    fake.set_password = lambda service, name, value: saved.__setitem__((service, name), value)
+    fake.delete_password = lambda service, name: saved.pop((service, name))
+    monkeypatch.setitem(sys.modules, 'keyring', fake)
+    monkeypatch.setenv('MEETING_COPILOT_KEYRING', '1')
+    monkeypatch.delenv('TEST_DESKTOP_SAVED_KEY', raising=False)
+    monkeypatch.setattr(credentials, '_found', {})
+    monkeypatch.syspath_prepend(str(BRIDGE.parent))
+    spec = importlib.util.spec_from_file_location('desktop_bridge_under_test', BRIDGE)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    config = Config(provider='openai', model='m', send_evidence=True, api_key_env='TEST_DESKTOP_SAVED_KEY',
+                    _base=tmp_path)
+    bridge = module.DesktopBridge(config)
+    try:
+        assert bridge.run('settings', {})['keySaved'] is False
+        after = bridge.run('saveApiKey', {'key': '  sk-test-saved-through-bridge  '})
+        assert after['keySaved'] is True and 'sk-test' not in json.dumps(after)
+        assert saved == {(credentials.SERVICE, 'TEST_DESKTOP_SAVED_KEY'): 'sk-test-saved-through-bridge'}
+        # The provider the desktop already holds sees the key without a restart.
+        assert bridge.assistant.provider._client()[1] == 'sk-test-saved-through-bridge'
+        assert bridge.run('deleteApiKey', {})['keySaved'] is False
+        assert saved == {} and credentials.api_key('TEST_DESKTOP_SAVED_KEY') is None
+    finally:
+        bridge.close()
+
+
+def test_both_hosts_allow_exactly_the_bridge_actions():
+    """A bridge action missing from a host allowlist is silently dropped on that platform."""
+    import re
+
+    desktop = BRIDGE.parent
+    handlers = re.search(r'handlers = \{(.*?)\n        \}', BRIDGE.read_text(encoding='utf-8'), re.S).group(1)
+    bridge_actions = set(re.findall(r"'(\w+)': self\.", handlers))
+    swift = re.search(r'private let actions = Set\(\[(.*?)\]\)', (desktop / 'main.swift').read_text(encoding='utf-8'), re.S)
+    windows = re.search(r'Actions = new\(StringComparer\.Ordinal\)\s*\{(.*?)\};',
+                        (desktop / 'windows' / 'MainWindow.xaml.cs').read_text(encoding='utf-8'), re.S)
+    assert len(bridge_actions) > 15
+    assert set(re.findall(r'"(\w+)"', swift.group(1))) == bridge_actions
+    assert set(re.findall(r'"(\w+)"', windows.group(1))) == bridge_actions

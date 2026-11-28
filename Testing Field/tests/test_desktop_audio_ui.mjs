@@ -86,6 +86,7 @@ async function application() {
     ['bootstrap', { meetings: [], meeting: null }],
     ['devices', { devices: [{ id: 'mic', name: 'Test microphone', isDefault: true }] }],
     ['questionHistory', { turns: [] }],
+    ['skills', { skills: [] }],
   ]);
   let timerWrites = 0;
   const window = {
@@ -275,4 +276,126 @@ test('an already active capture cannot submit a second recording from the dialog
   app.nodes.get('record-form').dispatch('submit');
   await flush();
   assert.equal(app.requests.some((item) => item.action === 'startRecording'), false);
+});
+
+// Objects created inside the isolated context have a different Object prototype.
+const plain = (value) => JSON.parse(JSON.stringify(value));
+const answered = (extra = {}) => ({ turns: [{
+  id: 'snapshot-1', question: 'Why SQLite?',
+  answer: { text: 'SQLite is local.', citations: [], skill: 'trace_decision', skillRoute: 'matched' }, ...extra,
+}] });
+const withSegments = () => detail(false, null, { segments: [{ id: 1, text: 'SQLite is local.', startMs: 0, endMs: 1000 }] });
+const rateButtons = (app) => app.nodes.get('conversation').querySelectorAll('button')
+  .filter((button) => String(button.className).startsWith('rate-button'));
+
+test('the question type menu is filled from the backend and sent with a typed question', async () => {
+  const app = await application();
+  app.install(withSegments());
+  app.responses.set('skills', { skills: [
+    { name: 'auto', label: 'Auto', triggers: [] },
+    { name: 'grill_me', label: 'Grill me', triggers: ['grill me'], rounds: 5 },
+    { name: 'future_skill', label: 'Future skill', triggers: [] },
+  ] });
+  await app.evaluate('loadSkills()');
+  const select = app.nodes.get('skill-select');
+  assert.deepEqual(select.children.map((option) => option.value), ['auto', 'grill_me', 'future_skill']);
+  assert.equal(select.value, 'auto');
+
+  app.responses.set('beginQuestion', { id: 'snapshot-1' });
+  select.value = 'future_skill';
+  select.dispatch('change');
+  app.nodes.get('question').value = 'Challenge the SQLite decision';
+  app.nodes.get('ask-form').dispatch('submit');
+  await flush();
+  assert.equal(app.requests.find((request) => request.action === 'beginQuestion').payload.skill, 'future_skill');
+
+  // A value the backend did not offer falls back to automatic routing.
+  select.value = 'made_up';
+  select.dispatch('change');
+  assert.equal(app.evaluate('state.skill'), 'auto');
+});
+
+test('an answer shows its skill and can be rated, with a note for a negative rating', async () => {
+  const app = await application();
+  app.install(withSegments());
+  app.responses.set('questionHistory', answered());
+  app.responses.set('feedback', { id: 'snapshot-1', rating: 'up' });
+  await app.evaluate('refreshQuestions("m")');
+  assert.match(app.nodes.get('conversation').textContent, /Trace decision · auto/);
+  const [up, down] = rateButtons(app);
+  up.dispatch('click');
+  await flush();
+  assert.deepEqual(plain(app.requests.find((request) => request.action === 'feedback').payload),
+    { meetingId: 'm', questionId: 'snapshot-1', rating: 'up', note: '' });
+
+  down.dispatch('click');
+  assert.equal(app.nodes.get('feedback-dialog').open, true);
+  app.nodes.get('feedback-note').value = ' too long ';
+  app.responses.set('questionHistory', answered({ rating: 'down' }));
+  app.nodes.get('feedback-form').dispatch('submit');
+  await flush();
+  assert.deepEqual(plain(app.requests.filter((request) => request.action === 'feedback').at(-1).payload),
+    { meetingId: 'm', questionId: 'snapshot-1', rating: 'down', note: 'too long' });
+  assert.equal(app.nodes.get('feedback-dialog').open, false);
+  await flush();
+  assert.equal(rateButtons(app)[1].attributes['aria-pressed'], 'true');
+});
+
+test('settings saves an API key through the bridge and clears the field immediately', async () => {
+  const app = await application();
+  const settings = {
+    provider: 'openai', providerLabel: 'OpenAI-compatible', model: 'test-model', baseUrl: '', sendEvidence: true,
+    keyName: 'API_KEY', keyInEnvironment: false, keySaved: false, keyStoreAvailable: true, configFolder: '/workspace',
+  };
+  app.responses.set('settings', settings);
+  app.responses.set('preferences', { preferences: ['Keep answers brief.'], limit: 5 });
+  app.nodes.get('open-settings').dispatch('click');
+  await flush();
+  assert.equal(app.nodes.get('settings-dialog').open, true);
+  assert.match(app.nodes.get('settings-key-status').textContent, /No key is saved for API_KEY/);
+  assert.equal(app.nodes.get('remove-key').disabled, true);
+  assert.match(app.nodes.get('preference-list').textContent, /Keep answers brief\./);
+
+  app.responses.set('saveApiKey', { ...settings, keySaved: true });
+  const field = app.nodes.get('api-key-input');
+  field.value = '  sk-test-typed-in-the-dialog  ';
+  app.nodes.get('key-form').dispatch('submit');
+  assert.equal(field.value, '');
+  await flush();
+  assert.deepEqual(plain(app.requests.find((request) => request.action === 'saveApiKey').payload),
+    { key: 'sk-test-typed-in-the-dialog' });
+  assert.match(app.nodes.get('settings-key-status').textContent, /A key is saved for API_KEY/);
+  assert.equal(app.nodes.get('remove-key').disabled, false);
+
+  // An environment variable keeps priority and the dialog says so.
+  app.evaluate('renderSettings')({ ...settings, keySaved: true, keyInEnvironment: true });
+  assert.match(app.nodes.get('settings-key-status').textContent, /environment variable API_KEY is set and takes priority/);
+  // Without a credential store the key cannot be entered here.
+  app.evaluate('renderSettings')({ ...settings, keyStoreAvailable: false });
+  assert.equal(field.disabled, true);
+  assert.equal(app.nodes.get('save-key').disabled, true);
+});
+
+test('suggestions are requested on demand and a suggested preference can be saved', async () => {
+  const app = await application();
+  app.install(withSegments());
+  app.nodes.get('open-suggest').dispatch('click');
+  assert.equal(app.nodes.get('suggest-dialog').open, true);
+  assert.equal(app.requests.some((request) => request.action === 'suggest'), false);
+  app.responses.set('suggest', {
+    mode: 'rules only; no model call', turnsAnalysed: 3, feedbackRows: 1, activation: 'Nothing was changed.',
+    suggestions: [{ kind: 'preference', title: 'Save a wording preference', observed: '2 questions ask for this',
+                    action: 'Save it as a wording preference.', support: 2, preference: 'Keep answers brief.' }],
+  });
+  app.responses.set('preferences', { preferences: ['Keep answers brief.'], limit: 5 });
+  app.nodes.get('run-suggest').dispatch('click');
+  await flush();
+  assert.deepEqual(plain(app.requests.find((request) => request.action === 'suggest').payload), { meetingId: 'm', useModel: false });
+  assert.match(app.nodes.get('suggest-status').textContent, /3 question\(s\) and 1 rating\(s\) analysed/);
+  const [save] = app.nodes.get('suggest-results').querySelectorAll('button');
+  save.dispatch('click');
+  await flush();
+  assert.deepEqual(plain(app.requests.find((request) => request.action === 'preferences').payload),
+    { action: 'add', value: 'Keep answers brief.' });
+  assert.equal(save.disabled, true);
 });

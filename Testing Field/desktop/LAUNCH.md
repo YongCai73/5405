@@ -59,8 +59,10 @@ The app answers from local excerpts until a provider is configured.
 1. Run `config` and set `provider`, `model`, `base_url` if needed, and
    `send_evidence` in the Workspace `config.json`. Leave `api_key_env` as a
    name; never put the key itself in the file.
-2. Run `set-key` and paste the key at the hidden prompt. It is stored under the
-   service name `Meeting Copilot` and the name in `api_key_env`.
+2. Open **Settings** in the app and paste the key, or run `set-key` and paste
+   it at the hidden prompt. Either way it is stored in the system credential
+   store under the service name `Meeting Copilot` and the name in
+   `api_key_env`.
 3. Reopen the app.
 
 Key lookup order: the environment variable named by `api_key_env` wins, then

@@ -43,6 +43,33 @@ def stored_key(name):
         return None
 
 
+def save_key(name, value):
+    """Save ``value`` under ``name``. False when the OS store is unavailable or refuses."""
+    store = _keyring()
+    if store is None:
+        return False
+    try:
+        store.set_password(SERVICE, name, value)
+    except Exception:
+        return False
+    _found.pop(name, None)
+    return True
+
+
+def delete_key(name):
+    """Remove the saved key for ``name``. False when the OS store is unavailable or refuses."""
+    store = _keyring()
+    if store is None:
+        return False
+    try:
+        if store.get_password(SERVICE, name):
+            store.delete_password(SERVICE, name)
+    except Exception:
+        return False
+    _found.pop(name, None)
+    return True
+
+
 def api_key(name):
     """Return the key for ``name`` from the environment, else the OS store."""
     key = os.environ.get(name)
@@ -96,13 +123,9 @@ def main(argv=None):
               'in this Python environment. The desktop launcher\'s "doctor" command prints how.', file=sys.stderr)
         return 2
     if args.command == 'delete':
-        try:
-            if store.get_password(SERVICE, name):
-                store.delete_password(SERVICE, name)
-        except Exception:
+        if not delete_key(name):
             print('The saved key could not be removed.', file=sys.stderr)
             return 1
-        _found.pop(name, None)
         print(f'Removed the saved key for {name}.')
         return 0
 
@@ -114,12 +137,9 @@ def main(argv=None):
     if not value:
         print('No key was entered; nothing was saved.', file=sys.stderr)
         return 1
-    try:
-        store.set_password(SERVICE, name, value)
-    except Exception:
+    if not save_key(name, value):
         print('The key could not be saved in the OS credential store.', file=sys.stderr)
         return 1
-    _found.pop(name, None)
     print(f'Saved the key for {name} in the OS credential store.')
     return 0
 

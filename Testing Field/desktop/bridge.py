@@ -17,20 +17,27 @@ import threading
 import uuid
 
 from meeting_copilot.desktop_questions import DesktopQuestions, QueueFull
+from meeting_copilot.skill_runtime import AUTO, MANUAL, load_contract
 
 
 CONVERSATION = 'desktop-private'
 SAMPLE_ID = 'demo'
 SAMPLE_SOURCE_TITLE = 'Atlas technical design (SIMULATED REPLAY)'
-SKILLS = {'auto', 'catch_up', 'trace_decision', 'compare_options', 'clarify', 'grill_me', 'design_review', 'direct'}
+# Every skill contract shipped with the backend is selectable; a new contract needs no desktop change.
+SKILLS = {AUTO, *MANUAL}
 MAX_REQUEST_BYTES = 64 * 1024
 CAPTURE_START_TIMEOUT_SECONDS = 60
 PROVIDER_LABELS = {'demo': 'Local extractive', 'openai': 'OpenAI-compatible', 'anthropic': 'Anthropic'}
 PROVIDER_MESSAGES = {
     'evidence_upload_not_enabled': 'Enable send_evidence in the desktop configuration to use the configured API.',
-    'missing_api_key': 'The configured provider API key is not available to the desktop process.',
+    'missing_api_key': 'No API key is available for the configured provider. Add one in Settings.',
     'timeout': 'The configured API did not respond before the timeout.',
     'invalid_minutes_response': 'The configured API did not return usable cited meeting notes. Try again.',
+}
+SUGGESTION_ACTIONS = {
+    'preference': 'Save it as a wording preference.',
+    'use_existing_skill': 'Choose this skill in the question type menu beside the question box.',
+    'no_change': 'Keep asking, and rate answers so that repeated patterns become visible.',
 }
 MINUTES_SECTIONS = {
     'overview': 'Overview', 'topics': 'Discussion topics', 'decisions': 'Decisions',
@@ -386,6 +393,13 @@ class DesktopBridge:
             'devices': self.devices,
             'startRecording': self.start_recording,
             'stopRecording': self.stop_recording,
+            'skills': self.skills,
+            'feedback': self.feedback,
+            'preferences': self.preferences,
+            'suggest': self.suggest,
+            'settings': self.settings,
+            'saveApiKey': self.save_api_key,
+            'deleteApiKey': self.delete_api_key,
         }
         if not isinstance(action, str) or action not in handlers:
             raise DesktopError('Unknown desktop action.')
@@ -573,10 +587,141 @@ class DesktopBridge:
         self.questions.start(meeting, snapshot)
         return {'id': snapshot}
 
+    def skills(self, _payload):
+        """The question types the composer offers, read from the packaged skill contracts."""
+        rows = [{'name': AUTO, 'label': 'Auto', 'triggers': [], 'rounds': None}]
+        for name in MANUAL:
+            contract = load_contract(name)
+            rows.append({
+                'name': name, 'label': name.replace('_', ' ').capitalize(), 'version': contract['version'],
+                'triggers': [str(phrase) for phrase in (contract.get('trigger') or [])][:6],
+                'rounds': (contract.get('session') or {}).get('max_rounds'),
+            })
+        return {'skills': rows}
+
+    def _ratings(self, meeting):
+        from meeting_copilot.meta_suggest import ensure
+
+        ensure(self.store)
+        with self.store.read() as db:
+            return {row['snapshot']: row['rating'] for row in db.execute(
+                'SELECT f.snapshot, f.rating FROM answer_feedback f JOIN snapshots s ON s.id=f.snapshot '
+                'WHERE f.user=? AND f.conversation=? AND s.user=? AND s.meeting=?',
+                (self.principal, CONVERSATION, self.principal, meeting))}
+
+    def feedback(self, payload):
+        """Rate one of the user's own finished answers. Read only by the suggest report."""
+        from meeting_copilot.meta_suggest import add_feedback
+
+        meeting = required_text(payload, 'meetingId', 80)
+        snapshot = required_text(payload, 'questionId', 80)
+        rating = payload.get('rating')
+        note = payload.get('note', '')
+        if rating not in ('up', 'down') or not isinstance(note, str) or len(note) > 500:
+            raise DesktopError('Choose a rating and keep the note under 500 characters.')
+        with self.store.read():
+            question = self.questions._row(meeting, snapshot)['question']
+        try:
+            add_feedback(self.store, self.principal, snapshot, CONVERSATION, question, rating, note.strip())
+        except ValueError:
+            raise DesktopError('Only a finished answer can be rated.') from None
+        return {'id': snapshot, 'rating': rating}
+
+    def preferences(self, payload):
+        """Saved wording preferences. They change the style of API answers only."""
+        from meeting_copilot.meta_suggest import MAX_PREFERENCES, preferences, set_preferences
+
+        current = preferences(self.store, self.principal)
+        action = payload.get('action', 'list')
+        try:
+            if action == 'add':
+                current = set_preferences(self.store, self.principal, current + [required_text(payload, 'value', 200)])
+            elif action == 'remove':
+                index = payload.get('index')
+                if type(index) is not int or not 0 <= index < len(current):
+                    raise DesktopError('That preference is no longer saved.')
+                current = set_preferences(self.store, self.principal, current[:index] + current[index + 1:])
+            elif action == 'clear':
+                current = set_preferences(self.store, self.principal, [])
+            elif action != 'list':
+                raise DesktopError('Unknown preference action.')
+        except ValueError:
+            raise DesktopError(
+                f'Keep at most {MAX_PREFERENCES} single-line preferences of up to 200 characters.') from None
+        return {'preferences': current, 'limit': MAX_PREFERENCES}
+
+    def suggest(self, payload):
+        """On request, analyse the user's own question history. Changes nothing."""
+        from meeting_copilot.meta_suggest import suggest
+
+        meeting = required_text(payload, 'meetingId', 80)
+        use_model = payload.get('useModel') is True
+        provider = self._assistant_for(meeting).provider
+        if use_model and provider.config.provider == 'demo':
+            raise DesktopError('Model suggestions need a configured API provider and a meeting other than the sample.')
+        snapshot = self._scope(meeting)
+        report = asyncio.run(suggest(self.store, self.principal, snapshot, self.trace, provider if use_model else None))
+        suggestions = []
+        for item in report['suggestions']:
+            # The report words its actions for the command line; these are the desktop equivalents.
+            action = SUGGESTION_ACTIONS.get(item['kind'], item['recommended_action'])
+            row = {'kind': item['kind'], 'title': item['title'], 'observed': item['observed'],
+                   'action': action, 'support': item['support']}
+            if isinstance(item.get('preference'), str):
+                row['preference'] = item['preference']
+            if isinstance(item.get('skill'), str):
+                row['skill'] = item['skill']
+            suggestions.append(row)
+        return {
+            'mode': report['mode'], 'turnsAnalysed': report['scope']['turns_analysed'],
+            'feedbackRows': report['scope']['feedback_rows'], 'suggestions': suggestions,
+            'activation': 'Nothing was changed. A preference is saved only when you choose to, and a new skill '
+                          'is a draft for review that is not loaded.',
+            'privacy': report['privacy'], 'limits': report['limits'],
+        }
+
+    def settings(self, _payload):
+        """Provider and API-key status. Never returns a key."""
+        from meeting_copilot import credentials
+
+        config = self.config
+        name = config.api_key_env
+        return {
+            'provider': config.provider, 'providerLabel': PROVIDER_LABELS[config.provider], 'model': config.model,
+            'baseUrl': config.base_url or '', 'sendEvidence': config.send_evidence, 'keyName': name,
+            'keyInEnvironment': bool(os.environ.get(name)), 'keySaved': bool(credentials.stored_key(name)),
+            'keyStoreAvailable': credentials.store_available(), 'configFolder': str(config._base),
+        }
+
+    def save_api_key(self, payload):
+        """Save the provider key in the OS credential store. The key is never logged, traced or echoed."""
+        from meeting_copilot import credentials
+
+        key = payload.get('key')
+        key = key.strip() if isinstance(key, str) else ''
+        if not 8 <= len(key) <= 512 or any(ch.isspace() or not ch.isprintable() for ch in key):
+            raise DesktopError('Enter a valid API key.')
+        if not credentials.store_available():
+            raise DesktopError('The system credential store is unavailable. Install the "keyring" package '
+                               'in the Python environment the app was built from, or set the environment variable.')
+        if not credentials.save_key(self.config.api_key_env, key):
+            raise DesktopError('The system credential store did not accept the key.')
+        return self.settings({})
+
+    def delete_api_key(self, _payload):
+        from meeting_copilot import credentials
+
+        if credentials.store_available() and not credentials.delete_key(self.config.api_key_env):
+            raise DesktopError('The saved key could not be removed.')
+        return self.settings({})
+
     def question_history(self, payload):
         meeting = required_text(payload, 'meetingId', 80)
         turns = self.questions.history(meeting)
+        ratings = self._ratings(meeting) if turns else {}
         for turn in turns:
+            if turn['id'] in ratings:
+                turn['rating'] = ratings[turn['id']]
             if 'answer' in turn:
                 turn['answer'] = self._desktop_answer(meeting, turn['answer'])
             failure = turn.pop('failure', None)

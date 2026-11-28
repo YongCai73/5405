@@ -286,3 +286,28 @@ blockquote { margin: 10px 0 0; padding: 6px 0 6px 12px; border-left: 3px solid v
   .assistant-welcome { min-height: 235px; padding: 15px 1px; }
   .welcome-icon { margin-bottom: 9px; }
 }
+
+/* Skills, feedback, suggestions and settings */
+.footer-symbol { width: 16px; text-align: center; color: var(--accent); font-size: 12px; }
+.skill-select { max-width: 124px; border: 1px solid var(--line); border-radius: 6px; background: var(--subtle-surface); color: var(--secondary); font-size: 11px; padding: 3px 4px; }
+.skill-select:disabled { opacity: .55; }
+.composer-footer .composer-mode { margin-right: auto; }
+.answer-meta { display: flex; align-items: center; gap: 5px; margin-top: 10px; }
+.skill-tag { margin-right: auto; color: var(--muted); font-size: 10px; }
+.rate-button { border: 1px solid var(--line); background: var(--surface); color: var(--secondary); border-radius: 5px; padding: 2px 6px; font-size: 11px; line-height: 1.4; }
+.rate-button:hover:not(:disabled) { background: var(--wash); }
+.rate-button.selected { border-color: var(--accent); background: var(--wash-strong); color: var(--accent-dark); }
+.settings-heading { font-size: 13px; font-weight: 700; margin: 16px 0 6px; }
+.settings-heading:first-of-type { margin-top: 0; }
+.preference-list { list-style: none; margin: 8px 0; padding: 0; display: flex; flex-direction: column; gap: 5px; }
+.preference-list li { display: flex; align-items: center; justify-content: space-between; gap: 8px; border: 1px solid var(--line); border-radius: 7px; padding: 6px 8px; font-size: 12px; line-height: 1.4; }
+.preference-list .empty { border-style: dashed; color: var(--muted); }
+.preference-form { display: flex; align-items: flex-start; gap: 7px; }
+.preference-form input { flex: 1; }
+.dialog-actions-start { justify-content: flex-start; margin-top: 8px; margin-bottom: 10px; }
+.suggest-results { display: flex; flex-direction: column; gap: 8px; max-height: 300px; overflow: auto; margin-top: 8px; }
+.suggestion { border: 1px solid var(--line); border-radius: 8px; padding: 9px 10px; font-size: 12px; line-height: 1.45; }
+.suggestion h3 { font-size: 12px; font-weight: 700; margin-bottom: 4px; }
+.suggestion p + p { margin-top: 4px; }
+.suggestion .suggestion-kind { color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: .04em; margin-bottom: 3px; }
+.suggestion button { margin-top: 7px; }

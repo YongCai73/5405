@@ -20,6 +20,9 @@ Audio import/export uses a private temporary copy. The Python backend therefore
 never receives the original user-selected path; an export is copied to the final
 path only after the backend has written its temporary JSON file.
 
+The shared window also offers the skill menu, answer ratings, the suggestion
+report and Settings with API-key entry; see [the desktop README](../README.md).
+
 After a finished microphone capture, the shared **Summary** view can show its
 local Session Health card: the effective preset plus allowlisted operational
 counters and timings. Unknown fields, transcript text, questions and raw errors

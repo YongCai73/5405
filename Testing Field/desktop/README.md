@@ -23,6 +23,37 @@ open 'build/desktop/Meeting Copilot.app'
 
 Pass an output directory to `build-macos.sh` to place the bundle elsewhere. After building, double-click **Meeting Copilot.app** in Finder. The build stages its Python runtime under `~/Library/Application Support/Meeting Copilot/Runtime` and uses the base Python installed on this Mac. Build locally on each Mac and quit the app before rebuilding. Set `MEETING_COPILOT_RUNTIME_ROOT` to an absolute path at build time if you need a separate runtime.
 
+## Skills, feedback and settings in the window
+
+Both desktop apps share `bridge.py`, the web UI in `ui/` and the Python backend,
+so everything in this section behaves the same on macOS and Windows.
+
+- **Question type.** The menu beside the question box lists `Auto` and every
+  skill contract shipped in `src/meeting_copilot/skills/`. The list is read from
+  the backend, so a new contract appears without a desktop change. `Auto` routes
+  by the trigger phrases in the question, and each answer shows the skill that
+  produced it. A `grill_me` session continues across messages while `Auto` is
+  selected.
+- **Ratings.** Each finished answer has helpful and not-helpful buttons; a
+  not-helpful rating can carry a short note. Ratings are only read by
+  **Suggest improvements**.
+- **Suggest improvements** (sidebar) runs the `suggest` report on your own
+  questions and ratings for the open meeting. It changes nothing; a suggested
+  wording preference is saved only if you choose it. Sending question texts to
+  the configured model is an explicit checkbox.
+- **Settings** (sidebar) holds the provider status, the API key and up to five
+  wording preferences. The key is typed into a password field, sent once to the
+  local backend, and stored in the system credential store (macOS Keychain,
+  Windows Credential Manager). It is never written to a file, logged, or sent
+  back to the window. The environment variable named by `api_key_env` still
+  works and takes priority. Provider, model and `send_evidence` are still set
+  in the Workspace `config.json`.
+
+Adding a bridge action needs one more step than adding a skill: the action name
+must be added to the allowlist in `main.swift` and in
+`windows/MainWindow.xaml.cs`. `tests/test_desktop_bridge.py` fails when either
+list differs from the bridge.
+
 ## Work with local meetings
 
 Private questions run in the background, so the transcript and recording controls
