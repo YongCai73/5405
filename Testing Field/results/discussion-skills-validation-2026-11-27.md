@@ -17,11 +17,11 @@ run, done afterwards with the owner's approval, is in
 
 | Check | Kind | Result |
 |---|---|---|
-| Full pytest suite on mains power | deterministic | 308 passed, 10 platform skips, 0 failed, 174 s (re-run after the fixes made from real-model output). [JUnit](tests-discussion-skills-windows.xml) |
+| Full pytest suite on mains power | deterministic | 308 passed, 10 platform skips, 0 failed, 174 s (re-run after the fixes made from real-model output). |
 | Same suite earlier on battery power | deterministic | 307 passed, 1 failed, 50 minutes. The laptop was throttled (module import took 26 s instead of 2 s) and the first mock-DeepSeek test hit its 120 s provider timeout during cold start. It passed in the rerun above with no code change. |
 | Desktop UI contract tests | deterministic | 10 passed |
-| `evaluate --stress --strict` | deterministic, simulated provider | gate passed, 12/12. Routing set 36/36, skill controls 17/17, fixture questions 22/22 fixed skill, 22/22 auto. [Report](discussion-skills-evaluation-2026-11-27.json) |
-| `scripts/skills_demo.py` | real CLI and stdio MCP, simulated provider | ran to completion. [Transcript](discussion-skills-demo-2026-11-27.txt) |
+| `evaluate --stress --strict` | deterministic, simulated provider | gate passed, 12/12. Routing set 36/36, skill controls 17/17, fixture questions 22/22 fixed skill, 22/22 auto. |
+| `scripts/skills_demo.py` | real CLI and stdio MCP, simulated provider | ran to completion. |
 
 New tests: `tests/test_discussion_skills.py` (15) and `tests/test_meta_suggest.py` (6);
 12 routing cases and 4 skill-control checks were added to the existing sets.

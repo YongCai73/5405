@@ -1,8 +1,8 @@
 # Real DeepSeek endpoint: validation record, 2026-11-27
 
 Branch `jiaxuan/discussion-skills`. These are **real API results**, unlike the
-deterministic and mock records beside this file. Raw outputs are in
-[live-deepseek-2026-11-27/](live-deepseek-2026-11-27/).
+deterministic and mock records beside this file. The raw outputs
+are not kept in the repository.
 
 ## Setup
 
@@ -18,8 +18,7 @@ deterministic and mock records beside this file. Raw outputs are in
 
 ## 1. Tool rounds, thinking on and off
 
-Eight real questions, two per configuration
-([tool-rounds.results.json](live-deepseek-2026-11-27/tool-rounds.results.json)).
+Eight real questions, two per configuration.
 
 | `tool_rounds` | `thinking` | Requests succeeded | Runs where the model called tools | Tool calls allowed / denied |
 |---|---|---|---|---|
@@ -52,8 +51,7 @@ kept `tool_rounds` at 0 did not appear in any real request.
 
 ## 2. New skills with the real model
 
-Twenty asks ([skills.results.json](live-deepseek-2026-11-27/skills.results.json),
-[skills-after-fix.results.json](live-deepseek-2026-11-27/skills-after-fix.results.json)).
+Twenty asks.
 All succeeded. The stock-phrase check flagged nothing in any answer.
 
 | Skill | What happened |
@@ -84,7 +82,7 @@ owner's judgement on his own questions, which is the completion standard.
 
 ## 3. `suggest --use-model`
 
-On a 14-turn history ([suggest.results.json](live-deepseek-2026-11-27/suggest.results.json))
+On a 14-turn history
 the rules produced three suggestions (save "Keep answers brief.", use `grill_me` with
 missing triggers "ask me" and "challenge", candidate skill `who_owns`). The model
 added two, both of which cited real turn IDs and passed validation: adjust `grill_me`
@@ -95,8 +93,7 @@ input and 2,650 output tokens.
 ## 4. With and without skills, real model
 
 `evaluate --api`: same model, same budget, `tool_rounds=0`; `skills` and `direct`
-answer from the same frozen retrieval rows
-([api-evaluation.json](live-deepseek-2026-11-27/api-evaluation.json)).
+answer from the same frozen retrieval rows.
 100 of 110 cases called the provider; 10 had no retrieved evidence and abstained
 without a request. 252 seconds wall time. The strict gate passed.
 

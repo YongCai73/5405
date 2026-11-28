@@ -19,12 +19,12 @@ No API key was available in the session, and the workspace key file was not read
 
 | Check | Kind | Result |
 |---|---|---|
-| Full pytest suite, this branch | deterministic | 275 passed, 10 skipped, 0 failed, 325.87 s. [JUnit](tests-mcp-skills-windows.xml) |
+| Full pytest suite, this branch | deterministic | 275 passed, 10 skipped, 0 failed, 325.87 s. |
 | The 10 skips | platform | 9 in `test_security_files.py` (POSIX permissions/links/locks not applicable on Windows), 1 symlink permission in `test_project.py` |
 | Same suite on unmodified `origin/main`, same machine | deterministic baseline | 228 tests: 226 passed + 2 timing-sensitive desktop tests that failed while another test run was using the machine and passed (3/3 in that file) when re-run alone; 10 skipped |
 | Desktop UI contract tests (`node --test tests/test_desktop_audio_ui.mjs`) | deterministic | 10 passed |
-| `evaluate --stress --strict` | deterministic, simulated provider | release gate passed, 12/12 checks. [Report](mcp-skills-evaluation-2026-11-27.json) |
-| `scripts/skills_demo.py` | real CLI + real stdio MCP session, simulated provider | ran to completion. [Transcript](mcp-skills-demo-2026-11-27.txt) |
+| `evaluate --stress --strict` | deterministic, simulated provider | release gate passed, 12/12 checks. |
+| `scripts/skills_demo.py` | real CLI + real stdio MCP session, simulated provider | ran to completion. |
 
 New tests in this branch: `tests/test_skill_runtime.py` (36), `tests/test_deepseek_protocol.py` (10),
 one added stdio test in `tests/test_mcp.py`. Updated: `tests/test_evaluation.py`
