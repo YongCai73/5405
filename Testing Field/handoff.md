@@ -2,12 +2,14 @@
 
 ## B｜交付
 
-这台电脑上有两份代码，请先分清：
+只想使用桌面应用，不需要读这份指南：
 
-- **开发仓库（本指南使用）**：`D:\Yan\Cornell\Semester 1\ENMGT 5405 Applied AI for Teams\Final Project\5405\Testing Field`，是 Git 仓库 `5405` 里的应用目录，分支 `jiaxuan/discussion-skills`（叠在 `jiaxuan/mcp-skills` 之上），包含技能自动选择、受控工具调用、关联 trace，以及 `clarify` / `grill_me` / `design_review` 三个技术讨论技能和用户主动触发的 meta-suggestion。
-- **旧的独立运行副本**：`D:\Yan\Cornell\Semester 1\ENMGT 5405 Applied AI for Teams\Final Project\Testing Field`，没有 `.git`，代码较早、没有上述功能。它的 `config.json`、数据库和 `.venv` 都保持原样，本次没有改动；不要把它当开发仓库，也不要用新代码覆盖它。
+- **Windows 免安装**：下载 [0.3.0 Windows 便携包](https://github.com/YongCai73/5405/releases/download/v0.3.0/MeetingCopilot_0.3.0-windows-x64.zip)，解压后双击 `Start Meeting Copilot.cmd`。SHA-256：`555d96465fc6ab829d50a9d2fe6b26db5bffbc79fa4c4b36ef2d01e033900323`。
+- **从源码打开桌面应用**：按 [desktop/LAUNCH.md](desktop/LAUNCH.md) 双击启动器，模型和 API key 在应用的 **Settings** 里设置一次即可。
 
-运行时版本 **0.3.0**。这份指南使用 **DeepSeek V4.1-Flash-1017**，启动步骤按平台完整分开：
+这份指南讲的是**命令行流程**：在终端里完成样例问答、真实录音和会中私问，适合开发和排查。代码在仓库 [YongCai73/5405](https://github.com/YongCai73/5405) 的 `main` 分支，应用目录是 `Testing Field`。
+
+运行时版本 **0.3.1**（程序与 0.3.0 相同，只整理了文档）。这份指南使用 **DeepSeek V4.1-Flash-1017**，启动步骤按平台完整分开：
 
 - [Windows：从这里开始](#windows)
 - [macOS：从这里开始](#macos)
@@ -25,7 +27,7 @@
 | `provider` | `openai` | 当前程序通过 OpenAI-compatible 接口连接 DeepSeek；不接受 `deepseek` 作为配置值 |
 | `model` | `deepseek-flash` | 官方当前将此 API 名称路由到 V4.1-Flash-1017 |
 | `timeout_seconds` | `120` | 当前程序允许的最大值为 120，不接受 240 |
-| `tool_rounds` | `0` | 程序上限为 2。2026-11-27 已在真实 DeepSeek 端点上实测：`tool_rounds` 设为 1 或 2、thinking 默认开启或加一行 `"thinking": "disabled"`，8 次提问全部成功，模型调用工具后正常作答（见[真实端点记录](results/live-deepseek-validation-2026-11-27.md)）。想让模型在回答时自己再查证据，可以把它改成 1；保持 0 更省 tokens。模型没有用到连续两轮工具，这一点仍未测到 |
+| `tool_rounds` | `0` | 程序上限为 2，不写这一项时默认是 1（0.3.0 起）。本指南显式写 0。2026-11-27 已在真实 DeepSeek 端点上实测：`tool_rounds` 设为 1 或 2、thinking 默认开启或加一行 `"thinking": "disabled"`，8 次提问全部成功，模型调用工具后正常作答（见[真实端点记录](results/live-deepseek-validation-2026-11-27.md)）。想让模型在回答时自己再查证据，可以把它改成 1；保持 0 更省 tokens。模型没有用到连续两轮工具，这一点仍未测到 |
 
 `tool_rounds=0` **仍会检索会议与批准的项目资料，并执行三种技能（可自动选择）、生成引用**；只关闭模型在回答中追加的工具调用。`base.en`、4096 输出上限、流式响应和 `API_KEY` 环境变量均可保留。
 
@@ -44,7 +46,7 @@
 打开 PowerShell，运行：
 
 ```powershell
-Set-Location 'D:\Yan\Cornell\Semester 1\ENMGT 5405 Applied AI for Teams\Final Project\5405\Testing Field'
+Set-Location '你的项目路径\Testing Field'
 git status --short --branch
 $env:PYTHONUTF8 = '1'
 $appDir = (Get-Location).Path
@@ -52,16 +54,16 @@ $py = (Resolve-Path '.\.venv\Scripts\python.exe').Path
 if (-not (Test-Path config.json)) { & $py -m meeting_copilot init }
 ```
 
-预期第二行显示 `## jiaxuan/discussion-skills...`。**接 W2，不需要重新安装。**
+把第一行路径改为本机实际目录。**接 W2，不需要重新安装。**
 
-*这个 `.venv` 是 2026-11-27 用 `uv` 建的 Python 3.12 环境，已装 `.[dev,audio]`。仓库副本里原本没有 `config.json`（它被 `.gitignore` 排除），上面最后一行会在缺失时生成默认配置。旧运行副本里的配置不会被读取或改动；如果想沿用，自己把那份 `config.json` 复制过来即可，其中只有环境变量名、没有 key。*
+*`config.json` 被 `.gitignore` 排除，不在仓库里；上面最后一行会在缺失时生成默认配置。*
 
 **1B．第一次 clean clone**
 
 在准备存放项目的目录打开 PowerShell，运行：
 
 ```powershell
-git clone --branch jiaxuan/discussion-skills --single-branch https://github.com/cyudaddy/5405.git meeting-copilot-dev
+git clone https://github.com/YongCai73/5405.git meeting-copilot-dev
 Set-Location 'meeting-copilot-dev\Testing Field'
 $env:PYTHONUTF8 = '1'
 py -3.12 -m venv .venv
@@ -71,7 +73,7 @@ $py = (Resolve-Path '.\.venv\Scripts\python.exe').Path
 & $py -m meeting_copilot init
 ```
 
-**接 W2。** *两个任务分支合并进 `main` 之后，把上面的分支名换成 `main`。只想要不含新讨论技能的版本时用 `jiaxuan/mcp-skills`。*
+**接 W2。**
 
 <details>
 <summary>备用：没有 py / Python 3.12，但已安装 uv</summary>
@@ -277,7 +279,7 @@ $liveAnswer.text
 & $py -m pytest --basetemp data/test-temp -q
 ```
 
-*`jiaxuan/discussion-skills` 在这台 Windows 电脑上 2026-11-27 接电源时的结果：308 通过、10 项平台相关跳过、0 失败，约三分钟；严格评测门禁 12 项全部通过（`jiaxuan/mcp-skills` 单独是 275 通过）。用电池供电时电脑会降频，同一套测试跑了 50 分钟并有 1 项因超时失败，所以跑测试请接电源。较早的 84 通过、1 项跳过是旧提交的历史记录。个别桌面问答测试对机器负载敏感，与其他重任务同时跑时可能超时，单独重跑即可。*
+*0.3.0 在 Windows 11 上 2026-11-28 接电源时的结果：390 通过、10 项平台相关跳过、0 失败；严格评测门禁 12 项全部通过。用电池供电时电脑会降频，同一套测试跑了 50 分钟并有 1 项因超时失败，所以跑测试请接电源。较早的 84 通过、1 项跳过是旧提交的历史记录。个别桌面问答测试对机器负载敏感，与其他重任务同时跑时可能超时，单独重跑即可。*
 
 </details>
 
@@ -339,7 +341,7 @@ py="$app_dir/.venv/bin/python"
 在准备存放项目的目录打开 Terminal，运行：
 
 ```bash
-git clone --branch jiaxuan/discussion-skills --single-branch https://github.com/cyudaddy/5405.git meeting-copilot-dev
+git clone https://github.com/YongCai73/5405.git meeting-copilot-dev
 cd 'meeting-copilot-dev/Testing Field'
 export PYTHONUTF8=1
 python3.12 -m venv .venv
@@ -349,7 +351,7 @@ py="$app_dir/.venv/bin/python"
 "$py" -m meeting_copilot init
 ```
 
-**接 M2。** *两个任务分支合并进 `main` 之后，把上面的分支名换成 `main`。只想要不含新讨论技能的版本时用 `jiaxuan/mcp-skills`。*
+**接 M2。**
 
 <details>
 <summary>备用：没有 python3.12，但已安装 uv</summary>
@@ -604,15 +606,16 @@ printf '%s' "$probe" | "$py" -c 'import json,sys; r=json.load(sys.stdin); print(
 
 | 项目 | 结果 / 记录 |
 |---|---|
-| MCP＋Skills（本分支，Windows，2026-11-27） | 275 通过、10 项平台相关跳过、0 失败；严格评测门禁 12/12；路由回归 24/24、技能控制 13/13，均为本地确定性结果。DeepSeek 工具轮次**仅模拟协议测试**，真实端点未测。[报告](results/mcp-skills-validation-2026-11-27.md)、[设计说明](docs/MCP_SKILLS.md) |
-| 讨论技能＋meta-suggestion（`jiaxuan/discussion-skills`，Windows，2026-11-27） | 308 通过、10 项平台跳过；严格门禁 12/12；路由回归 36/36、技能控制 17/17。自动化测试用本地抽取模式或脚本化的假模型回复；真实模型的试跑另见下一行。[报告](results/discussion-skills-validation-2026-11-27.md)、[设计说明](docs/DISCUSSION_SKILLS.md) |
+| 0.3.0 发布（Windows 11，2026-11-28） | 390 通过、10 项平台相关跳过、0 失败；界面测试 14 项通过；桌面应用和便携包用真实 `deepseek-flash` 实测可启动并作答。macOS 应用未在 Mac 上编译或运行。[Release 页面](https://github.com/YongCai73/5405/releases/tag/v0.3.0)、[更新记录](../CHANGELOG.md) |
+| MCP＋Skills（Windows，2026-11-27） | 275 通过、10 项平台相关跳过、0 失败；严格评测门禁 12/12；路由回归 24/24、技能控制 13/13，均为本地确定性结果。DeepSeek 工具轮次**仅模拟协议测试**，真实端点未测。[报告](results/mcp-skills-validation-2026-11-27.md)、[设计说明](docs/MCP_SKILLS.md) |
+| 讨论技能＋meta-suggestion（Windows，2026-11-27） | 308 通过、10 项平台跳过；严格门禁 12/12；路由回归 36/36、技能控制 17/17。自动化测试用本地抽取模式或脚本化的假模型回复；真实模型的试跑另见下一行。[报告](results/discussion-skills-validation-2026-11-27.md)、[设计说明](docs/DISCUSSION_SKILLS.md) |
 | 真实 DeepSeek 端点（`deepseek-flash`，2026-11-27，样例数据） | 工具轮次在 thinking 开、关两种模式下 8/8 成功；三个新技能和 `suggest --use-model` 跑通，并据真实输出修了三处；有无技能对照：固定技能、`direct`、`auto` 都是 22/22，**没有测出技能带来准确率提升**，固定技能多用约 52% 费用。合计约 0.09 美元。[真实端点记录](results/live-deepseek-validation-2026-11-27.md) |
 | Windows（历史，旧提交） | 84 通过、1 项 symlink 权限跳过；[完整记录](results/windows-validation.json)；另有[原生 junction 检查](results/windows-junction.json) |
 | Linux | 85 项通过；[验证记录](results/windows-repair3-validation.json) |
 | 本地 ASR | Windows 公开音频使用 `tiny.en` 得到 2 段；[记录](results/windows-prepared.json)。本指南改用的 `base.en` 尚未单独实测 |
 | 20 分钟稳定性 | Linux 预录音频实际 ASR 399 段、79 次摘要、119 次模拟慢问答，零丢弃/错误；[记录](results/audit-soak-final.json) |
 | Meet2Notes 复用 | 固定提交 `b75077e588f5`，24 个实现/SQL 文件逐字节核验；[来源与许可](docs/UPSTREAM_SOURCE.json) |
-| 交付 | [MCP＋Skills 分支](https://github.com/cyudaddy/5405/tree/jiaxuan/mcp-skills)（待审查，未合并 main）、[早期代码分支](https://github.com/cyudaddy/5405/tree/meeting-copilot/prototype-20261108)、[历史交付标签](https://github.com/cyudaddy/5405/tree/v0.2.0-handoff)、[交付索引](results/final-delivery.json)、[服务器已清理回执](results/server-cleanup.json) |
+| 交付 | [0.3.0 Release](https://github.com/YongCai73/5405/releases/tag/v0.3.0)、[早期代码分支](https://github.com/YongCai73/5405/tree/meeting-copilot/prototype-20261108)、[历史交付标签](https://github.com/YongCai73/5405/tree/v0.2.0-handoff)、[交付索引](results/final-delivery.json)、[服务器已清理回执](results/server-cleanup.json) |
 
 2026-11-27 的更新分两部分验证。自动化部分是本地确定性测试和模拟协议测试，说明路由、工具限制、恢复和 trace 的代码按约定执行。真实部分经 Tony 批准，用工作区 key 文件里的 key 在真实 DeepSeek 端点上跑了样例数据（key 只进入测试进程的环境变量，没有打印、写入配置或提交；没有修改任何现有 `config.json`）。真实结果说明端点接受工具轮次、新技能能跑通；**不说明**技能让回答更好：对照评测三种方式都是 22/22，题目太简单、只按关键词计分，还需要更难的问题和人工判断。macOS、真实麦克风、真实会议内容仍需实机验证。
 
@@ -626,7 +629,6 @@ printf '%s' "$probe" | "$py" -c 'import json,sys; r=json.load(sys.stdin); print(
 | P1 | DeepSeek 工具轮次已在真实端点跑通（单轮内多次调用）；连续两轮工具、`deepseek-v4-pro` 和非流式 `ask` 还没测到 | Zimo Li / Jiaxuan Yan |
 | P1 | 真实模型的 `evaluate --api` 已跑：三种方式都是 22/22，固定技能更贵。现有 22 题是简单事实题，分不出高下；需要补更难的题目（多来源、要取舍、要追溯原因）并做人工语义复核，才能判断技能有无收益 | Jiaxuan Yan / Qiyan Zhai |
 | P0 | `clarify` / `grill_me` / `design_review` 和 `suggest --use-model` 已用真实模型在样例会议上跑通；还需要提问者本人在自己的真实会议和问题上判断是否更好用，这是这批功能的完成标准 | Jiaxuan Yan |
-| P1 | 桌面端：给三个新技能加按钮，并在窗口里试一次 `grill_me` 多轮会话（现在只能靠输入触发，应用未重新构建） | Cai Yong / Jiaxuan Yan |
 | P2 | `suggest` 的规则只匹配英文短语，用“开头两个词相同”粗略聚类；按真实提问历史校准，并考虑把确认后的草稿契约半自动落到 `skills/` | Jiaxuan Yan |
 | P2 | 路由只认英文触发词，并列时退回 `direct` 而不是询问用户；按真实提问补触发词或加交互式消歧。若需要模型工具也真正经过 MCP 客户端，需另做设计 | Jiaxuan Yan |
 | P1 | 真实模型与 native baseline 的同数据 A/B、延迟、tokens 和成本 | Qiyan Zhai |

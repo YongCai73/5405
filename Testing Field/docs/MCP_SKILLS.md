@@ -1,6 +1,6 @@
 # MCP + Skills: routing, contracts, enforcement and trace
 
-Owner: Jiaxuan Yan. Branch `jiaxuan/mcp-skills`, based on `main` at `197aaa7`.
+Owner: Jiaxuan Yan. Released in 0.3.0.
 Recorded 2026-11-27. Validation results for this branch are in
 [results/mcp-skills-validation-2026-11-27.md](../results/mcp-skills-validation-2026-11-27.md).
 
@@ -60,7 +60,7 @@ what it already has, or abstain. `contract_sha256` in each answer detects a cont
 edit that forgot to bump `version`.
 
 List the live values with `python -m meeting_copilot skills`. The branch
-`jiaxuan/discussion-skills` adds `clarify`, `grill_me`, `design_review` and the
+Release 0.3.0 also adds `clarify`, `grill_me`, `design_review` and the
 internal `meta_suggest` contract; see [DISCUSSION_SKILLS.md](DISCUSSION_SKILLS.md).
 
 ## Routing

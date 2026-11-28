@@ -59,7 +59,7 @@ not a prerequisite for this evaluation gate. Add it only after the team has a
 shared-dashboard need and has agreed explicit opt-in, redaction, retention,
 access control and credential handling for meeting-derived data.
 
-## MCP + Skills additions (2026-11-27, branch `jiaxuan/mcp-skills`)
+## MCP + Skills additions (2026-11-27, released in 0.3.0)
 
 The strict gate now has twelve checks. The three new ones are `auto_routing_fixture`
 (the 22 fixture questions answered with `--skill auto`), `routing_suite` (24
@@ -70,7 +70,7 @@ In the default simulated mode that table cannot show whether skills help, becaus
 the local provider ignores the skill contract. See [MCP_SKILLS.md](MCP_SKILLS.md)
 and the [validation record](../results/mcp-skills-validation-2026-11-27.md).
 
-On `jiaxuan/discussion-skills` the same gate covers 36 routing cases and 17
+With the discussion skills the same gate covers 36 routing cases and 17
 skill-control checks, including multi-turn session state, per-conversation term
 memory and private-history isolation; see [DISCUSSION_SKILLS.md](DISCUSSION_SKILLS.md).
 
