@@ -12,10 +12,10 @@ from typing import TypedDict
 from langgraph.graph import StateGraph, START, END
 from .provider import Provider, ProviderError, payload, validated_claims, validated_inferences
 from .store import tokens, Denied
-from .retrieval import terms, excerpt
+from .retrieval import (terms, excerpt, time_scope, scoped_rows, older_rows, context_rows, RECENT_FLOOR, SCOPE_BUDGET)
 from .skill_runtime import (AUTO, check_output, clean_terms, continue_session, contract_digest, explained_terms, load_contract, open_session,
     policy_for, prompt_view, response_extension, route, session_state, style_flags, validated_background, validated_challenge,
-    validated_general_answer, GENERAL_ANSWER_LABEL, NO_DIRECT_EVIDENCE, PLAIN_ANSWER_PROMPT)
+    validated_general_answer, GENERAL_ANSWER_LABEL, NO_DIRECT_EVIDENCE, PLAIN_ANSWER_PROMPT, UNUSABLE_REPLY)
 from .trace import task_trace_context
 from .language import KEYWORD_PROMPT, bridged, clean_keywords, has_cjk, labeller
 
@@ -53,6 +53,8 @@ class State(TypedDict,total=False):
     task_id: str
     skill_version: str
     contract_sha256: str
+    coverage: str
+    scope: str
 
 # Crash recovery (docs/CRASH_RECOVERY.md): progress is checkpointed after each step and
 # a re-run of the same ask resumes from the last step that was written successfully.
@@ -92,22 +94,65 @@ class Assistant:
             # A follow-up answer in a multi-turn session keeps retrieving for the session topic.
             query_question+=' '+session['topic']
         query=' '.join(sorted(terms(query_question)))
-        rows=self.store.evidence(self.user,state['snapshot'],query=query,limit=100) if query else []
-        if recent:
-            meeting=self.store.snapshot_info(self.user,state['snapshot'])['meeting']
-            rows=self.store.evidence(self.user,state['snapshot'],kind='segment',meeting=meeting,limit=plan['limit'],recent=True)
-        q=terms(query_question)
-        rows=[excerpt(e,query_question) for e in rows]
-        if not recent:rows.sort(key=lambda e:len(q&terms(e['text'])),reverse=True)
-        selected=[];size=0
-        for e in rows:
-            if not recent and not q&terms(e['text']):continue
-            if size+len(e['text'])>24000:continue
-            selected.append(e);size+=len(e['text'])
-            if len(selected)>=plan['limit']:break
+        meeting=self.store.snapshot_info(self.user,state['snapshot'])['meeting']
+        # A question about the whole meeting, its opening or its end gets that part of the transcript,
+        # whatever the skill: keyword hits or the last few fragments cannot answer it (retrieval.py).
+        wide=getattr(self.provider.config,'transcript_context',True)
+        scope=time_scope(query_question) if wide else None;coverage=None
+        if scope:
+            rows,coverage=scoped_rows(self._transcript(state['snapshot'],meeting),scope)
+            selected=[excerpt(e,query_question) for e in rows]
+        else:
+            rows=self.store.evidence(self.user,state['snapshot'],query=query,limit=100) if query else []
+            if recent:
+                rows=self.store.evidence(self.user,state['snapshot'],kind='segment',meeting=meeting,limit=plan['limit'],recent=True)
+            q=terms(query_question)
+            rows=[excerpt(e,query_question) for e in rows]
+            if not recent:rows.sort(key=lambda e:len(q&terms(e['text'])),reverse=True)
+            selected=[];size=0
+            for e in rows:
+                if not recent and not q&terms(e['text']):continue
+                if size+len(e['text'])>24000:continue
+                selected.append(e);size+=len(e['text'])
+                if len(selected)>=plan['limit']:break
+            # Segment limits were written for sentence-sized segments. With fragmentary transcription, add
+            # the speech around what was selected. Extras go after the original rows, so the local
+            # extractive mode quotes the same rows as before.
+            extra=[];have={e['id'] for e in selected}
+            # With open answers the model is asked even when no keyword matched. A short meeting is then
+            # worth reading in full: the question may simply use other words than the speakers did.
+            asked_anyway=self.provider.config.provider!='demo' and getattr(self.provider.config,'general_answers',True)
+            transcript=self._transcript(state['snapshot'],meeting) if wide and (recent or selected or asked_anyway) else []
+            total=sum(len(e['text']) for e in transcript)
+            if not transcript:
+                pass
+            elif recent:
+                scope='recent'
+                extra=older_rows(selected,transcript,total if total<=SCOPE_BUDGET else plan['limit']*RECENT_FLOOR)
+                coverage='the whole meeting' if len(selected)+len(extra)>=len(transcript) else 'the most recent part of the meeting only'
+            elif total<=SCOPE_BUDGET:
+                # A meeting this short costs little to read in full, and the fragments around a keyword
+                # hit are usually what the answer needs.
+                extra=[e for e in transcript if e['id'] not in have];coverage='the whole meeting'
+            else:
+                for origin in dict.fromkeys(e['meeting'] for e in selected if e['kind']=='segment' and len(e['text'])<200):
+                    hits=[e for e in selected if e['kind']=='segment' and e['meeting']==origin]
+                    extra+=context_rows(hits,transcript if origin==meeting else self._transcript(state['snapshot'],origin),have)
+            for e in extra:
+                if size+len(e['text'])>24000:break
+                selected.append(excerpt(e,query_question));size+=len(e['text'])
         self.trace.emit('retrieval',snapshot_id=state['snapshot'],source_ids=[e['id'] for e in selected],policy='allow',latency_ms=round((time.perf_counter()-started)*1000,3))
         if state.get('conversation'):self._checkpoint(state,'retrieved',selected)
-        return {'evidence':selected}
+        return {'evidence':selected,'coverage':coverage,'scope':scope} if coverage else {'evidence':selected}
+
+    def _transcript(self,snapshot,meeting,cap=3000):
+        '''The meeting's current segments in the order they were spoken, read within the snapshot's scope.'''
+        rows=[]
+        while len(rows)<cap:
+            page=self.store.evidence(self.user,snapshot,kind='segment',meeting=meeting,limit=100,offset=len(rows))
+            rows+=page
+            if len(page)<100:break
+        return rows
 
     async def _english_keywords(self,question,snapshot):
         '''English search keywords for a Chinese question: one short request with no meeting content.
@@ -151,6 +196,8 @@ class Assistant:
 
     async def answer(self,state):
         start=time.perf_counter();evidence=state['evidence'];usage=dict(NO_USAGE);inferences=[];tool_events=[]
+        # Host headings follow the language of the question; quotations stay as they are in the sources.
+        label=labeller(state['question'])
         background=[];notes=[];challenge=None;new_terms=[]
         simulated=self.provider.config.provider=='demo'
         contract=skill_contract(state['skill']);limits=contract['termination'];rejected={'claims':0,'inferences':0}
@@ -171,7 +218,8 @@ class Assistant:
         if skipped:
             claims=[]
         elif simulated:
-            q=terms(bridged(state['question']));claims=[];recent=contract['retrieval_plan']['strategy']=='recent_segments'
+            # A positional or whole-meeting question quotes the supplied part of the transcript in order.
+            q=terms(bridged(state['question']));claims=[];recent=contract['retrieval_plan']['strategy']=='recent_segments' or state.get('scope') in ('opening','closing','overview')
             if session:q|=terms(session['topic'])
             if history and re.search(r'\b(it|that|they|those|this|them|earlier|more)\b',state['question'],re.I):q|=terms(history[-1]['question'])
             for e in evidence:
@@ -195,13 +243,24 @@ class Assistant:
             if tools_enabled:
                 from .model_tools import EvidenceTools
                 kwargs['tool_context']=EvidenceTools(self.store,self.user,state['snapshot'],evidence,policy=policy,trace=self.trace)
-            extension=response_extension(contract,session,known,self.preferences(),open_answer)
-            reply=await self.provider.complete(state['question'],[{'id':e['id'],'text':e['text'],'kind':e['kind']} for e in evidence],
+            extension=response_extension(contract,session,known,self.preferences(),open_answer,state.get('coverage'))
+            supplied=evidence
+            if state.get('coverage'):
+                # The model reads the transcript in the order it was spoken; the stored order keeps the
+                # originally selected rows first (see retrieve).
+                supplied=sorted(evidence,key=lambda e:(e['kind']!='segment',e.get('start_ms') or 0,e['id']))
+            reply=await self.provider.complete(state['question'],[{'id':e['id'],'text':e['text'],'kind':e['kind']} for e in supplied],
                 {**prompt_view(contract),'private_conversation':context,'response_extension':extension},**kwargs)
             if reply.evidence:evidence=reply.evidence
-            claims=validated_claims(reply.content,evidence)[:limits['max_claims']]
-            inferences=validated_inferences(reply.content,claims,contract)[:limits['max_inferences']]
             raw=payload(reply.content)
+            # A model given many transcript fragments tends to return more quotations than the contract
+            # keeps. Keep the ones its inferences cite first, so fewer inferences lose their support.
+            claims=validated_claims(reply.content,evidence,limit=40)
+            cited=[rid for row in (raw.get('inferences') if isinstance(raw.get('inferences'),list) else []) if isinstance(row,dict)
+                   for rid in (row.get('source_ids') if isinstance(row.get('source_ids'),list) else []) if type(rid) is int]
+            order={rid:n for n,rid in reversed(list(enumerate(cited)))}
+            claims=sorted(claims,key=lambda c:order.get(c['source_id'],len(order)))[:limits['max_claims']]
+            inferences=validated_inferences(reply.content,claims,contract)[:limits['max_inferences']]
             for key,kept in (('claims',claims),('inferences',inferences)):
                 rejected[key]=max(0,len(raw[key])-len(kept)) if isinstance(raw.get(key),list) else 0
             background=validated_background(raw,contract)
@@ -216,9 +275,13 @@ class Assistant:
                 if not challenge:notes.append('The model did not return one valid question, so the session was closed.')
             tool_events=reply.tool_events
             usage={k:getattr(reply,k) for k in usage}
-            if open_answer and not claims and not background and not general_answer:
-                # The reply held nothing usable (no valid quotation and no answer of its own). Ask once
-                # more for a plain answer, so an open question never ends in a bare refusal.
+            if open_answer and not claims and not background and not general_answer and evidence:
+                # Evidence was supplied but the reply could not be used. A plain answer would wrongly
+                # tell the user the record is empty, so say what happened instead.
+                notes.append(label(UNUSABLE_REPLY))
+            elif open_answer and not claims and not background and not general_answer:
+                # Nothing was retrieved and the reply held no answer of its own. Ask once more for a
+                # plain answer, so an open question never ends in a bare refusal.
                 general_answer,extra=await self._plain_answer(state['question'])
                 if extra:
                     # Token counts cover both requests; the configured price was applied to the first only.
@@ -230,8 +293,6 @@ class Assistant:
         self.validate_evidence(state['snapshot'],evidence)
         for turn in history:self.store.snapshot_info(self.user,turn['snapshot_id'])
         cites=[citation(next(e for e in evidence if e['id']==c['source_id'] and c['quote'] in e['text']),c['quote']) for c in claims]
-        # Host headings follow the language of the question; quotations stay as they are in the sources.
-        label=labeller(state['question'])
         text='\n'.join(f"{c['quote']} [E{c['source_id']}]" for c in claims) if claims else label(NO_DIRECT_EVIDENCE if general_answer else 'Insufficient evidence in this authorized snapshot.')
         if inferences:
             line=lambda i:i['text']+' '+' '.join(f'[E{rid}]' for rid in i['source_ids'])

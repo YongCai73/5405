@@ -355,14 +355,14 @@ def payload(content):
         return {}
 
 
-def validated_claims(content, evidence):
+def validated_claims(content, evidence, limit=8):
     rows = payload(content).get('claims', [])
     if not isinstance(rows, list):
         return []
     sources = {}; claims = []
     for e in evidence:
         sources.setdefault(e['id'], []).append(e)
-    for c in rows[:8]:
+    for c in rows[:limit]:
         if not isinstance(c, dict):
             continue
         rid = c.get('source_id'); quote = c.get('quote')

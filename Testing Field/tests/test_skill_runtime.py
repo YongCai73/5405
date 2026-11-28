@@ -234,15 +234,17 @@ async def test_question_without_meeting_evidence_gets_a_labelled_model_answer(st
     # A citation marker inside the model's own answer would pass it off as a quotation; the host removes it.
     provider = ScriptedProvider([open_reply(general='Sandwich choices usually trade cost against freshness. [E1]')])
     result = await Assistant(store, 'alice', provider, Trace(tmp_path/'trace.jsonl')).ask(sid, 'Compare the cafeteria sandwich options', 'c', 'auto')
-    # The model was asked even though nothing was retrieved, and was told how to answer beyond the record.
-    assert len(provider.requests) == 1 and 'general_answer' in provider.requests[0]['messages'][0]['content']
+    # No keyword matched, but the model is asked anyway and was told how to answer beyond the record.
+    # The meeting is short, so it was given the whole transcript in case the wording merely differs.
+    system = provider.requests[0]['messages'][0]['content']
+    assert len(provider.requests) == 1 and 'general_answer' in system and 'SQLite was chosen for simplicity.' in system
     assert result['text'] == (NO_DIRECT_EVIDENCE + '\n\n' + GENERAL_ANSWER_LABEL
                               + ':\nSandwich choices usually trade cost against freshness.')
     assert result['general_answer']['text'] == 'Sandwich choices usually trade cost against freshness.'
     assert result['grounding'] == 'model_only' and result['mode'] == 'API / model knowledge only: no meeting evidence cited'
     # Nothing here is grounded in the meeting, and the answer says so in its own fields.
     assert result['claims'] == [] and result['citations'] == [] and result['inferences'] == []
-    assert result['abstained'] and result['abstain_reason'] == 'no_evidence_retrieved'
+    assert result['abstained'] and result['abstain_reason'] == 'no_validated_quotation'
     assert result['usage']['input_tokens'] == 11
 
 
@@ -277,7 +279,7 @@ async def test_local_mode_and_a_reply_without_general_answer_keep_the_abstention
     # A reply with nothing usable is followed by one request for a plain answer. If that fails too,
     # the abstention text is all that is left.
     empty = Completion(json.dumps({'claims': [], 'inferences': [], 'general_answer': None}), 1, 1)
-    provider = ScriptedProvider([empty, ProviderError('timeout')])
+    provider = ScriptedProvider([empty, ProviderError('timeout')], transcript_context=False)   # nothing retrieved at all
     silent = await Assistant(store, 'alice', provider, Trace(tmp_path/'silent.jsonl')).ask(sid, 'Compare the cafeteria sandwich options', 'e', 'auto')
     assert silent['text'] == 'Insufficient evidence in this authorized snapshot.' and silent['grounding'] == 'none'
     assert len(provider.requests) == 2 and silent['usage']['input_tokens'] == 1
@@ -287,7 +289,10 @@ async def test_an_empty_model_reply_is_followed_by_one_plain_answer(store, sid, 
     from meeting_copilot.skill_runtime import GENERAL_ANSWER_LABEL, PLAIN_ANSWER_PROMPT
 
     empty = Completion('I cannot produce JSON for this.', 4, 2)
-    provider = ScriptedProvider([empty, Completion('Sandwich options usually differ in cost and freshness. [E9]', 6, 3)])
+    # With nothing retrieved at all (here: the wider transcript context is off), a reply without an answer
+    # is followed by one plain request.
+    provider = ScriptedProvider([empty, Completion('Sandwich options usually differ in cost and freshness. [E9]', 6, 3)],
+                                transcript_context=False)
     result = await Assistant(store, 'alice', provider, Trace(tmp_path/'trace.jsonl')).ask(sid, 'Compare the cafeteria sandwich options', 'c', 'auto')
     assert len(provider.requests) == 2
     retry = provider.requests[1]['messages']

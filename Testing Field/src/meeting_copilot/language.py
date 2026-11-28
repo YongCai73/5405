@@ -45,6 +45,15 @@ GLOSSARY = {
     '设计评审': 'design review', '评审一下': 'design review', '可能出什么问题': 'what could go wrong',
     '会出什么问题': 'what could go wrong', '哪里会出问题': 'what could go wrong', '失败场景': 'failure scenarios',
     '风险': 'risks risk', '假设': 'assumptions', '弱点': 'weaknesses', '薄弱': 'weaknesses',
+    # which part of the meeting a question is about (retrieval.time_scope)
+    '一开始': 'the beginning', '最开始': 'the beginning', '刚开始': 'the beginning', '开头': 'the beginning',
+    '开场': 'opening remarks', '开始的时候': 'the beginning', '结尾': 'the end of the meeting', '最后几分钟': 'last few minutes',
+    '结束的时候': 'at the end', '结束时': 'at the end', '会议最后': 'at the end', '最后说了': 'at the end',
+    '最后讲了': 'at the end', '最后部分': 'last part', '整场会议': 'whole meeting', '整个会议': 'whole meeting',
+    '这个会议': 'this meeting', '这场会议': 'this meeting', '这次会议': 'this meeting', '这场讲座': 'this lecture',
+    '主要内容': 'main content', '主要讲了什么': 'main points what was discussed', '讲了什么': 'what was discussed',
+    '说了什么': 'what was discussed', '聊了什么': 'what was discussed', '讨论了什么': 'what was discussed',
+    '要点': 'key points', '大意': 'gist overview', '概况': 'overview',
     # leaving a session
     '停止': 'stop', '结束吧': 'stop', '到此为止': 'stop', '够了': "that's enough", '不用了': 'stop', '收尾': 'wrap up',
     # follow-up references
@@ -83,6 +92,8 @@ ZH_LABELS = {
         '通用背景（模型知识；并非来自会议或项目文件，未经核实）',
     'Challenge {round} of {rounds}': '第 {round}/{rounds} 轮追问',
     'Challenge session closed.': '追问环节已结束。',
+    'The model reply could not be used (it was cut off or not in the expected format). Ask again.':
+        '模型这次的回复无法使用（被截断或格式不符），请再问一次。',
 }
 
 KEYWORD_PROMPT = ('The user asks a question in Chinese about a meeting whose transcript and project files are in English. '

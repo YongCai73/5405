@@ -804,6 +804,10 @@ class DesktopBridge:
             values['max_tokens'] = max(values['max_tokens'], 4096)
             if preset['id'] == 'deepseek':
                 values['streaming'] = True
+                # With a whole transcript as context, thinking mode took 17 to 29 s and once used the
+                # entire output budget before answering; without it the same questions took 5 s. A
+                # user who wants it back sets "thinking": "enabled" in config.json.
+                values['thinking'] = 'disabled'
         if key and not credentials.store_available():
             raise DesktopError('The system credential store is unavailable in this build, so the key cannot be saved '
                                'here. Set the environment variable instead.')

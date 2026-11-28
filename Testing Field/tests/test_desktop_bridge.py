@@ -338,7 +338,7 @@ def test_model_is_set_up_once_in_the_app_and_used_without_a_restart(tmp_path, mo
     assert 'API key' in replies[6]['error'] and 'API key' in replies[7]['error']
     written = json.loads(config.read_text(encoding='utf-8'))
     assert written['provider'] == 'openai' and written['base_url'] == 'https://api.deepseek.com/v1'
-    assert written['send_evidence'] is True and written['streaming'] is True
+    assert written['send_evidence'] is True and written['streaming'] is True and written['thinking'] == 'disabled'
     assert (written['timeout_seconds'], written['max_tokens']) == (120, 4096)
     assert written['data_dir'] == 'data' and written['api_key_env'] == 'MEETING_COPILOT_API_KEY'
     assert not list(workspace.glob('config.json.*'))

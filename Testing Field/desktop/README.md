@@ -72,6 +72,13 @@ meeting" or "meeting + model knowledge". Quotation checks are unchanged. See
 [MCP_SKILLS.md](../docs/MCP_SKILLS.md#open-answers-default-with-a-configured-model-added-2026-11-27)
 for the rules and for `"general_answers": false`, which restores abstention.
 
+## Questions about the whole meeting or a part of it
+
+"Summarize this meeting", "what was said at the beginning" and similar questions
+are answered from that part of the transcript rather than from keyword hits or
+the last few lines, and a short meeting is read in full for any question. See
+[MCP_SKILLS.md](../docs/MCP_SKILLS.md#how-much-of-the-transcript-a-question-gets-added-2026-11-27).
+
 ## Asking in Chinese
 
 Questions can be typed in Chinese. The transcript, the citations and the window

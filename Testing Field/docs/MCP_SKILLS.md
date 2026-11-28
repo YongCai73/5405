@@ -125,6 +125,57 @@ What this changes and what it does not:
   answer with no meeting content, so an open question does not end in a bare
   refusal. If that request fails, the abstention text remains.
 
+### How much of the transcript a question gets (added 2026-11-27)
+
+Found on a real recording. A ten-minute seminar introduction was transcribed into
+134 segments totalling 7,779 characters, a median of 58 characters each: live
+transcription cuts on short pauses, so a "segment" is a fragment of a sentence.
+"Summarize this meeting" routed to `catch_up`, whose contract reads the 8 most
+recent segments. Those were the goodbye, and the answer said the record only
+covered the end of the meeting.
+
+Where the problem was:
+
+| | Verdict |
+|---|---|
+| Retrieval | The cause. Limits were counted in segments, and nothing recognised a question about the whole meeting, its opening or its end. |
+| Skills | A gap, not the cause. No skill is "summarize the whole meeting"; such questions route to `catch_up`, which is fine once it is given the right part of the transcript. |
+| Transcription | Made it visible. Sentence-sized segments would have hidden the problem for short meetings; fragments also hurt keyword retrieval, because the hit is half a sentence. |
+| MCP and model tools | Not involved. With `tool_rounds: 0` the model fetches nothing itself, and the tools search by keyword too. |
+
+What retrieval does now (`retrieval.py`, `"transcript_context": true`, the default):
+
+| Question | Transcript supplied |
+|---|---|
+| About the whole meeting ("summarize this meeting", "main points", "概括这个会议") | the whole transcript if it fits 14,000 characters, else eight evenly spaced stretches |
+| About the opening or the end ("at the beginning", "开头", "at the end") | the whole transcript if it fits, else the first or last 7,000 characters |
+| `catch_up` with no such cue | the contract's recent segments, extended backwards to about 800 characters per contract segment; the whole transcript if the meeting fits |
+| Keyword question, meeting fits | the keyword hits plus the rest of the transcript, read in spoken order |
+| Keyword question, longer meeting | each short hit plus up to two neighbours on either side spoken within 3 seconds |
+| No keyword matched, a model is configured, meeting fits | the whole transcript, because the question may only use other words than the speakers did |
+
+The model is told what the supplied segments cover and that they are fragments in
+spoken order. Skill contracts are unchanged. The originally selected rows stay
+first in the stored evidence, so the local extractive mode quotes the same rows
+as before and the deterministic gate is unchanged. When a reply holds more valid
+quotations than a contract keeps, the ones its inferences cite are kept first.
+
+`evaluate --api` forces `transcript_context` off, as it does `general_answers`,
+so its numbers still describe the per-skill limits.
+
+On that recording with `deepseek-flash`, after the change: "what was said at the
+beginning", "summarize the meeting", "which two options were given" and "what
+do students hand in" were each answered correctly with the right quotations in
+2.5 to 5.2 s. Thinking mode is now off in the DeepSeek preset: with a whole
+transcript as context it took 17 to 29 s and once spent the entire output budget
+before answering.
+
+Limits: scope is recognised from a fixed list of English phrases (Chinese through
+the glossary); a meeting longer than the budget is sampled, not read in full, so
+an overview of a long meeting can miss things; transcription errors stay in the
+quotations ("endeavor" for a name, for example); nothing here improves the
+segmentation itself.
+
 ### Questions in Chinese (added 2026-11-27)
 
 The transcript, project files, skill contracts and every matching rule stay

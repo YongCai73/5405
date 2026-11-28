@@ -22,6 +22,10 @@ class Config:
     # With a model configured, a question the meeting record cannot answer still gets a reply from the
     # model, shown apart from quotations and labelled as not from the meeting. False restores abstention.
     general_answers: bool = True
+    # Retrieval measured in content rather than in segments: the part of the transcript a question is
+    # about (whole meeting, opening, end, recent), a short meeting handed over whole, and the speech
+    # around a keyword hit. False restores the per-skill segment limits exactly.
+    transcript_context: bool = True
     input_cost_per_million: float | None = None
     output_cost_per_million: float | None = None
     asr_model: str = 'tiny.en'
@@ -39,6 +43,7 @@ class Config:
         if type(c.streaming) is not bool or type(c.tool_rounds) is not int or not 0<=c.tool_rounds<=2:raise ValueError('streaming/tool resource limit')
         if c.thinking not in (None,'enabled','disabled'):raise ValueError('thinking must be null, "enabled" or "disabled"')
         if type(c.general_answers) is not bool:raise ValueError('general_answers must be a JSON boolean')
+        if type(c.transcript_context) is not bool:raise ValueError('transcript_context must be a JSON boolean')
         for price in (c.input_cost_per_million,c.output_cost_per_million):
             if price is not None and (type(price) not in (int,float) or not math.isfinite(price) or price<0):raise ValueError('cost rates must be nonnegative finite numbers or null')
         return c

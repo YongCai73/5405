@@ -363,6 +363,7 @@ def validated_background(data, contract):
 GENERAL_ANSWER_LABEL = 'Beyond the meeting record (model knowledge and reasoning; NOT from the meeting or project files, not verified)'
 NO_DIRECT_EVIDENCE = 'No direct evidence for this was found in the meeting record or approved files.'
 GENERAL_ANSWER_LIMIT = 2000
+UNUSABLE_REPLY = 'The model reply could not be used (it was cut off or not in the expected format). Ask again.'
 # Used once when a model reply held nothing usable, so the user is not left with a bare refusal.
 PLAIN_ANSWER_PROMPT = ('The meeting record and approved files hold nothing usable for the user question. Answer it directly and '
                        'usefully from your own knowledge and reasoning, in the language of the question, in plain prose of at '
@@ -395,9 +396,15 @@ def style_flags(texts):
     return sorted(p for p in STOCK_PHRASES if p in joined)
 
 
-def response_extension(contract, state=None, known_terms=(), preferences=(), open_answer=False):
+def response_extension(contract, state=None, known_terms=(), preferences=(), open_answer=False, coverage=None):
     """Skill-specific additions to the fixed JSON reply format."""
     parts = []
+    if coverage:
+        parts.append('Transcript coverage: the meeting segments supplied are in the order they were spoken and cover ' + coverage
+                     + '. Automatic transcription split them into short fragments and may have misheard words; read '
+                     'neighbouring fragments together. For a summary or a question about one part of the meeting, answer '
+                     'from that part. Each fragment is its own source: copy a quotation from inside one fragment, and choose '
+                     'the few fragments that carry the answer rather than quoting every one.')
     if open_answer:
         parts.append('Open answer: the user still needs a useful reply when the supplied sources do not answer the question or cover '
                      'only part of it. In that case, in addition to claims and inferences (which may then be empty), return '
