@@ -1,0 +1,5 @@
+# Launch entry points must keep the line endings their interpreter expects.
+/desktop/launch.sh text eol=lf
+/Start[[:space:]]Meeting[[:space:]]Copilot.command text eol=lf
+/desktop/launch.cmd text eol=crlf
+/Start[[:space:]]Meeting[[:space:]]Copilot.cmd text eol=crlf
