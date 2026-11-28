@@ -108,7 +108,7 @@ cat > "$contents/Info.plist" <<'PLIST'
     <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
     <key>CFBundleName</key><string>Meeting Copilot</string>
     <key>CFBundlePackageType</key><string>APPL</string>
-    <key>CFBundleShortVersionString</key><string>0.2.0</string>
+    <key>CFBundleShortVersionString</key><string>0.3.0</string>
     <key>CFBundleVersion</key><string>1</string>
     <key>LSApplicationCategoryType</key><string>public.app-category.productivity</string>
     <key>LSMinimumSystemVersion</key><string>12.0</string>

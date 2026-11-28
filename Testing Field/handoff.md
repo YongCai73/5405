@@ -7,7 +7,7 @@
 - **开发仓库（本指南使用）**：`D:\Yan\Cornell\Semester 1\ENMGT 5405 Applied AI for Teams\Final Project\5405\Testing Field`，是 Git 仓库 `5405` 里的应用目录，分支 `jiaxuan/discussion-skills`（叠在 `jiaxuan/mcp-skills` 之上），包含技能自动选择、受控工具调用、关联 trace，以及 `clarify` / `grill_me` / `design_review` 三个技术讨论技能和用户主动触发的 meta-suggestion。
 - **旧的独立运行副本**：`D:\Yan\Cornell\Semester 1\ENMGT 5405 Applied AI for Teams\Final Project\Testing Field`，没有 `.git`，代码较早、没有上述功能。它的 `config.json`、数据库和 `.venv` 都保持原样，本次没有改动；不要把它当开发仓库，也不要用新代码覆盖它。
 
-运行时版本 **0.2.0**。这份指南使用 **DeepSeek V4.1-Flash-1017**，启动步骤按平台完整分开：
+运行时版本 **0.3.0**。这份指南使用 **DeepSeek V4.1-Flash-1017**，启动步骤按平台完整分开：
 
 - [Windows：从这里开始](#windows)
 - [macOS：从这里开始](#macos)
