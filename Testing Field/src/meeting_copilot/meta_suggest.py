@@ -124,6 +124,8 @@ def private_turns(store, user, snapshot, offset=0):
                        'question': row['question'][:400], 'skill': answer.get('skill'), 'requested': routing.get('requested', answer.get('skill')),
                        'route_status': routing.get('status', 'manual'), 'abstained': bool(answer.get('abstained')),
                        'abstain_reason': answer.get('abstain_reason'), 'claims': len(answer.get('claims', [])),
+                       # No meeting evidence, but the user still got the model's own labelled answer.
+                       'answered_by_model': bool(answer.get('general_answer')),
                        'inferences': len(answer.get('inferences', [])), 'rating': row['rating']})
     return result
 
@@ -164,6 +166,7 @@ def signals(turns, feedback):
     return {'turns': len(turns), 'conversations': len({(t['snapshot_id'], t['conversation']) for t in turns}),
             'by_skill': dict(sorted(by_skill.items())), 'by_route_status': dict(sorted(Counter(t['route_status'] for t in turns).items())),
             'abstained': sum(t['abstained'] for t in turns),
+            'answered_by_model_only': sum(t['abstained'] and bool(t.get('answered_by_model')) for t in turns),
             'abstain_reasons': dict(sorted(Counter(t['abstain_reason'] for t in turns if t['abstain_reason']).items())),
             'feedback': {'up': sum(f['rating'] == 'up' for f in feedback), 'down': sum(f['rating'] == 'down' for f in feedback)},
             'rated_turns': len(rated)}
@@ -171,7 +174,9 @@ def signals(turns, feedback):
 
 def rule_suggestions(turns, feedback, saved_preferences=(), min_support=2):
     """Deterministic pattern rules. Every suggestion needs at least `min_support` distinct turns."""
-    suggestions = []; lowered = {t['turn_id']: t['question'].lower() for t in turns}
+    # Cues are English; a Chinese question is read through its English gloss.
+    from .language import bridged
+    suggestions = []; lowered = {t['turn_id']: bridged(t['question']).lower() for t in turns}
 
     def add(kind, title, why, action, ids, **extra):
         suggestions.append({'kind': kind, 'title': title, 'observed': why, 'recommended_action': action,
@@ -200,7 +205,9 @@ def rule_suggestions(turns, feedback, saved_preferences=(), min_support=2):
     for skill in sorted({t['skill'] for t in turns if t['skill']}):
         mine = [t for t in turns if t['skill'] == skill]
         down = {t['turn_id'] for t in mine if rated.get(t['turn_id'], {}).get('rating') == 'down'}
-        empty = {t['turn_id'] for t in mine if t['abstained']}
+        # An answer from model knowledge is "abstained" only in the sense that it cites no meeting
+        # evidence. The user was answered, so it says nothing against the skill.
+        empty = {t['turn_id'] for t in mine if t['abstained'] and not t.get('answered_by_model')}
         if len(down) >= min_support or (len(mine) >= 3 and len(empty)*2 >= len(mine) and len(empty) >= min_support):
             reasons = Counter(t['abstain_reason'] for t in mine if t['abstain_reason'])
             add('adjust_skill', f'Adjust the skill {skill}',
@@ -311,7 +318,7 @@ async def suggest(store, user, snapshot, trace=None, provider=None, min_support=
     if provider is not None:
         # Explicit opt-in: the user's own question texts go to their configured provider.
         skills = [{'name': c['name'], 'purpose': c['task_steps'][0], 'triggers': sorted(c['routing']['phrases'])} for c in map(load_contract, SKILLS)]
-        data = {'min_support': min_support, 'turns': [{k: t[k] for k in ('turn_id', 'question', 'skill', 'route_status', 'abstained', 'rating')} for t in turns[:60]],
+        data = {'min_support': min_support, 'turns': [{k: t.get(k) for k in ('turn_id', 'question', 'skill', 'route_status', 'abstained', 'answered_by_model', 'rating')} for t in turns[:60]],
                 'feedback_notes': [f for f in feedback if f['note']][:20], 'existing_skills': skills, 'saved_preferences': saved,
                 'signals': signals(turns, feedback), 'tools': sorted(set(TOOLS['model']) | set(TOOLS['mcp']) - {'list_private_turns', 'list_feedback'})}
         reply = await provider.chat([{'role': 'system', 'content': MODEL_PROMPT.replace('MIN', str(min_support))},

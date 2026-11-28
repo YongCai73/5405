@@ -233,6 +233,9 @@ def check_output(result, contract):
         raise ValueError('skill output contract violation: abstention')
 
 
+from .language import bridged  # noqa: E402  (kept beside its only users)
+
+
 def _matches(question, phrase):
     pattern = r'(?<![a-z0-9])'+r'\s+'.join(re.escape(p) for p in phrase.split())+r'(?![a-z0-9])'
     return re.search(pattern, question) is not None
@@ -256,7 +259,8 @@ def route(question, requested=AUTO):
         contract = load_contract(requested)
         return {**base, 'mode': 'manual', 'status': 'manual', 'selected': requested, 'skill_version': contract['version'],
                 'candidates': [requested], 'scores': {}, 'matched': {}, 'reason': 'skill chosen by the user'}
-    text = question.lower(); scores = {}; matched = {}
+    # A Chinese question is matched through its English gloss (language.py); the phrases stay English.
+    text = bridged(question).lower(); scores = {}; matched = {}
     for skill in SKILLS:
         phrases = load_contract(skill)['routing']['phrases']
         hits = sorted(p for p in phrases if _matches(text, p))
@@ -315,7 +319,7 @@ def session_state(contract, history, question):
     previous = open_session(history)
     if previous and previous.get('skill') != contract['name']:
         previous = None
-    text = question.lower()
+    text = bridged(question).lower()
     leaving = bool(previous) and any(_matches(text, phrase) for phrase in rules['exit_phrases'])
     answered = previous['round'] if previous else 0
     return {'skill': contract['name'], 'topic': previous['topic'] if previous else question[:400], 'answered_round': answered,
@@ -359,6 +363,11 @@ def validated_background(data, contract):
 GENERAL_ANSWER_LABEL = 'Beyond the meeting record (model knowledge and reasoning; NOT from the meeting or project files, not verified)'
 NO_DIRECT_EVIDENCE = 'No direct evidence for this was found in the meeting record or approved files.'
 GENERAL_ANSWER_LIMIT = 2000
+# Used once when a model reply held nothing usable, so the user is not left with a bare refusal.
+PLAIN_ANSWER_PROMPT = ('The meeting record and approved files hold nothing usable for the user question. Answer it directly and '
+                       'usefully from your own knowledge and reasoning, in the language of the question, in plain prose of at '
+                       'most 1500 characters. Do not state what this team decided, owns, measured or said. No citation markers, '
+                       'no JSON.')
 
 
 def validated_general_answer(data):

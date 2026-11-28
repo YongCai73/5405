@@ -76,8 +76,16 @@ Keychain under the service name `Meeting Copilot`, never into a file.
 Once sharing is allowed, the sample meeting uses the model too; before that it
 stays on local excerpts.
 
+A saved key is stored for the host it is sent to (for example
+`MEETING_COPILOT_API_KEY@api.deepseek.com`), so switching provider never sends
+one provider's key to another; the new provider simply has no key until one is
+entered. A key saved by an earlier build without a host is never read and is
+removed the next time a key is saved or removed in Settings. `set-key` saves for
+the provider in the Workspace `config.json`, so choose the provider first.
+
 Key lookup order: the environment variable named by `api_key_env` wins, then
-the saved key. Set `MEETING_COPILOT_KEYRING=0` to ignore the saved key; the
+the saved key. The environment variable is not tied to a host: if you set it, it
+is sent to whichever provider is configured. Set `MEETING_COPILOT_KEYRING=0` to ignore the saved key; the
 test suite sets this so it can never use a real key. The saved key is used
 wherever the provider is called, so CLI commands such as `ask` and the
 explicitly paid `evaluate --api` can use it too. The grounding benchmark still

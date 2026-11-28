@@ -950,6 +950,9 @@ byId("model-preset").addEventListener("change", (event) => {
   if (!saved) byId("model-consent").checked = false;
   byId("model-test-status").textContent = "";
   renderModelFields(preset.id);
+  if (!saved && preset.id !== "local") {
+    byId("settings-key-status").textContent = "Keys are kept per provider and never reused for another one. Paste this provider's key.";
+  } else if (saved) renderSettings(state.settings);
 });
 byId("model-form").addEventListener("submit", (event) => {
   event.preventDefault();
@@ -1122,8 +1125,9 @@ function renderSettings(settings) {
   byId("model-base-url").value = settings.baseUrl;
   byId("model-consent").checked = settings.sendEvidence;
   let status = settings.keySaved
-    ? "A key is saved in this computer's credential store. Paste a new one only to replace it."
-    : "Stored in this computer's credential store, never in a file, and not shown again.";
+    ? "A key for " + settings.keyHost + " is saved in this computer's credential store. Paste a new one only to replace it."
+    : (settings.keyHost ? "No key is saved for " + settings.keyHost + " yet. " : "")
+      + "Stored in this computer's credential store, never in a file, and not shown again.";
   if (settings.keyInEnvironment) status = "The environment variable " + settings.keyName + " is set and takes priority." + (settings.keySaved ? " A saved key also exists." : "");
   if (!settings.keyStoreAvailable) status += " The credential store is unavailable in this build, so a key cannot be saved here.";
   byId("settings-key-status").textContent = status;

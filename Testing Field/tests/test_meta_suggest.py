@@ -171,3 +171,27 @@ async def test_cli_feedback_prefs_suggest_and_stdio_private_tools(tmp_path):
     assert not turns.is_error and 'microphone' in json.dumps(turns.model_dump()) and transcript.is_error
     turns, transcript = await session('direct')
     assert turns.is_error and not transcript.is_error
+
+
+def test_answers_from_model_knowledge_do_not_count_against_a_skill():
+    """Open answers cite no meeting evidence by design; that must not read as the skill failing."""
+    from meeting_copilot.meta_suggest import rule_suggestions, signals
+
+    def turn(number, abstained, by_model):
+        # Different opening words, so the "candidate new skill" rule stays out of the way.
+        question = ('How do caches work', 'Tell me about queues', 'Name one sorting method', 'Where is Paris')[number - 1]
+        return {'turn_id': number, 'snapshot_id': 's', 'conversation': 'c', 'question': question,
+                'skill': 'direct', 'route_status': 'not_applicable', 'abstained': abstained,
+                'abstain_reason': 'no_evidence_retrieved' if abstained else None, 'answered_by_model': by_model, 'rating': None}
+
+    answered = [turn(1, True, True), turn(2, True, True), turn(3, True, True), turn(4, False, False)]
+    assert [s['kind'] for s in rule_suggestions(answered, [])] == ['no_change']
+    assert signals(answered, [])['abstained'] == 3 and signals(answered, [])['answered_by_model_only'] == 3
+
+    # Answers that really left the user with nothing still count, and only those are listed.
+    refused = [turn(1, True, False), turn(2, True, False), turn(3, True, True), turn(4, False, False)]
+    adjust, = [s for s in rule_suggestions(refused, []) if s['kind'] == 'adjust_skill']
+    assert adjust['skill'] == 'direct' and adjust['evidence_turn_ids'] == [1, 2] and '2 of 4 answers abstained' in adjust['observed']
+    # Rows stored before this field existed are treated as before.
+    legacy = [{k: v for k, v in turn(n, True, False).items() if k != 'answered_by_model'} for n in (1, 2, 3)]
+    assert 'adjust_skill' in [s['kind'] for s in rule_suggestions(legacy, [])]

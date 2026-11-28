@@ -93,7 +93,7 @@ contract and test cases a developer or coding agent can implement.
 |---|---|---|
 | The same wording request in ≥2 questions | `preference` | "briefly" twice → `prefs add "Keep answers brief."` |
 | ≥2 unmatched questions that read like an existing skill | `use_existing_skill`, with the trigger words that skill lacks | "ask me hard questions…" → `grill_me`, missing trigger "ask me" |
-| ≥2 thumbs-down, or half of ≥3 answers abstaining, for one skill | `adjust_skill`, with abstain reasons and notes | |
+| ≥2 thumbs-down, or half of ≥3 answers abstaining, for one skill | `adjust_skill`, with abstain reasons and notes | An answer given from model knowledge (an open answer with no meeting evidence) is not counted as abstaining: the user was answered |
 | ≥3 unmatched questions with the same opening words | `new_skill` candidate with a draft contract | "who owns …" ×3 → `who_owns` |
 | nothing repeats | `no_change` | one bad answer is not a missing skill |
 

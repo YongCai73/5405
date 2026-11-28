@@ -274,9 +274,29 @@ async def test_local_mode_and_a_reply_without_general_answer_keep_the_abstention
     local = await Assistant(store, 'alice', Provider(Config()), Trace(tmp_path/'local.jsonl')).ask(sid, 'Compare the cafeteria sandwich options', 'c', 'auto')
     assert local['text'].startswith('Insufficient evidence in this authorized snapshot.') and local['grounding'] == 'none'
     assert 'general_answer' not in local and local['abstained']
-    provider = ScriptedProvider([Completion(json.dumps({'claims': [], 'inferences': [], 'general_answer': None}), 1, 1)])
+    # A reply with nothing usable is followed by one request for a plain answer. If that fails too,
+    # the abstention text is all that is left.
+    empty = Completion(json.dumps({'claims': [], 'inferences': [], 'general_answer': None}), 1, 1)
+    provider = ScriptedProvider([empty, ProviderError('timeout')])
     silent = await Assistant(store, 'alice', provider, Trace(tmp_path/'silent.jsonl')).ask(sid, 'Compare the cafeteria sandwich options', 'e', 'auto')
     assert silent['text'] == 'Insufficient evidence in this authorized snapshot.' and silent['grounding'] == 'none'
+    assert len(provider.requests) == 2 and silent['usage']['input_tokens'] == 1
+
+
+async def test_an_empty_model_reply_is_followed_by_one_plain_answer(store, sid, tmp_path):
+    from meeting_copilot.skill_runtime import GENERAL_ANSWER_LABEL, PLAIN_ANSWER_PROMPT
+
+    empty = Completion('I cannot produce JSON for this.', 4, 2)
+    provider = ScriptedProvider([empty, Completion('Sandwich options usually differ in cost and freshness. [E9]', 6, 3)])
+    result = await Assistant(store, 'alice', provider, Trace(tmp_path/'trace.jsonl')).ask(sid, 'Compare the cafeteria sandwich options', 'c', 'auto')
+    assert len(provider.requests) == 2
+    retry = provider.requests[1]['messages']
+    # The second request carries the question only: no evidence block and no JSON contract.
+    assert retry[0]['content'].endswith(PLAIN_ANSWER_PROMPT) and 'meeting_evidence' not in json.dumps(retry)
+    assert retry[1] == {'role': 'user', 'content': 'Compare the cafeteria sandwich options'}
+    assert result['text'].endswith(GENERAL_ANSWER_LABEL + ':\nSandwich options usually differ in cost and freshness.')
+    assert result['grounding'] == 'model_only' and result['abstained'] and result['claims'] == []
+    assert (result['usage']['input_tokens'], result['usage']['output_tokens']) == (10, 5)
 
 
 def test_general_answers_setting_is_a_validated_boolean(tmp_path):

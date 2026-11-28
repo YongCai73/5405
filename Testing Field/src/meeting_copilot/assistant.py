@@ -15,8 +15,9 @@ from .store import tokens, Denied
 from .retrieval import terms, excerpt
 from .skill_runtime import (AUTO, check_output, clean_terms, continue_session, contract_digest, explained_terms, load_contract, open_session,
     policy_for, prompt_view, response_extension, route, session_state, style_flags, validated_background, validated_challenge,
-    validated_general_answer, GENERAL_ANSWER_LABEL, NO_DIRECT_EVIDENCE)
+    validated_general_answer, GENERAL_ANSWER_LABEL, NO_DIRECT_EVIDENCE, PLAIN_ANSWER_PROMPT)
 from .trace import task_trace_context
+from .language import KEYWORD_PROMPT, bridged, clean_keywords, has_cjk, labeller
 
 def skill_contract(skill):
     """Validated, versioned contract (see skill_runtime); raises ValueError for an unknown skill."""
@@ -79,7 +80,11 @@ class Assistant:
         started=time.perf_counter()
         # The retrieval strategy is read from the skill contract, not chosen by the model.
         plan=skill_contract(state['skill'])['retrieval_plan'];recent=plan['strategy']=='recent_segments'
-        query_question=state['question']
+        # The record is English. A Chinese question is searched through its English gloss and,
+        # with a model configured, through English keywords the model proposes (language.py).
+        query_question=bridged(state['question'])
+        if has_cjk(state['question']) and self.provider.config.provider!='demo':
+            query_question+=' '+await self._english_keywords(state['question'],state['snapshot'])
         if state.get('history') and re.search(r'\b(it|that|they|those|this|them|earlier|more)\b',query_question,re.I):
             query_question+=' '+state['history'][-1]['question']
         session=open_session(state.get('history') or [])
@@ -103,6 +108,29 @@ class Assistant:
         self.trace.emit('retrieval',snapshot_id=state['snapshot'],source_ids=[e['id'] for e in selected],policy='allow',latency_ms=round((time.perf_counter()-started)*1000,3))
         if state.get('conversation'):self._checkpoint(state,'retrieved',selected)
         return {'evidence':selected}
+
+    async def _english_keywords(self,question,snapshot):
+        '''English search keywords for a Chinese question: one short request with no meeting content.
+
+        Only ASCII words from the reply are used, as search terms. Any provider failure falls back
+        to the glossary alone; the answer step reports a real provider problem on its own.
+        '''
+        started=time.perf_counter();words='';error=None
+        try:
+            reply=await self.provider.chat([{'role':'system','content':KEYWORD_PROMPT},{'role':'user','content':question[:1000]}])
+            words=clean_keywords(reply.content)
+        except ProviderError as e:error=e.code
+        self.trace.emit('query_translation',snapshot_id=snapshot,error=error,latency_ms=round((time.perf_counter()-started)*1000,3))
+        return words
+
+    async def _plain_answer(self,question):
+        '''One request for the model's own answer, with no meeting content. (None, {}) if the provider fails.'''
+        identity=getattr(self.provider,'identity',lambda:'')()
+        try:
+            reply=await self.provider.chat([{'role':'system','content':identity+PLAIN_ANSWER_PROMPT},{'role':'user','content':question}])
+        except ProviderError:
+            return None,{}
+        return validated_general_answer({'general_answer':reply.content}),{'input_tokens':reply.input_tokens,'output_tokens':reply.output_tokens}
 
     def _checkpoint(self,state,step,evidence,result=None,turn_id=None):
         """Write progress for (snapshot, user, conversation); see docs/CRASH_RECOVERY.md."""
@@ -143,7 +171,7 @@ class Assistant:
         if skipped:
             claims=[]
         elif simulated:
-            q=terms(state['question']);claims=[];recent=contract['retrieval_plan']['strategy']=='recent_segments'
+            q=terms(bridged(state['question']));claims=[];recent=contract['retrieval_plan']['strategy']=='recent_segments'
             if session:q|=terms(session['topic'])
             if history and re.search(r'\b(it|that|they|those|this|them|earlier|more)\b',state['question'],re.I):q|=terms(history[-1]['question'])
             for e in evidence:
@@ -157,7 +185,7 @@ class Assistant:
             if session and claims and not session['closing']:
                 challenge=SIMULATED_CHALLENGES[(session['round']-1)%len(SIMULATED_CHALLENGES)].replace('{quote}',claims[0]['quote'][:200]).replace('{id}',str(claims[0]['source_id']))
             if session and session['answered_round'] and claims:
-                said=terms(state['question']);found=sorted(t for t in said if any(t in terms(c['quote']) for c in claims))
+                said=terms(bridged(state['question']));found=sorted(t for t in said if any(t in terms(c['quote']) for c in claims))
                 notes.append('SIMULATED mode does not judge your answer. Terms from it found in the cited record: '+(', '.join(found) or 'none')+'. Not found: '+(', '.join(sorted(said-set(found))) or 'none')+'.')
             if general or session or len(contract['output_fields'])>2:
                 notes.append('SIMULATED mode only extracts matching sentences. Explanations, critiques, assumptions and failure scenarios need a configured model.')
@@ -188,12 +216,23 @@ class Assistant:
                 if not challenge:notes.append('The model did not return one valid question, so the session was closed.')
             tool_events=reply.tool_events
             usage={k:getattr(reply,k) for k in usage}
+            if open_answer and not claims and not background and not general_answer:
+                # The reply held nothing usable (no valid quotation and no answer of its own). Ask once
+                # more for a plain answer, so an open question never ends in a bare refusal.
+                general_answer,extra=await self._plain_answer(state['question'])
+                if extra:
+                    # Token counts cover both requests; the configured price was applied to the first only.
+                    for k in ('input_tokens','output_tokens'):
+                        usage[k]=None if usage[k] is None or extra[k] is None else usage[k]+extra[k]
+                    usage['estimated_cost_usd']=None
         # Recheck authorization after a slow provider returns; revocation invalidates in-flight reads.
         self.store.snapshot_info(self.user,state['snapshot'])
         self.validate_evidence(state['snapshot'],evidence)
         for turn in history:self.store.snapshot_info(self.user,turn['snapshot_id'])
         cites=[citation(next(e for e in evidence if e['id']==c['source_id'] and c['quote'] in e['text']),c['quote']) for c in claims]
-        text='\n'.join(f"{c['quote']} [E{c['source_id']}]" for c in claims) if claims else (NO_DIRECT_EVIDENCE if general_answer else 'Insufficient evidence in this authorized snapshot.')
+        # Host headings follow the language of the question; quotations stay as they are in the sources.
+        label=labeller(state['question'])
+        text='\n'.join(f"{c['quote']} [E{c['source_id']}]" for c in claims) if claims else label(NO_DIRECT_EVIDENCE if general_answer else 'Insufficient evidence in this authorized snapshot.')
         if inferences:
             line=lambda i:i['text']+' '+' '.join(f'[E{rid}]' for rid in i['source_ids'])
             used=[f for f in contract['output_fields'] if any(i['field']==f for i in inferences)]
@@ -202,20 +241,20 @@ class Assistant:
                 body='\n'.join(f.replace('_',' ').capitalize()+':\n'+'\n'.join('- '+line(i) for i in inferences if i['field']==f) for f in used)
             else:
                 body='\n'.join(line(i) for i in inferences)
-            text=contract.get('inference_label','Model inference (review against quotations)')+':\n'+body+'\n\nExact supporting quotations:\n'+text
+            text=label(contract.get('inference_label','Model inference (review against quotations)'))+':\n'+body+'\n\n'+label('Exact supporting quotations')+':\n'+text
         if background:
-            text+='\n\nGeneral background (model knowledge; NOT from the meeting or project files, not verified):\n'+'\n'.join(f"{b['term']}: {b['text']}" for b in background)
+            text+='\n\n'+label('General background (model knowledge; NOT from the meeting or project files, not verified)')+':\n'+'\n'.join(f"{b['term']}: {b['text']}" for b in background)
         if general_answer:
-            text+='\n\n'+GENERAL_ANSWER_LABEL+':\n'+general_answer
+            text+='\n\n'+label(GENERAL_ANSWER_LABEL)+':\n'+general_answer
         # A remembered term counts as mentioned when the question shares a content word with it
         # ("queue capacity" mentions the remembered "bounded queue").
-        asked=terms(state['question']);previously=[t for t in known if terms(t)&asked]
+        asked=terms(bridged(state['question']));previously=[t for t in known if terms(t)&asked]
         if previously and simulated:
             text='Already explained earlier in this conversation (not repeated in full): '+', '.join(previously)+'\n\n'+text
         if challenge:
-            text+=f"\n\nChallenge {session['round']} of {session['max_rounds']}: {challenge}"
+            text+='\n\n'+label('Challenge {round} of {rounds}').format(round=session['round'],rounds=session['max_rounds'])+f": {challenge}"
         elif session and session['answered_round']:
-            text+='\n\nChallenge session closed.'
+            text+='\n\n'+label('Challenge session closed.')
         if notes:text+='\n\n'+'\n'.join('Note: '+n for n in notes)
         routing=state.get('routing') or route(state['question'],state['skill'])
         abstained=not claims and not background

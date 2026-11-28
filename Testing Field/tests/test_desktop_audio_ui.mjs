@@ -351,11 +351,12 @@ test('a model is set up once in Settings: provider defaults, key cleared at once
   ];
   const unset = {
     provider: 'demo', providerLabel: 'Local extractive', model: '', baseUrl: '', sendEvidence: false, preset: 'local',
-    presets, keyName: 'MEETING_COPILOT_API_KEY', keyInEnvironment: false, keySaved: false, keyStoreAvailable: true,
+    presets, keyName: 'MEETING_COPILOT_API_KEY', keyHost: '', keyInEnvironment: false, keySaved: false, keyStoreAvailable: true,
     configFile: '/workspace/config.json', ready: false,
   };
   const ready = { ...unset, provider: 'openai', providerLabel: 'OpenAI-compatible', model: 'deepseek-flash',
-                  baseUrl: 'https://api.deepseek.com/v1', sendEvidence: true, preset: 'deepseek', keySaved: true, ready: true };
+                  baseUrl: 'https://api.deepseek.com/v1', sendEvidence: true, preset: 'deepseek', keyHost: 'api.deepseek.com',
+                  keySaved: true, ready: true };
   app.install(withSegments());
   app.responses.set('settings', unset);
   app.responses.set('preferences', { preferences: ['Keep answers brief.'], limit: 5 });
@@ -380,6 +381,7 @@ test('a model is set up once in Settings: provider defaults, key cleared at once
   assert.equal(app.nodes.get('model-base-url').value, 'https://api.deepseek.com/v1');
   assert.equal(app.nodes.get('model-name').disabled, false);
   assert.equal(app.nodes.get('model-consent').checked, false);
+  assert.match(app.nodes.get('settings-key-status').textContent, /kept per provider and never reused/);
 
   app.responses.set('saveModelSettings', ready);
   app.responses.set('meeting', withSegments());
@@ -394,7 +396,7 @@ test('a model is set up once in Settings: provider defaults, key cleared at once
     key: 'sk-test-typed-in-the-dialog',
   });
   assert.match(app.nodes.get('settings-provider').textContent, /Ready\. Questions use deepseek-flash/);
-  assert.match(app.nodes.get('settings-key-status').textContent, /A key is saved/);
+  assert.match(app.nodes.get('settings-key-status').textContent, /A key for api\.deepseek\.com is saved/);
   assert.equal(app.nodes.get('remove-key').disabled, false);
   assert.equal(app.nodes.get('test-model').disabled, false);
   assert.equal(hint.hidden, true);

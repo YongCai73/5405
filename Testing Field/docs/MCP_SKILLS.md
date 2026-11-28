@@ -120,6 +120,38 @@ What this changes and what it does not:
   cannot write an open answer, and is unchanged.
 - The host cannot verify model knowledge. The label says so; whether the model
   keeps team facts out of that section is prompt-enforced, not host-enforced.
+- A model reply that holds nothing usable (no valid quotation and no answer of its
+  own, which was seen once in real use) is followed by one more request for a plain
+  answer with no meeting content, so an open question does not end in a bare
+  refusal. If that request fails, the abstention text remains.
+
+### Questions in Chinese (added 2026-11-27)
+
+The transcript, project files, skill contracts and every matching rule stay
+English. A question may be asked in Chinese; `language.py` is the only place that
+knows about it, and the router, retrieval, session rules and suggestion rules run
+unchanged on what it gives them.
+
+| Step | English question | Chinese question |
+|---|---|---|
+| Routing, session exit phrases, suggestion cues | match the English phrases | match the question plus its English *gloss*: the English cue of each glossary phrase found ("为什么" → `why`, "对比" → `compare`, "够了" → `that's enough`) |
+| Retrieval | keyword overlap with the English record | the gloss, plus, with a configured model, English search keywords the model proposes in one short extra request that carries the question only |
+| Answer | model wording in English | model wording in Chinese; host headings in Chinese; quotations exactly as in the English sources |
+
+The glossary is a fixed list of about 160 phrases: routing cues aligned with the
+contracts, plus common meeting vocabulary. It is all the local extractive mode
+has, so there a Chinese question finds evidence only when it uses glossary words
+or English terms. With a model, the keyword request covers a meeting's own
+vocabulary; measured with `deepseek-flash` it added 1.1 to 1.8 s, and five Chinese
+questions on the sample meeting took 2.7 to 4.6 s each and all cited the right
+English passages. Only ASCII words from the keyword reply are used, as search
+terms; if the request fails, retrieval falls back to the glossary. Its tokens are
+not included in the answer's `usage`.
+
+Limits: the glossary is small and hand-written; a word with two meanings is
+mapped to one ("比较" alone is left out because it usually means "rather");
+`suggest` still groups candidate new skills by the first two English words, which
+does nothing for Chinese questions; only Simplified Chinese phrases are listed.
 
 Known limits: English trigger phrases only; "why" always scores for
 `trace_decision` even in an unrelated question; a tie falls back to `direct`

@@ -385,8 +385,11 @@ def test_save_and_delete_key_through_the_bridge(tmp_path, monkeypatch):
     import importlib.util
     import types
 
+    import pytest
+
     from meeting_copilot import credentials
     from meeting_copilot.config import Config
+    from meeting_copilot.provider import ProviderError
 
     saved = {}
     fake = types.ModuleType('keyring')
@@ -401,6 +404,8 @@ def test_save_and_delete_key_through_the_bridge(tmp_path, monkeypatch):
     spec = importlib.util.spec_from_file_location('desktop_bridge_under_test', BRIDGE)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
+    # A key saved by an earlier version carries no host. It must never be used, and is cleaned up.
+    saved[(credentials.SERVICE, 'MEETING_COPILOT_API_KEY')] = 'sk-legacy-key-without-a-host'
     bridge = module.DesktopBridge(Config(_base=tmp_path))
     try:
         before = bridge.run('settings', {})
@@ -410,7 +415,8 @@ def test_save_and_delete_key_through_the_bridge(tmp_path, monkeypatch):
             'key': '  sk-test-saved-through-bridge  ',
         })
         assert after['keySaved'] is True and after['ready'] is True and 'sk-test' not in json.dumps(after)
-        assert saved == {(credentials.SERVICE, 'MEETING_COPILOT_API_KEY'): 'sk-test-saved-through-bridge'}
+        assert after['keyHost'] == 'example.invalid'
+        assert saved == {(credentials.SERVICE, 'MEETING_COPILOT_API_KEY@example.invalid'): 'sk-test-saved-through-bridge'}
         # The key goes to the credential store only, never into the configuration file.
         assert 'sk-test' not in (tmp_path / 'config.json').read_text(encoding='utf-8')
         # The running backend uses the new provider and key without a restart.
@@ -420,8 +426,17 @@ def test_save_and_delete_key_through_the_bridge(tmp_path, monkeypatch):
         assert bridge.run('saveModelSettings', {
             'preset': 'custom', 'model': 'm2', 'baseUrl': 'https://example.invalid/v1', 'sendEvidence': True,
         })['keySaved'] is True
+        # Choosing another provider does not carry the key over: that host has none until one is entered.
+        switched = bridge.run('saveModelSettings', {'preset': 'anthropic', 'model': 'some-model', 'baseUrl': '', 'sendEvidence': True})
+        assert (switched['keyHost'], switched['keySaved'], switched['ready']) == ('api.anthropic.com', False, False)
+        with pytest.raises(ProviderError, match='missing_api_key'):
+            bridge.assistant.provider._key()
+        # Going back finds the key that was saved for that host.
+        back = bridge.run('saveModelSettings', {
+            'preset': 'custom', 'model': 'm2', 'baseUrl': 'https://example.invalid/v1', 'sendEvidence': True})
+        assert back['keySaved'] is True and bridge.assistant.provider._key() == 'sk-test-saved-through-bridge'
         assert bridge.run('deleteApiKey', {})['keySaved'] is False
-        assert saved == {} and credentials.api_key('MEETING_COPILOT_API_KEY') is None
+        assert saved == {} and credentials.api_key('MEETING_COPILOT_API_KEY', 'example.invalid') is None
     finally:
         bridge.close()
 

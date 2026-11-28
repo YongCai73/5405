@@ -48,6 +48,9 @@ so everything in this section behaves the same on macOS and Windows.
   key is typed into a password field, sent once to the local backend, and
   stored in the system credential store (macOS Keychain, Windows Credential
   Manager). It is never written to a file, logged, or sent back to the window.
+  Each provider address has its own saved key: choosing another provider never
+  sends the previous provider's key there, and Settings asks for that provider's
+  key instead.
   The environment variable named by `api_key_env` still works and takes
   priority. Settings also holds up to five wording preferences. Until a model
   is set up, a hint under the question box links here. See
@@ -68,6 +71,14 @@ files, not verified)", and the answer's tag says "model knowledge, not from the
 meeting" or "meeting + model knowledge". Quotation checks are unchanged. See
 [MCP_SKILLS.md](../docs/MCP_SKILLS.md#open-answers-default-with-a-configured-model-added-2026-11-27)
 for the rules and for `"general_answers": false`, which restores abstention.
+
+## Asking in Chinese
+
+Questions can be typed in Chinese. The transcript, the citations and the window
+itself stay English; the answer and its headings come back in Chinese, with the
+quotations exactly as they are in the English record. How routing and retrieval
+handle a Chinese question is described in
+[MCP_SKILLS.md](../docs/MCP_SKILLS.md#questions-in-chinese-added-2026-11-27).
 
 ## Answer speed
 

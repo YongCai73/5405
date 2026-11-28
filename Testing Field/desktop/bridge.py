@@ -384,11 +384,11 @@ class DesktopBridge:
 
     def _warm_up(self):
         """Load the model client in the background so the first question does not wait for it."""
-        from meeting_copilot.credentials import api_key
+        from meeting_copilot.credentials import api_key, scope_for
 
         config = self.config
         # Only when questions can actually reach the model: otherwise the import is wasted work.
-        if config.provider == 'demo' or not config.send_evidence or not api_key(config.api_key_env):
+        if config.provider == 'demo' or not config.send_evidence or not api_key(config.api_key_env, scope_for(config)):
             return
 
         provider = self.assistant.provider
@@ -737,13 +737,15 @@ class DesktopBridge:
         else:
             preset = 'deepseek' if 'deepseek.com' in config.base_url else 'custom'
         in_environment = bool(os.environ.get(name))
-        saved = bool(credentials.stored_key(name))
+        # Keys are kept per destination host, so another provider's key is never offered here.
+        host = credentials.scope_for(config)
+        saved = bool(host and credentials.stored_key(name, host))
         return {
             'provider': config.provider, 'providerLabel': PROVIDER_LABELS[config.provider],
             'model': '' if local else config.model, 'baseUrl': config.base_url or '',
             'sendEvidence': config.send_evidence, 'preset': preset, 'presets': [dict(row) for row in MODEL_PRESETS],
             'keyName': name, 'keyInEnvironment': in_environment, 'keySaved': saved,
-            'keyStoreAvailable': credentials.store_available(), 'configFile': str(self.config_path),
+            'keyHost': host or '', 'keyStoreAvailable': credentials.store_available(), 'configFile': str(self.config_path),
             # True once questions about a real meeting will reach the model.
             'ready': not local and config.send_evidence and (in_environment or saved),
         }
@@ -820,8 +822,12 @@ class DesktopBridge:
                 draft.unlink()
             except OSError:
                 pass
-        if key and not credentials.save_key(config.api_key_env, key):
-            raise DesktopError('The model was saved, but the system credential store did not accept the key.')
+        if key:
+            # Saved for the host of the provider just chosen, and for no other.
+            if not credentials.save_key(config.api_key_env, key, credentials.scope_for(config)):
+                raise DesktopError('The model was saved, but the system credential store did not accept the key.')
+            # A key saved by an earlier version carried no host and is never read; do not leave it behind.
+            credentials.delete_key(config.api_key_env)
         self.config = config
         self.assistant = Assistant(self.store, self.principal, Provider(config), self.trace)
         self.local_assistant = self.assistant if config.provider == 'demo' else Assistant(
@@ -847,8 +853,10 @@ class DesktopBridge:
     def delete_api_key(self, _payload):
         from meeting_copilot import credentials
 
-        if credentials.store_available() and not credentials.delete_key(self.config.api_key_env):
-            raise DesktopError('The saved key could not be removed.')
+        if credentials.store_available():
+            removed = credentials.delete_key(self.config.api_key_env, credentials.scope_for(self.config))
+            if not (credentials.delete_key(self.config.api_key_env) and removed):
+                raise DesktopError('The saved key could not be removed.')
         return self.settings({})
 
     def question_history(self, payload):
