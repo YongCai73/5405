@@ -81,7 +81,8 @@ async def test_clarify_remembers_explained_terms_across_snapshots_and_labels_bac
 
 async def test_clarify_may_answer_from_labelled_background_but_other_skills_may_not(store, meeting, tmp_path):
     background = reply(claims=[], inferences=[], background=[{'term': 'raft', 'text': 'A consensus protocol for replicated logs.'}])
-    provider = ScriptedProvider([background])
+    # general_answers=False is the strict contract: only clarify may go beyond the record.
+    provider = ScriptedProvider([background], general_answers=False)
     assistant = Assistant(store, 'alice', provider, Trace(tmp_path/'t.jsonl'))
     sid = store.snapshot('alice', 'm')
     clarified = await assistant.ask(sid, 'Define raft', 'c', 'auto')
@@ -142,7 +143,8 @@ async def test_grill_me_session_is_private_to_user_and_conversation_and_manual_s
 
 async def test_grill_me_round_limit_closes_the_session_and_no_evidence_abstains(store, meeting, tmp_path):
     quote = {'source_id': meeting[0], 'quote': FACTS[0]}
-    provider = ScriptedProvider([reply(claims=[quote], question=f'Challenge number {n} about SQLite?') for n in range(1, 7)])
+    provider = ScriptedProvider([reply(claims=[quote], question=f'Challenge number {n} about SQLite?') for n in range(1, 7)],
+                                general_answers=False)
     assistant = Assistant(store, 'alice', provider, Trace(tmp_path/'t.jsonl'))
     rounds = [await assistant.ask(store.snapshot('alice', 'm'), 'Grill me on the SQLite decision' if n == 0 else f'SQLite answer {n}', 'g', 'auto') for n in range(6)]
     assert [r['session']['round'] for r in rounds] == [1, 2, 3, 4, 5, 5] and [r['session']['awaiting'] for r in rounds] == ['answer']*5 + [None]

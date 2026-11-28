@@ -11,6 +11,10 @@ from local_meeting_ai.domain.meeting_text import evidence_system_message
 REASONING_LIMIT = 262144
 
 
+HTTP_ERRORS = {400: 'badrequest', 401: 'authentication', 403: 'authentication', 404: 'badrequest',
+               408: 'timeout', 422: 'badrequest', 429: 'ratelimit'}
+
+
 class ProviderError(RuntimeError):
     def __init__(self, code):
         self.code = code
@@ -37,6 +41,14 @@ class Provider:
 
     def _client(self):
         c = self.config
+        key = self._key()
+        os.environ.setdefault('LITELLM_LOCAL_MODEL_COST_MAP', 'True')
+        import litellm
+        litellm.suppress_debug_info = True
+        return litellm, key
+
+    def _key(self):
+        c = self.config
         if c.provider == 'demo':
             raise ValueError('demo selection is handled deterministically by graph')
         if not c.send_evidence:
@@ -45,13 +57,119 @@ class Provider:
         key = api_key(c.api_key_env)
         if not key:
             raise ProviderError('missing_api_key')
-        os.environ.setdefault('LITELLM_LOCAL_MODEL_COST_MAP', 'True')
-        import litellm
-        litellm.suppress_debug_info = True
-        return litellm, key
+        return key
+
+    def _direct(self):
+        """True when requests go straight to an OpenAI-compatible address (DeepSeek, a local server).
+
+        Importing LiteLLM loads about three thousand modules. That was measured at 5.5 s on this
+        project's Windows laptop, and at 39 to 62 s when the laptop was throttling its CPU, and it
+        is paid by the first question after every start. A chat-completions request needs none of
+        it. LiteLLM is still used for Anthropic and for OpenAI's own address, where its parameter
+        handling for individual models matters.
+        """
+        return self.config.provider == 'openai' and bool(self.config.base_url)
+
+    def warm_up(self):
+        """Import the client library ahead of the first request. Contacts nobody and needs no key."""
+        if self.config.provider == 'demo':
+            return
+        if self._direct():
+            import httpx  # noqa: F401
+        else:
+            os.environ.setdefault('LITELLM_LOCAL_MODEL_COST_MAP', 'True')
+            import litellm
+            litellm.suppress_debug_info = True
+
+    async def _direct_request(self, messages, schemas, key):
+        import httpx
+        c = self.config
+        body = {'model': c.model, 'messages': messages, 'max_tokens': c.max_tokens, 'temperature': 0, 'stream': c.streaming}
+        if c.streaming:
+            body['stream_options'] = {'include_usage': True}
+        if schemas:
+            body['tools'] = list(schemas)
+        if c.thinking:
+            body['thinking'] = {'type': c.thinking}
+        url = c.base_url.rstrip('/') + '/chat/completions'
+        headers = {'Authorization': 'Bearer ' + key}
+
+        def failed(status):
+            # Fixed codes only: a provider's error body can echo the request and is never surfaced.
+            return ProviderError(HTTP_ERRORS.get(status, 'provider_error'))
+
+        def usage_of(data):
+            usage = data.get('usage') if isinstance(data, dict) else None
+            if not isinstance(usage, dict):
+                return None, None
+            count = lambda name: usage[name] if type(usage.get(name)) is int else None
+            return count('prompt_tokens'), count('completion_tokens')
+
+        try:
+            async with httpx.AsyncClient(timeout=c.timeout_seconds, follow_redirects=False) as client:
+                if not c.streaming:
+                    response = await client.post(url, json=body, headers=headers)
+                    if response.status_code != 200:
+                        raise failed(response.status_code)
+                    data = response.json()
+                    message = data['choices'][0]['message']
+                    calls = [{'id': call.get('id') or '', 'type': 'function',
+                              'function': {'name': call['function'].get('name') or '',
+                                           'arguments': call['function'].get('arguments') or ''}}
+                             for call in (message.get('tool_calls') or [])]
+                    reasoning = message.get('reasoning_content')
+                    reasoning = reasoning if isinstance(reasoning, str) else ''
+                    text = message.get('content') or ''
+                    if len(text) > 65536 or len(reasoning) > REASONING_LIMIT:
+                        raise ProviderError('response_size_limit')
+                    inp, out = usage_of(data)
+                    return Completion(text, inp, out, tool_calls=calls, reasoning_content=reasoning)
+                text = ''; calls = {}; inp = out = None; reasoning = ''
+                async with client.stream('POST', url, json=body, headers=headers) as response:
+                    if response.status_code != 200:
+                        raise failed(response.status_code)
+                    async for line in response.aiter_lines():
+                        if not line.startswith('data:'):
+                            continue
+                        line = line[5:].strip()
+                        if line == '[DONE]':
+                            break
+                        chunk = json.loads(line)
+                        if isinstance(chunk.get('usage'), dict):
+                            inp, out = usage_of(chunk)
+                        for choice in chunk.get('choices') or []:
+                            delta = choice.get('delta') or {}
+                            text += delta.get('content') or ''
+                            part = delta.get('reasoning_content')
+                            if isinstance(part, str):
+                                reasoning += part
+                            for part in delta.get('tool_calls') or []:
+                                index = part.get('index')
+                                if not isinstance(index, int) or not 0 <= index < 4:
+                                    raise ProviderError('tool_call_limit')
+                                call = calls.setdefault(index, {'id': '', 'type': 'function',
+                                                                'function': {'name': '', 'arguments': ''}})
+                                call['id'] += part.get('id') or ''
+                                function = part.get('function') or {}
+                                call['function']['name'] += function.get('name') or ''
+                                call['function']['arguments'] += function.get('arguments') or ''
+                                if len(json.dumps(call)) > 8192:
+                                    raise ProviderError('tool_argument_limit')
+                        if len(text) > 65536 or len(reasoning) > REASONING_LIMIT:
+                            raise ProviderError('response_size_limit')
+                return Completion(text, inp, out, tool_calls=[calls[i] for i in sorted(calls)], reasoning_content=reasoning)
+        except httpx.TimeoutException:
+            raise ProviderError('timeout') from None
+        except httpx.TransportError:
+            raise ProviderError('connection') from None
+        except (KeyError, IndexError, TypeError, AttributeError, ValueError):
+            # A reply that is not chat-completions JSON.
+            raise ProviderError('provider_error') from None
 
     async def _request(self, messages, schemas=()):
         c = self.config
+        if self._direct():
+            return await self._direct_request(messages, schemas, self._key())
         litellm, key = self._client()
         args = dict(model=c.provider+'/'+c.model, api_key=key, messages=messages,
                     max_tokens=c.max_tokens, temperature=0, timeout=c.timeout_seconds,
@@ -118,6 +236,8 @@ class Provider:
 
     async def chat(self, messages, schemas=()):
         """Normalized low-level request, also used by the isolated native runner."""
+        # Loading the client library can take longer than a request; it must not count as a provider timeout.
+        self.warm_up()
         try:
             return await asyncio.wait_for(self._request(messages, schemas), self.config.timeout_seconds)
         except asyncio.CancelledError:
@@ -134,6 +254,10 @@ class Provider:
             raise ProviderError(code) from None
 
     async def complete(self, question, evidence, contract, tool_context=None):
+        if type(self).chat is Provider.chat:
+            # Same reason as in chat(): keep the import outside the overall time limit below.
+            # A provider that replaces chat() (tests, the soak script) never needs the library.
+            self.warm_up()
         contract = dict(contract)
         history = contract.pop('private_conversation', [])
         extension = contract.pop('response_extension', '')

@@ -58,6 +58,44 @@ must be added to the allowlist in `main.swift` and in
 `windows/MainWindow.xaml.cs`. `tests/test_desktop_bridge.py` fails when either
 list differs from the bridge.
 
+## Answers beyond the meeting record
+
+With a model set up, a question the meeting cannot answer is still answered.
+What comes from the meeting is shown as exact quotations with citations, as
+before. What comes from the model appears under its own heading, "Beyond the
+meeting record (model knowledge and reasoning; NOT from the meeting or project
+files, not verified)", and the answer's tag says "model knowledge, not from the
+meeting" or "meeting + model knowledge". Quotation checks are unchanged. See
+[MCP_SKILLS.md](../docs/MCP_SKILLS.md#open-answers-default-with-a-configured-model-added-2026-11-27)
+for the rules and for `"general_answers": false`, which restores abstention.
+
+## Answer speed
+
+Measured on 2026-11-27 with `deepseek-flash` on the sample meeting ("Who owns
+evaluation?"), on a Windows laptop that was throttling its CPU to about 22 %:
+
+| Stage | Time |
+|---|---|
+| Skill routing | 3 to 24 ms |
+| Retrieval | about 1 ms |
+| Model request | 1.0 to 1.6 s; thinking on, off or default made no measurable difference for this question |
+| Showing the answer | the window used to look for it every 1.5 s; it now looks every 0.3 s while one is pending |
+| Loading the model client, first question after each start | LiteLLM: 39 to 62 s throttled, 5.5 s when not. Direct HTTPS client: 2 s throttled |
+
+The first question after every start was slow because the request went through
+LiteLLM, whose import loads about three thousand modules. For an
+OpenAI-compatible address (a provider with a base URL, such as DeepSeek or a
+local server) the backend now sends the chat-completions request itself over
+HTTPS and never loads LiteLLM. In the built app, in the same throttled state,
+the first question right after opening went from 38 s (after waiting 12 s) and
+173 s (reported as a provider timeout) to 3.5 s; later questions take 2.3 to
+2.8 s, and an open answer 4.6 to 5.7 s because it is longer.
+
+Anthropic and OpenAI's own address (no base URL) still use LiteLLM, where its
+per-model parameter handling matters. For those the client is loaded in the
+background when the app opens, and its loading time no longer counts against
+the provider timeout. Only DeepSeek was measured.
+
 ## Work with local meetings
 
 Private questions run in the background, so the transcript and recording controls

@@ -14,7 +14,8 @@ from .provider import Provider, ProviderError, payload, validated_claims, valida
 from .store import tokens, Denied
 from .retrieval import terms, excerpt
 from .skill_runtime import (AUTO, check_output, clean_terms, continue_session, contract_digest, explained_terms, load_contract, open_session,
-    policy_for, prompt_view, response_extension, route, session_state, style_flags, validated_background, validated_challenge)
+    policy_for, prompt_view, response_extension, route, session_state, style_flags, validated_background, validated_challenge,
+    validated_general_answer, GENERAL_ANSWER_LABEL, NO_DIRECT_EVIDENCE)
 from .trace import task_trace_context
 
 def skill_contract(skill):
@@ -132,9 +133,12 @@ class Assistant:
         general=contract.get('general_knowledge','none')=='labelled'
         policy=policy_for(contract,'model',self.provider.config.tool_rounds)
         tools_enabled=not simulated and policy.max_rounds>0 and bool(policy.allowed)
-        # No evidence, no way to fetch any, and no permission to use labelled background:
+        # Open answers (config.general_answers): the model may answer what the record does not cover.
+        # The host keeps that text apart from quotations and labels it as not from the meeting.
+        open_answer=not simulated and getattr(self.provider.config,'general_answers',True);general_answer=None
+        # No evidence, no way to fetch any, and no permission to answer beyond the record:
         # abstain without paying for a provider call.
-        skipped=not simulated and not evidence and not tools_enabled and not general
+        skipped=not simulated and not evidence and not tools_enabled and not general and not open_answer
         self.validate_evidence(state['snapshot'],evidence)
         if skipped:
             claims=[]
@@ -163,7 +167,7 @@ class Assistant:
             if tools_enabled:
                 from .model_tools import EvidenceTools
                 kwargs['tool_context']=EvidenceTools(self.store,self.user,state['snapshot'],evidence,policy=policy,trace=self.trace)
-            extension=response_extension(contract,session,known,self.preferences())
+            extension=response_extension(contract,session,known,self.preferences(),open_answer)
             reply=await self.provider.complete(state['question'],[{'id':e['id'],'text':e['text'],'kind':e['kind']} for e in evidence],
                 {**prompt_view(contract),'private_conversation':context,'response_extension':extension},**kwargs)
             if reply.evidence:evidence=reply.evidence
@@ -173,6 +177,7 @@ class Assistant:
             for key,kept in (('claims',claims),('inferences',inferences)):
                 rejected[key]=max(0,len(raw[key])-len(kept)) if isinstance(raw.get(key),list) else 0
             background=validated_background(raw,contract)
+            if open_answer:general_answer=validated_general_answer(raw)
             if contract.get('memory')=='explained_terms':
                 new_terms=clean_terms((raw.get('explained_terms') if isinstance(raw.get('explained_terms'),list) else [])+[b['term'] for b in background])
             if session and not session['answered_round']:
@@ -188,7 +193,7 @@ class Assistant:
         self.validate_evidence(state['snapshot'],evidence)
         for turn in history:self.store.snapshot_info(self.user,turn['snapshot_id'])
         cites=[citation(next(e for e in evidence if e['id']==c['source_id'] and c['quote'] in e['text']),c['quote']) for c in claims]
-        text='\n'.join(f"{c['quote']} [E{c['source_id']}]" for c in claims) if claims else 'Insufficient evidence in this authorized snapshot.'
+        text='\n'.join(f"{c['quote']} [E{c['source_id']}]" for c in claims) if claims else (NO_DIRECT_EVIDENCE if general_answer else 'Insufficient evidence in this authorized snapshot.')
         if inferences:
             line=lambda i:i['text']+' '+' '.join(f'[E{rid}]' for rid in i['source_ids'])
             used=[f for f in contract['output_fields'] if any(i['field']==f for i in inferences)]
@@ -200,6 +205,8 @@ class Assistant:
             text=contract.get('inference_label','Model inference (review against quotations)')+':\n'+body+'\n\nExact supporting quotations:\n'+text
         if background:
             text+='\n\nGeneral background (model knowledge; NOT from the meeting or project files, not verified):\n'+'\n'.join(f"{b['term']}: {b['text']}" for b in background)
+        if general_answer:
+            text+='\n\n'+GENERAL_ANSWER_LABEL+':\n'+general_answer
         # A remembered term counts as mentioned when the question shares a content word with it
         # ("queue capacity" mentions the remembered "bounded queue").
         asked=terms(state['question']);previously=[t for t in known if terms(t)&asked]
@@ -214,10 +221,15 @@ class Assistant:
         abstained=not claims and not background
         abstain_reason=None if not abstained else ('no_evidence_retrieved' if not evidence else 'no_validated_quotation')
         mode='SIMULATED / deterministic extractive' if simulated else ('API / provider not called: no evidence retrieved' if skipped else 'API / model synthesis with validated quotations')
+        if general_answer and not claims:mode='API / model knowledge only: no meeting evidence cited'
         report={'claims_rejected':rejected['claims'],'inferences_rejected':rejected['inferences'],'tool_calls':len(tool_events),'tool_calls_denied':sum(e.get('status')!='ok' for e in tool_events),
-                'style_flags':style_flags([i['text'] for i in inferences]+[b['text'] for b in background]+([challenge] if challenge else []))}
+                'style_flags':style_flags([i['text'] for i in inferences]+[b['text'] for b in background]+([challenge] if challenge else [])+([general_answer] if general_answer else []))}
         result={'snapshot_id':state['snapshot'],'mode':mode,'skill':state['skill'],'skill_version':contract['version'],'contract_sha256':contract_digest(contract),'routing':routing,'task_id':state.get('task_id'),'abstain_reason':abstain_reason,'validation_report':report,'contract':contract,'text':text,'claims':claims,'inferences':inferences,'citations':cites,'abstained':abstained,'usage':usage,'tool_events':tool_events,'conversation_context':[{'turn_id':t['turn_id'],'snapshot_id':t['snapshot_id']} for t in history],'validation':'Exact quotation membership and source references checked; semantic entailment of model inference is not automatically verified.','latency_ms':round((time.perf_counter()-start)*1000,3)}
         if background:result['background']=background
+        # `abstained` keeps its meaning: nothing in the answer is grounded in the meeting record.
+        # `grounding` says what the user was shown instead.
+        result['grounding']='meeting' if claims and not general_answer else 'meeting_and_model' if claims else 'model_only' if general_answer or background else 'none'
+        if general_answer:result['general_answer']={'text':general_answer,'label':GENERAL_ANSWER_LABEL}
         if notes:result['notes']=notes
         if contract.get('memory')=='explained_terms':
             # Carried forward so a later turn can avoid defining the same term again.

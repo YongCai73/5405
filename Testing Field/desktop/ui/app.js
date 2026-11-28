@@ -62,6 +62,8 @@ const fallbackSkills = [
   { name: "compare_options", label: "Compare options" },
   { name: "direct", label: "Direct" },
 ];
+// Shown beside the skill so it is clear at a glance where an answer came from.
+const groundingLabels = { meeting_and_model: "meeting + model knowledge", model_only: "model knowledge, not from the meeting" };
 const routeLabels = { manual: "chosen", matched: "auto", continued: "session continues", ambiguous: "auto, no clear match", not_applicable: "auto, no match" };
 
 const prompts = [
@@ -699,6 +701,22 @@ function refreshQuestions(meetingId) {
   return refresh;
 }
 
+// The regular refresh runs every 1.5 s. While an answer is pending, look more often so a
+// one-second answer is not shown a second and a half late.
+async function watchPending(meetingId) {
+  if (watchPending.active.has(meetingId)) return;
+  watchPending.active.add(meetingId);
+  try {
+    while (currentTurns(meetingId).some((turn) => turn.pending)) {
+      await new Promise((resolve) => window.setTimeout(resolve, 300));
+      await refreshQuestions(meetingId);
+    }
+  } finally {
+    watchPending.active.delete(meetingId);
+  }
+}
+watchPending.active = new Set();
+
 async function submitQuestion(action, payload) {
   const { meetingId } = payload;
   if (state.questionSubmissions.has(meetingId) || currentTurns(meetingId).some((turn) => turn.pending)) return;
@@ -710,6 +728,7 @@ async function submitQuestion(action, payload) {
     // Finish a poll started before submission, then fetch the newly created turn.
     await questionRefreshes.get(meetingId);
     await refreshQuestions(meetingId);
+    void watchPending(meetingId);
   } catch (error) {
     await refreshQuestions(meetingId);
     if (state.meeting?.id === meetingId) toast(error.message, true);
@@ -1023,7 +1042,8 @@ function answerMeta(turn) {
   const meta = make("div", "answer-meta");
   const skill = turn.answer.skill;
   const route = routeLabels[turn.answer.skillRoute];
-  meta.append(make("span", "skill-tag", skill ? skillLabel(skill) + (route ? " · " + route : "") : ""));
+  const grounding = groundingLabels[turn.answer.grounding];
+  meta.append(make("span", "skill-tag", (skill ? skillLabel(skill) + (route ? " · " + route : "") : "") + (grounding ? " · " + grounding : "")));
   const meetingId = state.meeting.id;
   for (const [rating, symbol, label] of [["up", "👍", "Helpful"], ["down", "👎", "Not helpful"]]) {
     const button = make("button", "rate-button" + (turn.rating === rating ? " selected" : ""), symbol);

@@ -81,11 +81,45 @@ phrases.
 | `ambiguous` | two or more skills tie for the highest score | `direct`; candidates are listed so the user can choose |
 | `not_applicable` | no trigger phrase matched | `direct` (plain keyword retrieval, one generic field) |
 
-No evidence: if retrieval returns nothing, the answer abstains with
-`abstain_reason: no_evidence_retrieved`. With an API provider and no tool rounds,
-the provider is not called at all for that case, so it costs nothing. A wrongly
-routed question does not get re-routed to another skill behind the user's back; it
-abstains, and the routing decision is in the answer.
+No evidence, strict contract (`"general_answers": false`, the local extractive
+mode, and always the API evaluation): if retrieval returns nothing, the answer
+abstains with `abstain_reason: no_evidence_retrieved`. With an API provider and no
+tool rounds, the provider is not called at all for that case, so it costs nothing.
+A wrongly routed question does not get re-routed to another skill behind the
+user's back; it abstains, and the routing decision is in the answer.
+
+### Open answers (default with a configured model, added 2026-11-27)
+
+In a meeting the owner asks things the record cannot answer, and a bare
+"Insufficient evidence" stops the conversation. With `"general_answers": true`
+(the default) and an API provider, every skill may also return `general_answer`:
+the model's own answer for what the sources do not cover. The meeting record is
+used the way retrieval-augmented generation uses its sources, as the basis where
+it applies, and the answer says which part is which.
+
+| | From the meeting or approved files | From the model |
+|---|---|---|
+| Where it appears | exact quotations with `[E…]` citations, and inferences that cite them | under the heading "Beyond the meeting record (model knowledge and reasoning; NOT from the meeting or project files, not verified)" |
+| Host checks | unchanged: the quotation must be an exact substring of a retained source; an inference must cite validated quotations | citation markers are removed so it cannot pass as a quotation; at most 2000 characters |
+| Answer fields | `claims`, `citations`, `inferences` | `general_answer.text`, `general_answer.label` |
+
+`grounding` is `meeting`, `meeting_and_model`, `model_only` or `none`. When nothing
+was quoted the text starts with "No direct evidence for this was found in the
+meeting record or approved files." `abstained` and `abstain_reason` keep their
+meaning, *nothing in this answer is grounded in the record*, so an answer can be
+`abstained: true` and still carry a labelled model answer. The model is told never
+to state in `general_answer` what the team decided, owns, measured or said.
+
+What this changes and what it does not:
+
+- The provider is now called even when nothing was retrieved, so such a question
+  costs one request instead of none.
+- `evaluate --api` forces `general_answers` off, so its abstention, citation and
+  request-count numbers still measure the strict contract and stay comparable
+  with earlier records. The deterministic release gate runs in local mode, which
+  cannot write an open answer, and is unchanged.
+- The host cannot verify model knowledge. The label says so; whether the model
+  keeps team facts out of that section is prompt-enforced, not host-enforced.
 
 Known limits: English trigger phrases only; "why" always scores for
 `trace_decision` even in an unrelated question; a tie falls back to `direct`

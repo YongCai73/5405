@@ -225,6 +225,8 @@ def check_output(result, contract):
         raise ValueError('skill output contract violation: inference references')
     if result.get('background') and contract.get('general_knowledge', 'none') != 'labelled':
         raise ValueError('skill output contract violation: general knowledge not allowed')
+    if result.get('general_answer') and 'provider not called' in result.get('mode', ''):
+        raise ValueError('skill output contract violation: general answer without a model call')
     if result.get('challenge') and not contract.get('session'):
         raise ValueError('skill output contract violation: session output not allowed')
     if result['abstained'] != (not result['claims'] and not result.get('background')):
@@ -354,6 +356,21 @@ def validated_background(data, contract):
     return result
 
 
+GENERAL_ANSWER_LABEL = 'Beyond the meeting record (model knowledge and reasoning; NOT from the meeting or project files, not verified)'
+NO_DIRECT_EVIDENCE = 'No direct evidence for this was found in the meeting record or approved files.'
+GENERAL_ANSWER_LIMIT = 2000
+
+
+def validated_general_answer(data):
+    """The model's own answer for what the sources do not cover. Shown labelled, never as a meeting fact."""
+    text = data.get('general_answer')
+    if not isinstance(text, str):
+        return None
+    # A citation marker here would make model knowledge look like a quotation.
+    text = re.sub(r'\s*\[E\d+\]', '', text).strip()
+    return text[:GENERAL_ANSWER_LIMIT] or None
+
+
 def validated_challenge(data):
     """Exactly one question: text up to and including the first question mark."""
     question = data.get('question')
@@ -369,9 +386,17 @@ def style_flags(texts):
     return sorted(p for p in STOCK_PHRASES if p in joined)
 
 
-def response_extension(contract, state=None, known_terms=(), preferences=()):
+def response_extension(contract, state=None, known_terms=(), preferences=(), open_answer=False):
     """Skill-specific additions to the fixed JSON reply format."""
     parts = []
+    if open_answer:
+        parts.append('Open answer: the user still needs a useful reply when the supplied sources do not answer the question or cover '
+                     'only part of it. In that case, in addition to claims and inferences (which may then be empty), return '
+                     '"general_answer": a direct answer in plain prose from your own knowledge and reasoning, at most 1500 '
+                     'characters, without citation markers. The host shows it under a heading saying it is not from the meeting. '
+                     'Never state in general_answer what this team decided, owns, measured or said; when the question asks for such '
+                     'a fact and the sources lack it, say the record does not show it, then give what generally applies or how to '
+                     'find out. Return "general_answer": null when claims and inferences already answer the question in full.')
     if contract.get('style'):
         parts.append('Style rules: ' + ' '.join(contract['style']))
     if preferences:

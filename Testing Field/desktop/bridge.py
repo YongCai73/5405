@@ -380,6 +380,26 @@ class DesktopBridge:
             if reserved and (reserved['title'] != SAMPLE_SOURCE_TITLE or reserved['owner'] != self.principal):
                 self.sample_id = f'desktop-sample-{uuid.uuid5(uuid.NAMESPACE_OID, self.principal).hex}'
         self.questions = DesktopQuestions(self.store, self.principal, CONVERSATION, self._assistant_for)
+        self._warm_up()
+
+    def _warm_up(self):
+        """Load the model client in the background so the first question does not wait for it."""
+        from meeting_copilot.credentials import api_key
+
+        config = self.config
+        # Only when questions can actually reach the model: otherwise the import is wasted work.
+        if config.provider == 'demo' or not config.send_evidence or not api_key(config.api_key_env):
+            return
+
+        provider = self.assistant.provider
+
+        def load():
+            try:
+                provider.warm_up()
+            except Exception as exc:
+                print(f'Model client warm-up failed ({type(exc).__name__}).', file=sys.stderr)
+
+        threading.Thread(target=load, name='model-warm-up', daemon=True).start()
 
     def close(self):
         try:
@@ -808,6 +828,7 @@ class DesktopBridge:
             self.store, self.principal, Provider(Config()), self.trace,
         )
         self.workers.a = self.assistant
+        self._warm_up()
         return self.settings({})
 
     def test_model(self, _payload):
@@ -865,6 +886,7 @@ class DesktopBridge:
         routing = answer.get('routing') or {}
         return {'text': answer['text'], 'citations': citations, 'mode': answer['mode'],
                 'skill': answer.get('skill'), 'skillRoute': routing.get('status'), 'taskId': answer.get('task_id'),
+                'grounding': answer.get('grounding'),
                 **self._answer_mode(meeting)}
 
     def _summarize(self, snapshot, assistant):

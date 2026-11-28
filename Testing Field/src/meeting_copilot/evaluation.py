@@ -317,7 +317,9 @@ def evaluate(output,work,stress=False,config=None):
     api=config is not None
     if api and (config.provider=='demo' or not config.send_evidence):
         store.close();raise ValueError('API evaluation requires real provider configuration and send_evidence=true')
-    selected_config=replace(config,tool_rounds=0) if api else Config()
+    # The API evaluation measures the grounded contract (abstention, citation, request count), so open
+    # answers beyond the record are switched off here regardless of the user's configuration.
+    selected_config=replace(config,tool_rounds=0,general_answers=False) if api else Config()
     assistant=Assistant(store,user,Provider(selected_config),Trace(work/'traces.jsonl'));runs={};same_evidence={}
     class SameEvidenceDirect(Assistant):
         async def retrieve(self,state):return {'evidence':same_evidence[state['snapshot']]}

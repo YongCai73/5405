@@ -107,6 +107,15 @@ try {
     Copy-Item -LiteralPath (Join-Path $desktopRoot 'minutes.py') -Destination (Join-Path $runtime 'desktop\minutes.py')
     Copy-Item -LiteralPath (Join-Path $desktopRoot 'ui') -Destination (Join-Path $runtime 'desktop\ui') -Recurse
     Get-ChildItem -LiteralPath $root -Recurse -Directory -Filter '__pycache__' | Remove-Item -Recurse -Force
+    # Without bytecode the first question waits about 20 s while Python compiles the model client.
+    # precompile.py writes it for the modules the app actually loads.
+    Write-Host '    Precompiling the modules the app loads...'
+    $previousPath = $env:PYTHONPATH
+    $env:PYTHONPATH = Join-Path $runtime 'src'
+    try {
+        & (Join-Path $python 'python.exe') -B (Join-Path $desktopRoot 'precompile.py') (Join-Path $runtime 'src') | Out-Host
+    }
+    finally { $env:PYTHONPATH = $previousPath }
     $check = 'import importlib.util as u,sys;m=[x for x in sys.argv[1:] if u.find_spec(x) is None];sys.exit(chr(44).join(m) or 0)'
     $previous = $env:PYTHONPATH
     $env:PYTHONPATH = Join-Path $runtime 'src'

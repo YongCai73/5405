@@ -131,7 +131,8 @@ async def test_allowed_model_tool_call_adds_evidence_and_is_traced(store, sid, t
 
 
 async def test_no_evidence_abstains_without_a_provider_call(store, sid, tmp_path):
-    provider = ScriptedProvider([])
+    # The strict contract (general_answers=False), which the API evaluation also uses.
+    provider = ScriptedProvider([], general_answers=False)
     result = await Assistant(store, 'alice', provider, Trace(tmp_path/'trace.jsonl')).ask(sid, 'Compare the cafeteria sandwich options', 'c', 'auto')
     assert result['skill'] == 'compare_options' and result['abstained'] and result['abstain_reason'] == 'no_evidence_retrieved'
     assert provider.requests == [] and result['usage'] == {'input_tokens': 0, 'output_tokens': 0, 'estimated_cost_usd': 0.0}
@@ -218,3 +219,71 @@ def test_cli_auto_route_citation_and_trace_show(tmp_path):
     assert manual['skill'] == 'compare_options' and manual['routing']['mode'] == 'manual'
     again, stderr = cli('ask', 'design', 'Why was Kafka rejected?', '--conversation', 'notes', '--skill', 'catch_up', '--snapshot', answer['snapshot_id'])
     assert again['skill_conflict']['answered_with'] == 'trace_decision' and '"skill_conflict"' in stderr
+
+
+def open_reply(rid=None, general='Sandwich choices usually trade cost against freshness.'):
+    """A scripted model reply that answers beyond the record."""
+    claims = [{'source_id': rid, 'quote': 'SQLite was chosen for simplicity.'}] if rid else []
+    inferences = [{'text': 'The team chose SQLite because it is simple.', 'source_ids': [rid], 'field': 'option_evidence'}] if rid else []
+    return Completion(json.dumps({'claims': claims, 'inferences': inferences, 'general_answer': general}), 11, 7)
+
+
+async def test_question_without_meeting_evidence_gets_a_labelled_model_answer(store, sid, tmp_path):
+    from meeting_copilot.skill_runtime import GENERAL_ANSWER_LABEL, NO_DIRECT_EVIDENCE
+
+    # A citation marker inside the model's own answer would pass it off as a quotation; the host removes it.
+    provider = ScriptedProvider([open_reply(general='Sandwich choices usually trade cost against freshness. [E1]')])
+    result = await Assistant(store, 'alice', provider, Trace(tmp_path/'trace.jsonl')).ask(sid, 'Compare the cafeteria sandwich options', 'c', 'auto')
+    # The model was asked even though nothing was retrieved, and was told how to answer beyond the record.
+    assert len(provider.requests) == 1 and 'general_answer' in provider.requests[0]['messages'][0]['content']
+    assert result['text'] == (NO_DIRECT_EVIDENCE + '\n\n' + GENERAL_ANSWER_LABEL
+                              + ':\nSandwich choices usually trade cost against freshness.')
+    assert result['general_answer']['text'] == 'Sandwich choices usually trade cost against freshness.'
+    assert result['grounding'] == 'model_only' and result['mode'] == 'API / model knowledge only: no meeting evidence cited'
+    # Nothing here is grounded in the meeting, and the answer says so in its own fields.
+    assert result['claims'] == [] and result['citations'] == [] and result['inferences'] == []
+    assert result['abstained'] and result['abstain_reason'] == 'no_evidence_retrieved'
+    assert result['usage']['input_tokens'] == 11
+
+
+async def test_meeting_evidence_and_model_knowledge_are_kept_apart(store, sid, tmp_path):
+    from meeting_copilot.skill_runtime import GENERAL_ANSWER_LABEL
+
+    rid = store.evidence('alice', sid)[0]['id']
+    provider = ScriptedProvider([open_reply(rid, 'Embedded databases in general avoid a separate server process.')])
+    result = await Assistant(store, 'alice', provider, Trace(tmp_path/'trace.jsonl')).ask(sid, 'Compare SQLite with other options', 'c', 'auto')
+    assert result['grounding'] == 'meeting_and_model' and not result['abstained'] and result['abstain_reason'] is None
+    assert [c['source_id'] for c in result['citations']] == [rid] and len(result['inferences']) == 1
+    quoted, beyond = result['text'].split('\n\n' + GENERAL_ANSWER_LABEL + ':\n')
+    assert 'SQLite was chosen for simplicity.' in quoted and f'[E{rid}]' in quoted
+    assert beyond == 'Embedded databases in general avoid a separate server process.' and '[E' not in beyond
+    assert 'API / model synthesis' in result['mode']
+
+    # A fabricated quotation is still rejected; only the labelled model answer remains.
+    forged = Completion(json.dumps({'claims': [{'source_id': rid, 'quote': 'Kafka was chosen for scale.'}],
+                                    'inferences': [{'text': 'The team chose Kafka.', 'source_ids': [rid], 'field': 'option_evidence'}],
+                                    'general_answer': 'Kafka is a distributed log.'}), 1, 1)
+    provider = ScriptedProvider([forged])
+    result = await Assistant(store, 'alice', provider, Trace(tmp_path/'trace2.jsonl')).ask(sid, 'Compare SQLite with Kafka options', 'd', 'auto')
+    assert result['claims'] == [] and result['inferences'] == [] and result['abstained']
+    assert result['validation_report']['claims_rejected'] == 1 and result['grounding'] == 'model_only'
+    assert 'The team chose Kafka' not in result['text'] and result['text'].endswith('Kafka is a distributed log.')
+
+
+async def test_local_mode_and_a_reply_without_general_answer_keep_the_abstention_text(store, sid, tmp_path):
+    local = await Assistant(store, 'alice', Provider(Config()), Trace(tmp_path/'local.jsonl')).ask(sid, 'Compare the cafeteria sandwich options', 'c', 'auto')
+    assert local['text'].startswith('Insufficient evidence in this authorized snapshot.') and local['grounding'] == 'none'
+    assert 'general_answer' not in local and local['abstained']
+    provider = ScriptedProvider([Completion(json.dumps({'claims': [], 'inferences': [], 'general_answer': None}), 1, 1)])
+    silent = await Assistant(store, 'alice', provider, Trace(tmp_path/'silent.jsonl')).ask(sid, 'Compare the cafeteria sandwich options', 'e', 'auto')
+    assert silent['text'] == 'Insufficient evidence in this authorized snapshot.' and silent['grounding'] == 'none'
+
+
+def test_general_answers_setting_is_a_validated_boolean(tmp_path):
+    assert Config().general_answers is True
+    path = tmp_path / 'config.json'
+    path.write_text(json.dumps({'general_answers': False}), encoding='utf-8')
+    assert Config.load(path).general_answers is False
+    path.write_text(json.dumps({'general_answers': 'yes'}), encoding='utf-8')
+    with pytest.raises(ValueError, match='general_answers'):
+        Config.load(path)

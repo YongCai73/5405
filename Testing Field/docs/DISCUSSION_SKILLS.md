@@ -58,7 +58,9 @@ helps"). It reports them; it does not rewrite the answer.
    words such as "because" or "compare". Naming another `--skill` leaves it.
 5. State is the user's own stored private turns for that conversation. Another
    conversation, another user, or a process restart changes nothing.
-6. With no evidence about the topic the skill abstains and no session starts.
+6. With no evidence about the topic no session starts. Under the strict contract the
+   skill abstains; with open answers (see MCP_SKILLS.md) the model may still reply
+   under the "Beyond the meeting record" heading.
 
 ## Feedback and wording preferences
 
