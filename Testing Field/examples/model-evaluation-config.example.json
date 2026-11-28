@@ -1,0 +1,17 @@
+{
+  "principal": "model-evaluation",
+  "data_dir": "model-evaluation-data",
+  "provider": "openai",
+  "model": "deepseek-flash",
+  "base_url": "https://api.deepseek.com",
+  "api_key_env": "MC_MODEL_API_KEY",
+  "send_evidence": true,
+  "timeout_seconds": 120,
+  "max_tokens": 800,
+  "streaming": true,
+  "tool_rounds": 0,
+  "research_retries": 0,
+  "thinking": "disabled",
+  "general_answers": false,
+  "transcript_context": false
+}

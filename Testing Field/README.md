@@ -90,6 +90,6 @@ Optional **paid** evaluation commands, only after configuring your own endpoint:
 .venv/bin/python -m meeting_copilot native-baseline --output results/local-native-baseline.json
 ```
 
-The native runner uses a documented common-transport bridge and synthetic parent DB rows; it is not the full desktop/native RAG stack. Compare runs using the same provider/model/hardware; expected-term scores are not human correctness or semantic support. The policy ablation runs only against fresh synthetic evaluator data.
+The native runner uses a documented common-transport bridge and synthetic parent DB rows; it is not the full desktop/native RAG stack. Compare runs using the same provider/model/hardware; expected-term scores are not human correctness or semantic support. The policy ablation runs only against fresh synthetic evaluator data. See [model API evaluation](docs/MODEL_EVALUATION.md) for a shared non-secret configuration template and cross-provider run steps.
 
 Current feature mapping: [requirements-current.json](results/requirements-current.json). Portable delivery summary: [server-delivery.json](results/server-delivery.json). Historical results and count boundaries: [results index](results/README.md). Chinese handoff: [handoff.md](handoff.md). Independent findings, validation and limitations: [docs/INDEPENDENT_REVIEW.md](docs/INDEPENDENT_REVIEW.md). Upstream MIT attribution: [docs/UPSTREAM_SOURCE.json](docs/UPSTREAM_SOURCE.json), [docs/UPSTREAM_LICENSE.txt](docs/UPSTREAM_LICENSE.txt). The original v0.1 tag and historical build report are preserved.
