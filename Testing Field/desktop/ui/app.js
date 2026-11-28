@@ -51,6 +51,7 @@ const state = {
   skills: [],
   skill: "auto",
   feedbackTurn: null,
+  settings: null,
 };
 
 // Used until the backend's skill list arrives, and if an older backend has none.
@@ -588,6 +589,7 @@ function updateComposer() {
   const enabled = Boolean(state.meeting?.segments?.length)
     && !state.questionSubmissions.has(state.meeting?.id)
     && !currentTurns().some((turn) => turn.pending);
+  renderSetupHint();
   field.disabled = !enabled;
   byId("skill-select").disabled = !enabled;
   byId("send-question").disabled = !enabled || !field.value.trim();
@@ -918,21 +920,51 @@ byId("feedback-form").addEventListener("submit", (event) => {
   if (turn) void rate(turn.meetingId, turn.id, "down", byId("feedback-note").value.trim());
 });
 byId("open-settings").addEventListener("click", () => { void openSettings(); });
-byId("key-form").addEventListener("submit", (event) => {
+byId("setup-model").addEventListener("click", () => { void openSettings(); });
+byId("model-preset").addEventListener("change", (event) => {
+  const preset = (state.settings?.presets || []).find((row) => row.id === event.target.value);
+  if (!preset) return;
+  // Switching provider starts from that provider's defaults; the saved one keeps its saved values.
+  const saved = state.settings.preset === preset.id;
+  byId("model-name").value = saved ? state.settings.model : preset.model;
+  byId("model-base-url").value = saved ? state.settings.baseUrl : preset.baseUrl;
+  if (!saved) byId("model-consent").checked = false;
+  byId("model-test-status").textContent = "";
+  renderModelFields(preset.id);
+});
+byId("model-form").addEventListener("submit", (event) => {
   event.preventDefault();
   const field = byId("api-key-input");
   const key = field.value.trim();
   // Clear the field before anything else so the key never lingers in the page.
   field.value = "";
-  if (!key) return;
+  const payload = {
+    preset: byId("model-preset").value,
+    model: byId("model-name").value.trim(),
+    baseUrl: byId("model-base-url").value.trim(),
+    sendEvidence: byId("model-consent").checked,
+    key,
+  };
   void settingsAction(async () => {
-    renderSettings(await bridge("saveApiKey", { key }));
-    toast("API key saved.");
+    applySettings(await bridge("saveModelSettings", payload));
+    byId("model-test-status").textContent = "";
+    toast(state.settings.provider === "demo" ? "Using local answers." : "Model saved. It is used from the next question.");
+    if (state.meeting) useDetail(await bridge("meeting", { meetingId: state.meeting.id }));
   });
+});
+byId("test-model").addEventListener("click", () => {
+  const status = byId("model-test-status");
+  const button = byId("test-model");
+  button.disabled = true;
+  status.textContent = "Contacting the provider…";
+  bridge("testModel").then(
+    (result) => { status.textContent = "Connected. " + result.model + " answered a test request."; },
+    (error) => { status.textContent = "Not connected. " + error.message; },
+  ).finally(() => { renderModelFields(byId("model-preset").value); });
 });
 byId("remove-key").addEventListener("click", () => {
   void settingsAction(async () => {
-    renderSettings(await bridge("deleteApiKey"));
+    applySettings(await bridge("deleteApiKey"));
     toast("Saved API key removed.");
   });
 });
@@ -1023,19 +1055,73 @@ async function rate(meetingId, questionId, rating, note) {
   }
 }
 
+// What still stands between the user and model answers, or "" when nothing does.
+function setupGap(settings) {
+  if (!settings) return "";
+  if (settings.provider === "demo") return "Answers use local excerpts. Set up a model for fuller answers →";
+  if (!settings.keySaved && !settings.keyInEnvironment) return "The model needs an API key. Add it in Settings →";
+  if (!settings.sendEvidence) return "The model is not used until you allow sending excerpts. Open Settings →";
+  return "";
+}
+
+function renderSetupHint() {
+  const hint = byId("setup-model");
+  const message = setupGap(state.settings);
+  hint.textContent = message;
+  hint.hidden = !message;
+}
+
+function renderModelFields(presetId) {
+  const local = presetId === "local";
+  const settings = state.settings;
+  byId("model-name").disabled = local;
+  byId("model-base-url").disabled = local;
+  byId("model-consent").disabled = local;
+  byId("api-key-input").disabled = local || !settings.keyStoreAvailable;
+  byId("remove-key").disabled = !settings.keySaved;
+  // Testing uses what is saved, so it is offered for the saved provider only.
+  byId("test-model").disabled = settings.provider === "demo" || settings.preset !== presetId;
+}
+
 function renderSettings(settings) {
+  state.settings = settings;
   const local = settings.provider === "demo";
   byId("settings-provider").textContent = local
-    ? "No model is configured, so answers use local excerpts. To use a model, set provider, model and send_evidence in config.json in " + settings.configFolder + " and reopen the app. A key saved here is used once a provider is configured."
-    : settings.providerLabel + " · " + settings.model + (settings.baseUrl ? " · " + settings.baseUrl : "")
-      + (settings.sendEvidence ? "" : ". send_evidence is off in config.json, so the model is not called yet.");
-  let status = settings.keySaved ? "A key is saved for " + settings.keyName + "." : "No key is saved for " + settings.keyName + ".";
+    ? "No model is set up, so answers come from local excerpts. Choose a provider, paste its key and save. You only do this once."
+    : settings.ready ? "Ready. Questions use " + settings.model + ". Saved in " + settings.configFile + "."
+      : setupGap(settings).replace(/ (Add it in|Open) Settings →$/, "").replace(/ →$/, "");
+  const select = byId("model-preset");
+  select.replaceChildren(...settings.presets.map((preset) => {
+    const option = make("option", "", preset.label);
+    option.value = preset.id;
+    option.selected = preset.id === settings.preset;
+    return option;
+  }));
+  select.value = settings.preset;
+  byId("model-name").value = settings.model;
+  byId("model-base-url").value = settings.baseUrl;
+  byId("model-consent").checked = settings.sendEvidence;
+  let status = settings.keySaved
+    ? "A key is saved in this computer's credential store. Paste a new one only to replace it."
+    : "Stored in this computer's credential store, never in a file, and not shown again.";
   if (settings.keyInEnvironment) status = "The environment variable " + settings.keyName + " is set and takes priority." + (settings.keySaved ? " A saved key also exists." : "");
   if (!settings.keyStoreAvailable) status += " The credential store is unavailable in this build, so a key cannot be saved here.";
   byId("settings-key-status").textContent = status;
-  byId("api-key-input").disabled = !settings.keyStoreAvailable;
-  byId("save-key").disabled = !settings.keyStoreAvailable;
-  byId("remove-key").disabled = !settings.keySaved;
+  renderModelFields(settings.preset);
+}
+
+function applySettings(settings) {
+  renderSettings(settings);
+  renderSetupHint();
+}
+
+async function loadSettings() {
+  try {
+    state.settings = await bridge("settings");
+  } catch {
+    // The hint stays hidden when the backend cannot report its settings.
+  }
+  renderSetupHint();
 }
 
 function renderPreferences(result) {
@@ -1070,7 +1156,8 @@ async function openSettings() {
   byId("api-key-input").value = "";
   await settingsAction(async () => {
     const [settings, preferences] = await Promise.all([bridge("settings"), bridge("preferences", { action: "list" })]);
-    renderSettings(settings);
+    byId("model-test-status").textContent = "";
+    applySettings(settings);
     renderPreferences(preferences);
     byId("settings-dialog").showModal();
   });
@@ -1118,6 +1205,7 @@ async function runSuggest() {
 async function boot() {
   render();
   void loadSkills();
+  void loadSettings();
   try {
     applyCollection(await bridge("bootstrap"));
   } catch (error) {

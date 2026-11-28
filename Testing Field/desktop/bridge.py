@@ -32,8 +32,22 @@ PROVIDER_MESSAGES = {
     'evidence_upload_not_enabled': 'Enable send_evidence in the desktop configuration to use the configured API.',
     'missing_api_key': 'No API key is available for the configured provider. Add one in Settings.',
     'timeout': 'The configured API did not respond before the timeout.',
+    'authentication': 'The provider rejected the API key. Check it in Settings.',
+    'badrequest': 'The provider rejected the request. Check the model name and base URL in Settings.',
+    'connection': 'The provider could not be reached. Check the base URL in Settings and your network.',
+    'ratelimit': 'The provider is rate limiting this key or the account has no balance. Try again later.',
     'invalid_minutes_response': 'The configured API did not return usable cited meeting notes. Try again.',
 }
+# Choices offered in Settings. The DeepSeek values are the ones recorded in
+# results/live-deepseek-validation-2026-11-27.md; the others are starting points to edit.
+MODEL_PRESETS = (
+    {'id': 'local', 'label': 'Local only (no model)', 'provider': 'demo', 'model': '', 'baseUrl': ''},
+    {'id': 'deepseek', 'label': 'DeepSeek', 'provider': 'openai', 'model': 'deepseek-flash',
+     'baseUrl': 'https://api.deepseek.com/v1'},
+    {'id': 'openai', 'label': 'OpenAI', 'provider': 'openai', 'model': '', 'baseUrl': ''},
+    {'id': 'anthropic', 'label': 'Anthropic', 'provider': 'anthropic', 'model': 'claude-fable-5-2', 'baseUrl': ''},
+    {'id': 'custom', 'label': 'Other OpenAI-compatible', 'provider': 'openai', 'model': '', 'baseUrl': ''},
+)
 SUGGESTION_ACTIONS = {
     'preference': 'Save it as a wording preference.',
     'use_existing_skill': 'Choose this skill in the question type menu beside the question box.',
@@ -328,7 +342,7 @@ def capture_audio(root, stream, meeting, device, offset, parent_pid, principal, 
 
 
 class DesktopBridge:
-    def __init__(self, config):
+    def __init__(self, config, config_path=None):
         from meeting_copilot.assistant import Assistant, Workers
         from meeting_copilot.config import Config
         from meeting_copilot.provider import Provider
@@ -336,6 +350,8 @@ class DesktopBridge:
         from meeting_copilot.trace import Trace
 
         self.config = config
+        # Where Settings saves the model choice; the workspace default when none was given.
+        self.config_path = Path(config_path) if config_path else Path(config._base) / 'config.json'
         self.root = config.root
         self.principal = config.principal
         self.store = Store(self.root / 'evidence.db')
@@ -398,7 +414,8 @@ class DesktopBridge:
             'preferences': self.preferences,
             'suggest': self.suggest,
             'settings': self.settings,
-            'saveApiKey': self.save_api_key,
+            'saveModelSettings': self.save_model_settings,
+            'testModel': self.test_model,
             'deleteApiKey': self.delete_api_key,
         }
         if not isinstance(action, str) or action not in handlers:
@@ -424,8 +441,12 @@ class DesktopBridge:
             **self._answer_mode(row['id']),
         }
 
+    def _sample_is_local(self):
+        # The sample needs no setup. Once a model is chosen and sharing is allowed, it uses that model too.
+        return self.config.provider == 'demo' or not self.config.send_evidence
+
     def _answer_mode(self, meeting):
-        provider = 'demo' if meeting == self.sample_id else self.config.provider
+        provider = 'demo' if meeting == self.sample_id and self._sample_is_local() else self.config.provider
         return {'answerMode': 'local' if provider == 'demo' else 'api', 'providerLabel': PROVIDER_LABELS[provider]}
 
     def _scope(self, meeting, payload=None):
@@ -562,7 +583,7 @@ class DesktopBridge:
         return self._detail(required_text(payload, 'meetingId', 80))
 
     def _assistant_for(self, meeting):
-        return self.local_assistant if meeting == self.sample_id else self.assistant
+        return self.local_assistant if meeting == self.sample_id and self._sample_is_local() else self.assistant
 
     def _new_question(self, payload):
         meeting = required_text(payload, 'meetingId', 80)
@@ -686,27 +707,121 @@ class DesktopBridge:
 
         config = self.config
         name = config.api_key_env
+        local = config.provider == 'demo'
+        if local:
+            preset = 'local'
+        elif config.provider == 'anthropic':
+            preset = 'anthropic'
+        elif not config.base_url:
+            preset = 'openai'
+        else:
+            preset = 'deepseek' if 'deepseek.com' in config.base_url else 'custom'
+        in_environment = bool(os.environ.get(name))
+        saved = bool(credentials.stored_key(name))
         return {
-            'provider': config.provider, 'providerLabel': PROVIDER_LABELS[config.provider], 'model': config.model,
-            'baseUrl': config.base_url or '', 'sendEvidence': config.send_evidence, 'keyName': name,
-            'keyInEnvironment': bool(os.environ.get(name)), 'keySaved': bool(credentials.stored_key(name)),
-            'keyStoreAvailable': credentials.store_available(), 'configFolder': str(config._base),
+            'provider': config.provider, 'providerLabel': PROVIDER_LABELS[config.provider],
+            'model': '' if local else config.model, 'baseUrl': config.base_url or '',
+            'sendEvidence': config.send_evidence, 'preset': preset, 'presets': [dict(row) for row in MODEL_PRESETS],
+            'keyName': name, 'keyInEnvironment': in_environment, 'keySaved': saved,
+            'keyStoreAvailable': credentials.store_available(), 'configFile': str(self.config_path),
+            # True once questions about a real meeting will reach the model.
+            'ready': not local and config.send_evidence and (in_environment or saved),
         }
 
-    def save_api_key(self, payload):
-        """Save the provider key in the OS credential store. The key is never logged, traced or echoed."""
-        from meeting_copilot import credentials
-
-        key = payload.get('key')
-        key = key.strip() if isinstance(key, str) else ''
-        if not 8 <= len(key) <= 512 or any(ch.isspace() or not ch.isprintable() for ch in key):
+    def _valid_key(self, payload):
+        """An optional API key from the request. It is never logged, traced or echoed."""
+        key = payload.get('key', '')
+        key = key.strip() if isinstance(key, str) else None
+        if key is None or (key and (not 8 <= len(key) <= 512 or any(ch.isspace() or not ch.isprintable() for ch in key))):
             raise DesktopError('Enter a valid API key.')
-        if not credentials.store_available():
-            raise DesktopError('The system credential store is unavailable. Install the "keyring" package '
-                               'in the Python environment the app was built from, or set the environment variable.')
-        if not credentials.save_key(self.config.api_key_env, key):
-            raise DesktopError('The system credential store did not accept the key.')
+        return key
+
+    def save_model_settings(self, payload):
+        """Save the model choice to the workspace configuration and use it at once.
+
+        Only the provider fields change; the data folder, the principal and every
+        other setting in an existing configuration are kept.
+        """
+        from meeting_copilot import credentials
+        from meeting_copilot.assistant import Assistant
+        from meeting_copilot.config import Config
+        from meeting_copilot.private_files import write_private_text
+        from meeting_copilot.provider import Provider
+
+        preset = next((row for row in MODEL_PRESETS if row['id'] == payload.get('preset')), None)
+        if preset is None:
+            raise DesktopError('Choose a provider.')
+        key = self._valid_key(payload)
+        capture = self._current_capture()
+        if capture or self.questions.pending:
+            raise DesktopError('Wait for the recording and any running answer to finish before changing the model.')
+        values = {name: getattr(self.config, name) for name in Config.__dataclass_fields__ if not name.startswith('_')}
+        if preset['id'] == 'local':
+            defaults = Config()
+            values.update(provider='demo', model=defaults.model, base_url=None, send_evidence=False)
+        else:
+            model = payload.get('model')
+            base_url = payload.get('baseUrl', '')
+            consent = payload.get('sendEvidence')
+            if not isinstance(model, str) or not 1 <= len(model.strip()) <= 200 or any(ch.isspace() for ch in model.strip()):
+                raise DesktopError('Enter the model name the provider expects.')
+            if not isinstance(base_url, str) or len(base_url) > 500:
+                raise DesktopError('Enter a valid base URL.')
+            base_url = base_url.strip()
+            local_server = base_url.startswith(('http://localhost', 'http://127.0.0.1'))
+            if base_url and not (base_url.startswith('https://') or local_server) or any(ch.isspace() for ch in base_url):
+                raise DesktopError('The base URL must start with https://.')
+            if not base_url and preset['id'] in ('deepseek', 'custom'):
+                raise DesktopError('Enter the base URL of the provider.')
+            if type(consent) is not bool:
+                raise DesktopError('Choose whether meeting excerpts may be sent to the provider.')
+            values.update(provider=preset['provider'], model=model.strip(), base_url=base_url or None,
+                          send_evidence=consent)
+            # The shipped defaults (20 s, 800 tokens) suit the local mode, not a hosted model.
+            values['timeout_seconds'] = max(values['timeout_seconds'], 120)
+            values['max_tokens'] = max(values['max_tokens'], 4096)
+            if preset['id'] == 'deepseek':
+                values['streaming'] = True
+        if key and not credentials.store_available():
+            raise DesktopError('The system credential store is unavailable in this build, so the key cannot be saved '
+                               'here. Set the environment variable instead.')
+        text = json.dumps(values, indent=2, ensure_ascii=False)
+        draft = self.config_path.with_name(self.config_path.name + '.draft')
+        try:
+            self.config_path.parent.mkdir(parents=True, exist_ok=True)
+            write_private_text(draft, text)
+            Config.load(draft)
+            write_private_text(self.config_path, text)
+            config = Config.load(self.config_path)
+        except (OSError, TypeError, ValueError):
+            raise DesktopError('The settings could not be saved to the workspace configuration.') from None
+        finally:
+            try:
+                draft.unlink()
+            except OSError:
+                pass
+        if key and not credentials.save_key(config.api_key_env, key):
+            raise DesktopError('The model was saved, but the system credential store did not accept the key.')
+        self.config = config
+        self.assistant = Assistant(self.store, self.principal, Provider(config), self.trace)
+        self.local_assistant = self.assistant if config.provider == 'demo' else Assistant(
+            self.store, self.principal, Provider(Config()), self.trace,
+        )
+        self.workers.a = self.assistant
         return self.settings({})
+
+    def test_model(self, _payload):
+        """Send one short request that contains no meeting content, to check the key, model and address."""
+        import dataclasses
+
+        from meeting_copilot.provider import Provider
+
+        if self.config.provider == 'demo':
+            raise DesktopError('Choose a provider and save it first.')
+        probe = dataclasses.replace(self.config, send_evidence=True, max_tokens=32, streaming=False, tool_rounds=0,
+                                    timeout_seconds=min(self.config.timeout_seconds, 30))
+        asyncio.run(Provider(probe).chat([{'role': 'user', 'content': 'Reply with the single word OK.'}]))
+        return {'ok': True, 'model': self.config.model}
 
     def delete_api_key(self, _payload):
         from meeting_copilot import credentials
@@ -823,7 +938,7 @@ class DesktopBridge:
 
     def summary(self, payload):
         meeting = required_text(payload, 'meetingId', 80)
-        assistant = self.local_assistant if meeting == self.sample_id else self.assistant
+        assistant = self._assistant_for(meeting)
         if payload.get('final') is True:
             return self._final_summary(meeting, assistant)
         return {'text': self._summarize(self._scope(meeting), assistant)}
@@ -1021,7 +1136,7 @@ def main():
             meeting, device, offset, parent_pid, principal, model = args.capture
             return capture_audio(root, protocol, meeting, device, int(offset), int(parent_pid), principal, model,
                                  low_latency=args.low_latency, stop_file=args.capture_stop_file)
-        bridge = DesktopBridge(config)
+        bridge = DesktopBridge(config, None if args.capture else (config_path or default_path))
 
         def terminate(_signum, _frame):
             raise KeyboardInterrupt

@@ -311,3 +311,6 @@ blockquote { margin: 10px 0 0; padding: 6px 0 6px 12px; border-left: 3px solid v
 .suggestion p + p { margin-top: 4px; }
 .suggestion .suggestion-kind { color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: .04em; margin-bottom: 3px; }
 .suggestion button { margin-top: 7px; }
+.setup-model { display: block; width: 100%; margin-top: 8px; border: 1px dashed var(--border-strong); border-radius: 8px; background: var(--wash); color: var(--accent-dark); font-size: 11px; line-height: 1.4; padding: 7px 9px; text-align: left; }
+.setup-model:hover { background: var(--wash-strong); }
+dialog#settings-dialog { max-height: 92vh; overflow: auto; }

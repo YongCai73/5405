@@ -13,7 +13,7 @@ public partial class MainWindow : Window
     {
         "bootstrap", "meeting", "demo", "create", "ask", "summary", "export", "importAudio",
         "devices", "startRecording", "stopRecording", "beginQuestion", "resumeQuestion", "questionHistory",
-        "skills", "feedback", "preferences", "suggest", "settings", "saveApiKey", "deleteApiKey",
+        "skills", "feedback", "preferences", "suggest", "settings", "saveModelSettings", "testModel", "deleteApiKey",
     };
     private readonly BackendClient backend = new();
     private readonly ConcurrentDictionary<string, FileTransfer> transfers = new();

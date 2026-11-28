@@ -100,6 +100,7 @@
           <textarea id="question" rows="2" maxlength="4000" placeholder="Ask a question…" aria-label="Ask a question" disabled></textarea>
           <div class="composer-footer"><select id="skill-select" class="skill-select" aria-label="Question type" title="Question type"></select><span class="composer-mode" id="composer-mode" hidden><i aria-hidden="true"></i><span id="composer-mode-label"></span></span><button type="submit" id="send-question" class="send-button" aria-label="Send question" disabled>↑</button></div>
         </div>
+        <button type="button" class="setup-model" id="setup-model" hidden></button>
         <p class="composer-help">Select a citation to see its source.</p>
       </form>
     </aside>
@@ -156,14 +157,21 @@
 
   <dialog id="settings-dialog" aria-labelledby="settings-title">
     <div class="dialog-header"><h2 id="settings-title">Settings</h2><button type="button" class="close-button" data-close="settings-dialog" aria-label="Close">×</button></div>
-    <h3 class="settings-heading">Model and API key</h3>
-    <p class="dialog-hint" id="settings-provider"></p>
-    <p class="dialog-hint" id="settings-key-status" role="status"></p>
-    <form id="key-form">
+    <h3 class="settings-heading">Model</h3>
+    <p class="dialog-hint" id="settings-provider" role="status"></p>
+    <form id="model-form">
+      <label for="model-preset">Provider</label>
+      <select id="model-preset"></select>
+      <label for="model-name">Model</label>
+      <input id="model-name" maxlength="200" autocomplete="off" spellcheck="false" placeholder="Model name the provider expects">
+      <label for="model-base-url">Base URL</label>
+      <input id="model-base-url" maxlength="500" autocomplete="off" spellcheck="false" placeholder="Leave empty for the provider's default address">
       <label for="api-key-input">API key</label>
       <input id="api-key-input" type="password" maxlength="512" autocomplete="off" spellcheck="false" placeholder="Paste the provider key">
-      <p class="dialog-hint">Saved in this computer's credential store, never in a file. It is not shown again.</p>
-      <div class="dialog-actions"><button type="button" class="button button-outline" id="remove-key">Remove saved key</button><button type="submit" class="button button-primary" id="save-key">Save key</button></div>
+      <p class="dialog-hint" id="settings-key-status" role="status"></p>
+      <label class="consent" for="model-consent"><input id="model-consent" type="checkbox"> Send the meeting excerpts and approved files a question needs to this provider. Model answers need this.</label>
+      <p class="dialog-hint" id="model-test-status" role="status"></p>
+      <div class="dialog-actions"><button type="button" class="button button-outline" id="remove-key">Remove saved key</button><button type="button" class="button button-outline" id="test-model">Test connection</button><button type="submit" class="button button-primary" id="save-model">Save</button></div>
     </form>
     <h3 class="settings-heading">Wording preferences</h3>
     <p class="dialog-hint" id="preference-hint">Short style rules sent with questions to a configured model. They change wording only, never scope or permissions.</p>

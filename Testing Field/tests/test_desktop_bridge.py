@@ -285,22 +285,99 @@ def test_settings_report_key_status_without_exposing_the_key(tmp_path, monkeypat
     }), encoding='utf-8')
     secret = 'sk-test-environment-secret-value'
     monkeypatch.setenv('TEST_DESKTOP_SETTINGS_KEY', secret)
+    model = {'preset': 'custom', 'model': 'test-model', 'baseUrl': 'https://example.invalid/v1', 'sendEvidence': True}
     replies = run_bridge(workspace, [
         ('settings', {}),
-        ('saveApiKey', {'key': 'short'}),
-        ('saveApiKey', {'key': 'has a space inside it'}),
-        ('saveApiKey', {'key': 'sk-test-another-secret-value'}),
+        ('saveModelSettings', {**model, 'key': 'short'}),
+        ('saveModelSettings', {**model, 'key': 'has a space inside it'}),
+        ('saveModelSettings', {**model, 'key': 'sk-test-another-secret-value'}),
         ('deleteApiKey', {}),
     ])
     settings = replies[0]['result']
-    assert settings['provider'] == 'openai' and settings['model'] == 'test-model'
+    assert settings['provider'] == 'openai' and settings['model'] == 'test-model' and settings['preset'] == 'custom'
     assert settings['keyName'] == 'TEST_DESKTOP_SETTINGS_KEY' and settings['keyInEnvironment'] is True
-    # The test suite disables the OS credential store, so saving is refused with guidance.
+    assert settings['ready'] is True
+    # The test suite disables the OS credential store, so saving a key is refused with guidance.
     assert settings['keyStoreAvailable'] is False and settings['keySaved'] is False
     assert [reply['ok'] for reply in replies[1:]] == [False, False, False, True]
     assert 'valid API key' in replies[1]['error'] and 'valid API key' in replies[2]['error']
     assert 'credential store is unavailable' in replies[3]['error']
     assert secret not in json.dumps(replies) and 'another-secret' not in json.dumps(replies)
+
+
+def test_model_is_set_up_once_in_the_app_and_used_without_a_restart(tmp_path, monkeypatch):
+    workspace = tmp_path / 'workspace'
+    config = workspace / 'config.json'
+    monkeypatch.delenv('MEETING_COPILOT_API_KEY', raising=False)
+    deepseek = {'preset': 'deepseek', 'model': 'deepseek-flash', 'baseUrl': 'https://api.deepseek.com/v1'}
+    replies = run_bridge(workspace, [
+        ('bootstrap', {}),
+        ('settings', {}),
+        ('saveModelSettings', {**deepseek, 'sendEvidence': False}),
+        ('meeting', {'meetingId': 'demo'}),
+        ('saveModelSettings', {**deepseek, 'sendEvidence': True}),
+        ('meeting', {'meetingId': 'demo'}),
+        ('ask', {'meetingId': 'demo', 'question': 'Why did we choose SQLite?'}),
+        ('testModel', {}),
+        ('saveModelSettings', {**deepseek, 'baseUrl': 'ftp://example.invalid', 'sendEvidence': True}),
+        ('saveModelSettings', {**deepseek, 'model': '', 'sendEvidence': True}),
+        ('saveModelSettings', {**deepseek, 'baseUrl': ''}),
+        ('saveModelSettings', {'preset': 'unknown'}),
+    ])
+    assert [reply['ok'] for reply in replies] == [True, True, True, True, True, True, False, False, False, False, False, False]
+    first = replies[1]['result']
+    assert (first['preset'], first['provider'], first['ready']) == ('local', 'demo', False)
+    assert [row['id'] for row in first['presets']] == ['local', 'deepseek', 'openai', 'anthropic', 'custom']
+    # Without permission to send excerpts the sample stays on local answers.
+    assert replies[2]['result']['sendEvidence'] is False and replies[3]['result']['answerMode'] == 'local'
+    saved = replies[4]['result']
+    assert (saved['preset'], saved['provider'], saved['model']) == ('deepseek', 'openai', 'deepseek-flash')
+    assert saved['configFile'] == str(config) and saved['ready'] is False
+    # The running backend switched: the sample now goes to the model, which has no key yet.
+    assert replies[5]['result']['answerMode'] == 'api'
+    assert 'API key' in replies[6]['error'] and 'API key' in replies[7]['error']
+    written = json.loads(config.read_text(encoding='utf-8'))
+    assert written['provider'] == 'openai' and written['base_url'] == 'https://api.deepseek.com/v1'
+    assert written['send_evidence'] is True and written['streaming'] is True
+    assert (written['timeout_seconds'], written['max_tokens']) == (120, 4096)
+    assert written['data_dir'] == 'data' and written['api_key_env'] == 'MEETING_COPILOT_API_KEY'
+    assert not list(workspace.glob('config.json.*'))
+
+    # The next launch reads the file: nothing to set up again, and the data is where it was.
+    replies = run_bridge(workspace, [
+        ('settings', {}),
+        ('bootstrap', {}),
+        ('saveModelSettings', {'preset': 'local'}),
+        ('meeting', {'meetingId': 'demo'}),
+        ('ask', {'meetingId': 'demo', 'question': 'Why did we choose SQLite?'}),
+    ])
+    assert all(reply['ok'] for reply in replies)
+    assert replies[0]['result']['preset'] == 'deepseek'
+    assert replies[1]['result']['meeting']['answerMode'] == 'api'
+    assert replies[2]['result']['provider'] == 'demo' and replies[3]['result']['answerMode'] == 'local'
+    assert replies[4]['result']['citations']
+    assert json.loads(config.read_text(encoding='utf-8'))['provider'] == 'demo'
+
+
+def test_saving_the_model_keeps_other_configuration(tmp_path):
+    workspace = tmp_path / 'workspace'
+    workspace.mkdir()
+    custom = tmp_path / 'elsewhere' / 'custom.json'
+    custom.parent.mkdir()
+    custom.write_text(json.dumps({
+        'data_dir': 'kept-data', 'principal': 'kept-user', 'api_key_env': 'KEPT_KEY_NAME', 'asr_model': 'base.en',
+        'tool_rounds': 1,
+    }), encoding='utf-8')
+    reply, = run_bridge(workspace, [
+        ('saveModelSettings', {'preset': 'anthropic', 'model': 'some-model', 'baseUrl': '', 'sendEvidence': True}),
+    ], '--config', str(custom))
+    assert reply['ok'] and reply['result']['configFile'] == str(custom) and reply['result']['keyName'] == 'KEPT_KEY_NAME'
+    written = json.loads(custom.read_text(encoding='utf-8'))
+    assert (written['provider'], written['model'], written['base_url']) == ('anthropic', 'some-model', None)
+    assert (written['data_dir'], written['principal'], written['asr_model'], written['tool_rounds']) == (
+        'kept-data', 'kept-user', 'base.en', 1)
+    assert not (workspace / 'config.json').exists()
+    assert (custom.parent / 'kept-data' / 'evidence.db').exists()
 
 
 def test_save_and_delete_key_through_the_bridge(tmp_path, monkeypatch):
@@ -318,24 +395,33 @@ def test_save_and_delete_key_through_the_bridge(tmp_path, monkeypatch):
     fake.delete_password = lambda service, name: saved.pop((service, name))
     monkeypatch.setitem(sys.modules, 'keyring', fake)
     monkeypatch.setenv('MEETING_COPILOT_KEYRING', '1')
-    monkeypatch.delenv('TEST_DESKTOP_SAVED_KEY', raising=False)
+    monkeypatch.delenv('MEETING_COPILOT_API_KEY', raising=False)
     monkeypatch.setattr(credentials, '_found', {})
     monkeypatch.syspath_prepend(str(BRIDGE.parent))
     spec = importlib.util.spec_from_file_location('desktop_bridge_under_test', BRIDGE)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
-    config = Config(provider='openai', model='m', send_evidence=True, api_key_env='TEST_DESKTOP_SAVED_KEY',
-                    _base=tmp_path)
-    bridge = module.DesktopBridge(config)
+    bridge = module.DesktopBridge(Config(_base=tmp_path))
     try:
-        assert bridge.run('settings', {})['keySaved'] is False
-        after = bridge.run('saveApiKey', {'key': '  sk-test-saved-through-bridge  '})
-        assert after['keySaved'] is True and 'sk-test' not in json.dumps(after)
-        assert saved == {(credentials.SERVICE, 'TEST_DESKTOP_SAVED_KEY'): 'sk-test-saved-through-bridge'}
-        # The provider the desktop already holds sees the key without a restart.
+        before = bridge.run('settings', {})
+        assert (before['keySaved'], before['ready'], before['keyStoreAvailable']) == (False, False, True)
+        after = bridge.run('saveModelSettings', {
+            'preset': 'custom', 'model': 'm', 'baseUrl': 'https://example.invalid/v1', 'sendEvidence': True,
+            'key': '  sk-test-saved-through-bridge  ',
+        })
+        assert after['keySaved'] is True and after['ready'] is True and 'sk-test' not in json.dumps(after)
+        assert saved == {(credentials.SERVICE, 'MEETING_COPILOT_API_KEY'): 'sk-test-saved-through-bridge'}
+        # The key goes to the credential store only, never into the configuration file.
+        assert 'sk-test' not in (tmp_path / 'config.json').read_text(encoding='utf-8')
+        # The running backend uses the new provider and key without a restart.
+        assert bridge.assistant.provider.config.model == 'm' and bridge.workers.a is bridge.assistant
         assert bridge.assistant.provider._client()[1] == 'sk-test-saved-through-bridge'
+        # Saving again without typing a key keeps the saved one.
+        assert bridge.run('saveModelSettings', {
+            'preset': 'custom', 'model': 'm2', 'baseUrl': 'https://example.invalid/v1', 'sendEvidence': True,
+        })['keySaved'] is True
         assert bridge.run('deleteApiKey', {})['keySaved'] is False
-        assert saved == {} and credentials.api_key('TEST_DESKTOP_SAVED_KEY') is None
+        assert saved == {} and credentials.api_key('MEETING_COPILOT_API_KEY') is None
     finally:
         bridge.close()
 
