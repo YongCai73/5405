@@ -41,13 +41,17 @@ so everything in this section behaves the same on macOS and Windows.
   questions and ratings for the open meeting. It changes nothing; a suggested
   wording preference is saved only if you choose it. Sending question texts to
   the configured model is an explicit checkbox.
-- **Settings** (sidebar) holds the provider status, the API key and up to five
-  wording preferences. The key is typed into a password field, sent once to the
-  local backend, and stored in the system credential store (macOS Keychain,
-  Windows Credential Manager). It is never written to a file, logged, or sent
-  back to the window. The environment variable named by `api_key_env` still
-  works and takes priority. Provider, model and `send_evidence` are still set
-  in the Workspace `config.json`.
+- **Settings** (sidebar) is where the model is set up, once: provider, model,
+  base URL, API key and the permission to send excerpts to that provider. It
+  takes effect from the next question without a restart, and **Test
+  connection** checks it with a request that contains no meeting content. The
+  key is typed into a password field, sent once to the local backend, and
+  stored in the system credential store (macOS Keychain, Windows Credential
+  Manager). It is never written to a file, logged, or sent back to the window.
+  The environment variable named by `api_key_env` still works and takes
+  priority. Settings also holds up to five wording preferences. Until a model
+  is set up, a hint under the question box links here. See
+  [LAUNCH.md](LAUNCH.md#using-a-real-model).
 
 Adding a bridge action needs one more step than adding a skill: the action name
 must be added to the allowlist in `main.swift` and in
@@ -101,7 +105,7 @@ proof that a microphone remained connected.
 
 The app saves its local database and downloaded models under `~/Library/Application Support/Meeting Copilot/Workspace`. For a separate test workspace, launch with `MEETING_COPILOT_DESKTOP_DATA_DIR` set to an absolute path. Use **Export** to save a meeting snapshot to a JSON file you select.
 
-To use the same transcription model and question-answering provider as the CLI, place a `config.json` using the [existing configuration format](../config.example.json) in the desktop Workspace folder and relaunch the app. Its `data_dir` is relative to that configuration file. A custom configuration can also be selected with `MEETING_COPILOT_DESKTOP_CONFIG` at launch. The app uses the configured `api_key_env` and `send_evidence` settings. Save the named credential once with `./desktop/launch.sh set-key`, or set it in the app's launch environment, when using an API provider. Sample meetings always use local excerpts. During recording, the app uses the existing 15-second background summary schedule.
+Choose the question-answering model in **Settings**. To also change the transcription model or other advanced options, place a `config.json` using the [existing configuration format](../config.example.json) in the desktop Workspace folder and relaunch the app. Its `data_dir` is relative to that configuration file. A custom configuration can also be selected with `MEETING_COPILOT_DESKTOP_CONFIG` at launch. The app uses the configured `api_key_env` and `send_evidence` settings. Save the named credential once with `./desktop/launch.sh set-key`, or set it in the app's launch environment, when using an API provider. The sample meeting uses local excerpts until a model is set up and sharing excerpts is allowed. During recording, the app uses the existing 15-second background summary schedule.
 
 ## Developer checks
 

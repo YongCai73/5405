@@ -1,10 +1,10 @@
 # Meeting Copilot launcher for Windows. Works in Windows PowerShell 5.1 and PowerShell 7.
 # Double-click "Start Meeting Copilot.cmd" in the project folder, or call a command directly:
-#   desktop\launch.cmd [run|demo|build|doctor|set-key|config|test|help]
+#   desktop\launch.cmd [run|demo|build|package|doctor|set-key|config|test|help]
 [CmdletBinding()]
 param(
     [Parameter(Position = 0)]
-    [ValidateSet('run', 'demo', 'build', 'doctor', 'set-key', 'config', 'test', 'help')]
+    [ValidateSet('run', 'demo', 'build', 'package', 'doctor', 'set-key', 'config', 'test', 'help')]
     [string]$Command = 'run'
 )
 
@@ -252,12 +252,14 @@ Meeting Copilot launcher
   run       Open the app (default). Builds it first when needed.
   demo      Open the app on a separate sample workspace. No API key or configuration.
   build     Build or rebuild the app bundle in build\windows.
+  package   Build a portable zip for another PC (own Python and .NET) in a new build\portable-<time> folder.
   doctor    Check everything the app needs and print how to fix what is missing.
-  set-key   Save the provider API key in Windows Credential Manager (hidden prompt, one time).
-  config    Create the workspace config.json from the example if needed, and open it.
+  set-key   Optional: save the API key from a terminal. Settings in the app does the same.
+  config    Optional: open the workspace config.json. Settings in the app writes the model choice there.
   test      Run the Python tests and the shared desktop UI tests.
   help      Show this text.
 
+The model, its address and the API key are set once in the app under Settings.
 No environment variables are required. These remain optional overrides:
   MEETING_COPILOT_DESKTOP_DATA_DIR, MEETING_COPILOT_DESKTOP_CONFIG, MEETING_COPILOT_PYTHON,
   and the variable named by api_key_env in config.json (it wins over the saved key).
@@ -270,6 +272,13 @@ switch ($Command) {
     'run' { Start-App $false }
     'demo' { Start-App $true }
     'build' { Invoke-Build }
+    'package' {
+        $python = Get-ProjectPython
+        if (-not $python) { throw 'No Python environment was found. Run: desktop\launch.cmd doctor' }
+        if (-not (Test-DotnetSdk)) { throw 'Packaging needs the .NET 8 SDK. Install it with: winget install Microsoft.DotNet.SDK.8' }
+        $target = Join-Path $projectRoot ('build\portable-' + (Get-Date -Format 'yyyyMMdd-HHmmss'))
+        & (Join-Path $desktopRoot 'package-windows.ps1') -OutputDirectory $target -PythonPath $python | Out-Host
+    }
     'doctor' { if ((Show-Doctor) -gt 0) { exit 1 } }
     'set-key' {
         $python = Get-ProjectPython

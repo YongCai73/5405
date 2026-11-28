@@ -158,6 +158,9 @@ internal static class BackendPaths
     {
         var configured = Environment.GetEnvironmentVariable("MEETING_COPILOT_PYTHON");
         if (!string.IsNullOrWhiteSpace(configured) && File.Exists(configured)) return configured;
+        // A portable package carries a whole Python beside the backend; a developer bundle carries a venv.
+        var packaged = Path.Combine(root, "python", "python.exe");
+        if (File.Exists(packaged)) return packaged;
         var projectVenv = Path.Combine(root, ".venv", "Scripts", "python.exe");
         if (File.Exists(projectVenv)) return projectVenv;
         throw new InvalidOperationException(

@@ -21,7 +21,9 @@ never receives the original user-selected path; an export is copied to the final
 path only after the backend has written its temporary JSON file.
 
 The shared window also offers the skill menu, answer ratings, the suggestion
-report and Settings with API-key entry; see [the desktop README](../README.md).
+report and Settings, where the model and API key are set up once; see
+[the desktop README](../README.md). `desktop\launch.cmd package` builds a
+portable zip for another PC; see [LAUNCH.md](../LAUNCH.md#portable-package-windows).
 
 After a finished microphone capture, the shared **Summary** view can show its
 local Session Health card: the effective preset plus allowlisted operational
