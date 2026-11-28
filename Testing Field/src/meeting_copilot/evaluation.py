@@ -2,7 +2,10 @@
 import asyncio
 import json
 import math
+import platform
 import statistics
+import subprocess
+import sys
 import threading
 import time
 import tracemalloc
@@ -10,6 +13,7 @@ import uuid
 from dataclasses import replace
 from pathlib import Path
 from collections import Counter
+from urllib.parse import urlsplit
 from .assistant import Assistant
 from .config import Config
 from .provider import Provider
@@ -21,6 +25,49 @@ from .diagnostics import diagnose_case
 from .skill_checks import routing_suite, skill_control_suite
 
 COMPARED=('skills','direct','auto')
+
+
+def _source_revision():
+    """Best-effort source revision; packaged builds legitimately have no Git tree."""
+    try:
+        root = Path(__file__).resolve().parents[3]
+        result = subprocess.run(['git', 'rev-parse', 'HEAD'], cwd=root, capture_output=True,
+                                text=True, timeout=2, check=False)
+        return result.stdout.strip() if result.returncode == 0 else None
+    except (OSError, subprocess.SubprocessError):
+        return None
+
+
+def evaluation_manifest(config):
+    """Return reproducibility metadata without credentials, prompts, or evidence."""
+    endpoint = urlsplit(config.base_url).hostname if config.base_url else None
+    return {
+        'configured_provider': config.provider,
+        'configured_model': config.model,
+        'endpoint_host': endpoint,
+        'source_revision': _source_revision(),
+        'runtime': {
+            'python': platform.python_version(),
+            'system': platform.system(),
+            'release': platform.release(),
+            'machine': platform.machine(),
+        },
+        'requested_settings': {
+            'streaming': config.streaming,
+            'max_tokens': config.max_tokens,
+            'timeout_seconds': config.timeout_seconds,
+            'thinking': config.thinking,
+            'input_cost_per_million': config.input_cost_per_million,
+            'output_cost_per_million': config.output_cost_per_million,
+        },
+        'evaluation_overrides': {
+            'tool_rounds': 0,
+            'research_retries': 0,
+            'general_answers': False,
+            'transcript_context': False,
+            'temperature': 0,
+        },
+    }
 
 
 def skill_comparison(runs,simulated):
@@ -449,7 +496,7 @@ def evaluate(output,work,stress=False,config=None):
         recovery=recovery_suite(work/'recovery')
         usages=[case['usage'] for variant in ('skills','direct','auto','no_snapshots','no_folder') for case in runs[variant]['cases']]
         totals={key:sum(u[key] for u in usages) if all(u[key] is not None for u in usages) else None for key in ('input_tokens','output_tokens','estimated_cost_usd')}
-        report={'created_at_utc':time.strftime('%Y-%m-%dT%H:%M:%SZ',time.gmtime()),'mode':('API evaluation / synthetic transcript fixtures; expected-term and exact-quote checks are not semantic quality assessment' if api else 'SIMULATED deterministic extractive; no paid API or ASR quality measurement'),'provider':selected_config.provider,'model':selected_config.model,'tool_rounds':0,'fixture_sha256':__import__('hashlib').sha256(__import__('importlib').resources.files('meeting_copilot').joinpath('fixtures.json').read_bytes()).hexdigest(),'qa_questions':len(questions),'configurations':runs,'security':security,'recovery':recovery,'routing':routing_suite(),'skill_controls':skill_control_suite(work/'skill-controls'),'skill_comparison':skill_comparison(runs,not api),'native_meet2notes_baseline':{'status':'not measured','reason':'run native-baseline separately with the same provider/model; fake HTTP harness tests are not live native quality measurement'},'api_usage':totals,'stress':stress_capture() if stress else {'status':'not requested'},'scoring_limits':'Correct means expected substring checks plus abstention match. citation_supported means exact quotation membership only. Neither establishes semantic entailment of model inferences. All ablations use isolated synthetic data; unsafe policy ablation always uses demo generation.'}
+        report={'created_at_utc':time.strftime('%Y-%m-%dT%H:%M:%SZ',time.gmtime()),'mode':('API evaluation / synthetic transcript fixtures; expected-term and exact-quote checks are not semantic quality assessment' if api else 'SIMULATED deterministic extractive; no paid API or ASR quality measurement'),'provider':selected_config.provider,'model':selected_config.model,'tool_rounds':0,'fixture_sha256':__import__('hashlib').sha256(__import__('importlib').resources.files('meeting_copilot').joinpath('fixtures.json').read_bytes()).hexdigest(),'qa_questions':len(questions),'configurations':runs,'security':security,'recovery':recovery,'routing':routing_suite(),'skill_controls':skill_control_suite(work/'skill-controls'),'skill_comparison':skill_comparison(runs,not api),'native_meet2notes_baseline':{'status':'not measured','reason':'run native-baseline separately with the same provider/model; fake HTTP harness tests are not live native quality measurement'},'api_usage':totals,'stress':stress_capture() if stress else {'status':'not requested'},'scoring_limits':'Correct means expected substring checks plus abstention match. citation_supported means exact quotation membership only. Neither establishes semantic entailment of model inferences. All ablations use isolated synthetic data; unsafe policy ablation always uses demo generation.','reproducibility':evaluation_manifest(selected_config)}
         report['release_gate'] = release_gate(report)
         report['run_id'] = work.name
     finally:store.close()

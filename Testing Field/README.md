@@ -84,6 +84,8 @@ Optional **paid** evaluation commands, only after configuring your own endpoint:
 ```bash
 # Up to 110 API calls (5 variants x 22 frozen synthetic questions; cases with no retrieved evidence make no call), tools disabled for equal retrieval context:
 .venv/bin/python -m meeting_copilot evaluate --api --output results/local-api-eval.json
+# Compare two or more compatible API evaluation reports without loading a configuration or API key:
+.venv/bin/python -m meeting_copilot compare-evaluations results/local-deepseek.json results/local-openai.json results/local-anthropic.json --output results/local-model-comparison.md
 # 22 calls through unchanged upstream LiveAssistantService and repository:
 .venv/bin/python -m meeting_copilot native-baseline --output results/local-native-baseline.json
 ```

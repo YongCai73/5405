@@ -1,6 +1,22 @@
 import json
 from meeting_copilot.evaluation import evaluate
 
+
+def _api_report(provider, model, fixture='frozen-fixture', multiplier=1):
+    variants = {}
+    for name in ('skills', 'direct', 'auto'):
+        variants[name] = {
+            'total': 22, 'correct': 21 + (name == 'auto'), 'citation_supported': 22,
+            'abstained': 2, 'provider_calls': 20 * multiplier, 'p50_ms': 100 * multiplier,
+            'p95_ms': 200 * multiplier, 'input_tokens': 1000 * multiplier,
+            'output_tokens': 500 * multiplier, 'estimated_cost_usd': 0.0123 * multiplier,
+        }
+    return {
+        'mode': 'API evaluation / synthetic transcript fixtures; expected-term and exact-quote checks are not semantic quality assessment',
+        'provider': provider, 'model': model, 'tool_rounds': 0, 'fixture_sha256': fixture,
+        'created_at_utc': '2026-11-28T00:00:00Z', 'skill_comparison': {'variants': variants},
+    }
+
 def test_frozen_runner_controls_and_synthetic_ablations(tmp_path):
     path=tmp_path/'report.json';summary=evaluate(path,tmp_path/'work');r=json.loads(path.read_text())
     assert summary['skills_correct']==r['qa_questions']==22
@@ -32,6 +48,13 @@ def test_frozen_runner_controls_and_synthetic_ablations(tmp_path):
     assert {case['id'] for case in r['recovery']['cases']} == {'C0','C1','C2','C3','C4'}
     assert all(case['turns'] == 1 for case in r['recovery']['cases'])
     assert r['native_meet2notes_baseline']['status']=='not measured'
+    manifest = r['reproducibility']
+    assert manifest['configured_provider'] == 'demo'
+    assert manifest['evaluation_overrides'] == {
+        'tool_rounds': 0, 'research_retries': 0, 'general_answers': False,
+        'transcript_context': False, 'temperature': 0,
+    }
+    assert 'api_key' not in json.dumps(manifest).lower()
 
     # Verify correlation in actual evaluation output.
     assert r["run_id"].startswith("run-")
@@ -172,3 +195,32 @@ def test_evaluation_trace_correlation(tmp_path):
     # 4. Context must not leak into unrelated events.
     for key in ("run_id", "case_id", "variant"):
         assert key not in rows[2]
+
+
+def test_model_comparison_requires_compatible_api_reports(tmp_path):
+    from meeting_copilot.cli import parser
+    from meeting_copilot.model_report import compare_evaluations
+
+    deepseek = tmp_path / 'deepseek.json'
+    anthropic = tmp_path / 'anthropic.json'
+    deepseek.write_text(json.dumps(_api_report('openai', 'deepseek-flash')), encoding='utf-8')
+    anthropic.write_text(json.dumps(_api_report('anthropic', 'claude-test', multiplier=2)), encoding='utf-8')
+    output = tmp_path / 'comparison.md'
+
+    result = compare_evaluations([deepseek, anthropic], output)
+
+    text = output.read_text(encoding='utf-8')
+    assert result['reports'] == ['deepseek.json', 'anthropic.json']
+    assert 'openai / deepseek-flash' in text and 'anthropic / claude-test' in text
+    assert 'Fixture SHA-256: `frozen-fixture`' in text
+    assert '$0.0123' in text and '200 / 400 ms' in text
+    args = parser().parse_args(['compare-evaluations', str(deepseek), str(anthropic), '--output', str(output)])
+    assert args.command == 'compare-evaluations' and args.reports == [str(deepseek), str(anthropic)]
+
+    anthropic.write_text(json.dumps(_api_report('anthropic', 'claude-test', fixture='other')), encoding='utf-8')
+    try:
+        compare_evaluations([deepseek, anthropic], output)
+    except ValueError as exc:
+        assert 'different fixtures' in str(exc)
+    else:
+        raise AssertionError('expected incompatible reports to be rejected')

@@ -13,6 +13,7 @@ desktop/windows/obj/
 config.json
 demo-project/
 results/local-*.json
+results/local-*.md
 # Raw run outputs stay local; only the written validation summaries are tracked.
 results/live-*/
 results/*-skills-evaluation-*.json

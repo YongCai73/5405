@@ -58,6 +58,7 @@ def parser():
     c=sub.add_parser('evaluate');c.add_argument('--output',default='results/report.json');c.add_argument('--stress',action='store_true')
     c.add_argument('--strict',action='store_true',help='exit nonzero when deterministic workflow, policy, or recovery gate fails')
     c.add_argument('--api',action='store_true',help='explicitly run up to 110 configured API requests on synthetic fixtures (5 variants x 22 questions; cases with no retrieved evidence make no request); may incur cost')
+    c=sub.add_parser('compare-evaluations',help='write a Markdown comparison of compatible API evaluation JSON reports');c.add_argument('reports',nargs='+');c.add_argument('--output',required=True)
     c=sub.add_parser('native-baseline');c.add_argument('--output',default='results/native-baseline.json')
     return p
 
@@ -78,6 +79,9 @@ def run(a):
         from .skill_runtime import MANUAL,contract_digest,load_contract,route
         if a.command=='route':output(route(a.question));return
         output([{'name':c['name'],'version':c['version'],'contract_sha256':contract_digest(c),'retrieval_plan':c['retrieval_plan'],'allowed_tools':c['allowed_tools'],'output_fields':c['output_fields'],'termination':c['termination'],'routing_phrases':c['routing']['phrases']} for c in map(load_contract,MANUAL)]);return
+    if a.command=='compare-evaluations':
+        from .model_report import compare_evaluations
+        output(compare_evaluations(a.reports,Path(a.output)));return
     if a.command=='init':
         if config_path.exists():raise ValueError('config already exists')
         write_private_text(config_path,json.dumps({k:v for k,v in vars(Config()).items() if not k.startswith('_')},indent=2),exclusive=True);output({'config':str(config_path),'provider':'demo / SIMULATED'});return
