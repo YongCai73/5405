@@ -444,3 +444,33 @@ test('suggestions are requested on demand and a suggested preference can be save
     { action: 'add', value: 'Keep answers brief.' });
   assert.equal(save.disabled, true);
 });
+
+test('a transcript correction sends the selected segment and marks older answers', async () => {
+  const app = await application();
+  const original = detail(false, null, { segments: [{ id: 7, text: 'SQLite is local.', startMs: 12_000, endMs: 15_000 }] });
+  const corrected = detail(false, null, { segments: [{ id: 8, text: 'SQLite is preferred for deployment simplicity.', startMs: 12_000, endMs: 15_000 }] });
+  app.install(original);
+  const edit = app.nodes.get('transcript-list').querySelectorAll('button')[0];
+  edit.dispatch('click');
+  assert.equal(app.nodes.get('transcript-edit-dialog').open, true);
+  assert.equal(app.nodes.get('transcript-edit-text').value, 'SQLite is local.');
+  assert.match(app.nodes.get('transcript-edit-time').textContent, /00:12/);
+
+  app.responses.set('correctTranscript', corrected);
+  app.nodes.get('transcript-edit-text').value = ' SQLite is preferred for deployment simplicity. ';
+  app.nodes.get('transcript-edit-form').dispatch('submit');
+  await flush();
+  const request = app.requests.find((item) => item.action === 'correctTranscript');
+  assert.deepEqual(JSON.parse(JSON.stringify(request.payload)), {
+    meetingId: 'm', segmentId: 7, text: 'SQLite is preferred for deployment simplicity.',
+  });
+  assert.match(app.nodes.get('transcript-list').textContent, /deployment simplicity/);
+  assert.match(app.nodes.get('toast-text').textContent, /Transcript corrected/);
+
+  app.responses.set('questionHistory', { turns: [{
+    id: 'old-snapshot', question: 'Why SQLite?', transcriptChanged: true,
+    answer: { text: 'SQLite is local.', citations: [] },
+  }] });
+  await app.evaluate('refreshQuestions("m")');
+  assert.match(app.nodes.get('conversation').textContent, /Transcript updated after this answer/);
+});

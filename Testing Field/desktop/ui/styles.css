@@ -157,10 +157,12 @@ kbd { color: var(--muted); background: var(--surface); border: 1px solid var(--l
 .transcript-count { font-size: 11px; color: var(--muted); white-space: nowrap; }
 .content-scroll { flex: 1; min-height: 0; overflow: auto; padding: 0 32px 22px; outline-offset: -3px; }
 .transcript-list { list-style: none; padding: 0; }
-.transcript-row { display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 11px; padding: 14px 4px; border-bottom: 1px solid var(--line-subtle); scroll-margin: 12px; }
+.transcript-row { display: grid; grid-template-columns: 52px minmax(0, 1fr) auto; gap: 11px; padding: 14px 4px; border-bottom: 1px solid var(--line-subtle); scroll-margin: 12px; }
 .transcript-row:last-child { border-bottom: 0; }
 .transcript-time { align-self: start; justify-self: start; margin-top: 2px; padding: 3px 5px; color: var(--accent-dark); background: var(--wash); border-radius: 5px; font-variant-numeric: tabular-nums; font-size: 11px; font-weight: 610; }
 .transcript-text { line-height: 1.52; overflow-wrap: anywhere; color: var(--body); font-size: 13px; white-space: pre-wrap; }
+.transcript-edit { align-self: start; border: 1px solid var(--line); background: var(--surface); color: var(--secondary); border-radius: 5px; padding: 3px 7px; font-size: 11px; }
+.transcript-edit:hover:not(:disabled) { background: var(--wash); }
 .transcript-row.highlighted { border-radius: 7px; background: var(--wash); box-shadow: inset 2px 0 var(--accent-bright); }
 mark { color: inherit; background: var(--wash-strong); border-radius: 2px; }
 .empty-state { padding: 50px 14px; color: var(--muted); text-align: center; line-height: 1.55; font-size: 13px; }
@@ -256,7 +258,8 @@ dialog::backdrop { background: var(--backdrop); }
 .close-button { border: 0; background: transparent; border-radius: 5px; color: inherit; font-size: 21px; line-height: 1; width: 24px; height: 24px; padding: 0; }
 .close-button:hover { background: var(--wash-strong); }
 dialog label { display: block; font-size: 12px; margin-bottom: 6px; font-weight: 610; }
-dialog input:not([type="checkbox"]), dialog select { width: 100%; border: 1px solid var(--line); background: var(--subtle-surface); border-radius: 7px; padding: 8px; margin-bottom: 12px; }
+dialog input:not([type="checkbox"]), dialog select, dialog textarea { width: 100%; border: 1px solid var(--line); background: var(--subtle-surface); border-radius: 7px; padding: 8px; margin-bottom: 12px; }
+dialog textarea { min-height: 120px; resize: vertical; line-height: 1.45; }
 dialog .consent { display: flex; align-items: flex-start; gap: 6px; font-weight: 500; line-height: 1.45; margin: 6px 0 9px; }
 .consent input { margin: 2px 0 0; accent-color: var(--accent); }
 dialog .record-option { display: flex; align-items: center; gap: 6px; font-weight: 610; margin: 3px 0 4px; }

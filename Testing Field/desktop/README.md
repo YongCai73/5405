@@ -130,6 +130,15 @@ Private questions are kept out of shared meeting notes and desktop exports.
 
 Create a meeting to import an audio file or record from a microphone. Choose your input and start recording after participants agree. macOS asks for microphone permission on first use. Transcription runs in English with the local Faster Whisper model. The first audio operation may need to download the model.
 
+### Correct a transcript segment
+
+After a meeting is no longer recording, select **Edit** beside a transcript
+segment and save its corrected wording. This never overwrites the captured
+segment: it appends an immutable revision with the same timestamp. New
+questions and newly generated summaries use the corrected revision. Earlier
+private answers remain attached to the evidence snapshot they originally used;
+the conversation labels them when their transcript has since changed.
+
 ### Recording presets and input status
 
 The recording dialog has an optional **Low latency** setting. It is off each time

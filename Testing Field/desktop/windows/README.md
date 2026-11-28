@@ -38,6 +38,12 @@ developer bundle when needed and opens it, with no environment variables.
 [LAUNCH.md](../LAUNCH.md) lists every launcher command, including saving an API
 key in Windows Credential Manager. The first build needs the .NET 8 SDK.
 
+The shared transcript view also supports **Edit** after a meeting stops
+recording. A correction creates a new immutable revision at the original
+timestamp; it does not overwrite evidence. New questions and summaries select
+that revision, while existing private answers retain their original sources and
+are marked if the transcript changed afterwards.
+
 ## Run on Windows
 
 Install the .NET 8 SDK and the Microsoft Edge WebView2 Runtime, then create the

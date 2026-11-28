@@ -192,6 +192,17 @@
     <div class="dialog-actions"><button type="button" class="button button-outline" data-close="settings-dialog">Done</button></div>
   </dialog>
 
+  <dialog id="transcript-edit-dialog" aria-labelledby="transcript-edit-title">
+    <form id="transcript-edit-form">
+      <div class="dialog-header"><h2 id="transcript-edit-title">Correct transcript</h2><button type="button" class="close-button" data-close="transcript-edit-dialog" aria-label="Close">×</button></div>
+      <p class="source-label" id="transcript-edit-time"></p>
+      <label for="transcript-edit-text">Transcript text</label>
+      <textarea id="transcript-edit-text" maxlength="16000" required spellcheck="true"></textarea>
+      <p class="dialog-hint">This saves a new revision with the same timestamp. New questions and summaries use it; earlier answers keep their original sources.</p>
+      <div class="dialog-actions"><button type="button" class="button button-outline" data-close="transcript-edit-dialog">Cancel</button><button type="submit" class="button button-primary">Save correction</button></div>
+    </form>
+  </dialog>
+
   <div id="toast" class="toast" role="status" hidden><span id="toast-text"></span><button type="button" id="dismiss-toast" class="close-button" aria-label="Dismiss message">×</button></div>
 </body>
 </html>

@@ -423,6 +423,7 @@ class DesktopBridge:
             'beginQuestion': self.begin_question,
             'resumeQuestion': self.resume_question,
             'questionHistory': self.question_history,
+            'correctTranscript': self.correct_transcript,
             'summary': self.summary,
             'export': self.export,
             'importAudio': self.import_audio,
@@ -559,7 +560,7 @@ class DesktopBridge:
             row = self.store.metadata(self.principal, meeting)
             segments = self._current_segments(meeting)
             minutes = None if recording else self._saved_minutes(meeting, [row['id'] for row in segments])
-            summary = minutes or self._latest_live_summary(meeting)
+            summary = minutes or self._latest_live_summary(meeting, [row['id'] for row in segments])
         detail = {
             **self._meeting_header(row),
             'segments': segments,
@@ -876,11 +877,15 @@ class DesktopBridge:
         meeting = required_text(payload, 'meetingId', 80)
         turns = self.questions.history(meeting)
         ratings = self._ratings(meeting) if turns else {}
+        current_transcript = {row['id'] for row in self._current_segments(meeting)}
         for turn in turns:
             if turn['id'] in ratings:
                 turn['rating'] = ratings[turn['id']]
             if 'answer' in turn:
                 turn['answer'] = self._desktop_answer(meeting, turn['answer'])
+                # A stored answer keeps its original snapshot; never rewrite it after a
+                # correction. Let the desktop say that newer transcript evidence exists.
+                turn['transcriptChanged'] = set(self._snapshot_transcript_ids(turn['id'])) != current_transcript
             failure = turn.pop('failure', None)
             if failure:
                 turn['error'] = PROVIDER_MESSAGES.get(failure, 'The question could not finish. You can try to continue it.')
@@ -891,6 +896,34 @@ class DesktopBridge:
         assistant = self._assistant_for(meeting)
         answer = asyncio.run(assistant.ask(snapshot, question, conversation=CONVERSATION, skill=skill))
         return self._desktop_answer(meeting, answer)
+
+    def correct_transcript(self, payload):
+        """Append one user correction as a new immutable segment revision."""
+        meeting = required_text(payload, 'meetingId', 80)
+        source_id = payload.get('segmentId')
+        if type(source_id) is not int or source_id < 1:
+            raise DesktopError('Choose a transcript segment to correct.')
+        text = required_text(payload, 'text', 16_000)
+        capture = self._current_capture()
+        if capture and capture.meeting == meeting:
+            raise DesktopError('Stop recording before correcting the transcript.')
+        with self.store.tx() as db:
+            self.store._check(self.principal, meeting, owner=True)
+            row = db.execute(
+                "SELECT * FROM evidence WHERE id=? AND meeting=? AND kind='segment' "
+                "AND revision=(SELECT MAX(v.revision) FROM evidence v WHERE v.meeting=evidence.meeting "
+                "AND v.kind=evidence.kind AND v.logical=evidence.logical)",
+                (source_id, meeting),
+            ).fetchone()
+            if row is None:
+                raise DesktopError('That transcript segment has changed. Reopen it and try again.')
+            event_id = uuid.uuid4().hex
+            self.store.ingest(self.principal, meeting, {
+                'event_id': event_id, 'stream': 'desktop-correction-' + event_id, 'seq': 1,
+                'segment_id': row['logical'], 'revision': row['revision'] + 1,
+                'start_ms': row['start_ms'], 'end_ms': row['end_ms'], 'text': text, 'final': True,
+            })
+        return self._detail(meeting)
 
     def _desktop_answer(self, meeting, answer):
         citations = []
@@ -939,7 +972,7 @@ class DesktopBridge:
             summary = self.store.summary_get(self.principal, row['snapshot'])
             return {**summary, 'minutes': json.loads(row['content'])} if summary else None
 
-    def _latest_live_summary(self, meeting):
+    def _latest_live_summary(self, meeting, transcript_ids=None):
         from meeting_copilot.store import Denied
 
         with self.store.read() as db:
@@ -952,9 +985,11 @@ class DesktopBridge:
                 ''', (meeting, self.principal))
             for row in rows:
                 try:
-                    return self.store.summary_get(self.principal, row['id'])
+                    summary = self.store.summary_get(self.principal, row['id'])
                 except Denied:
                     continue
+                if transcript_ids is None or set(self._snapshot_transcript_ids(row['id'])) == set(transcript_ids):
+                    return summary
         return None
 
     def _final_summary(self, meeting, assistant):
@@ -996,7 +1031,7 @@ class DesktopBridge:
         snapshot = self._scope(meeting)
         transcript_ids = self._snapshot_transcript_ids(snapshot)
         minutes = self._saved_minutes(meeting, transcript_ids)
-        latest = minutes or self._latest_live_summary(meeting)
+        latest = minutes or self._latest_live_summary(meeting, transcript_ids)
         refs = set(json.loads(self.store.snapshot_info(self.principal, snapshot)['refs']))
         if latest and set(latest['refs']).issubset(refs):
             with self.store.tx() as db:

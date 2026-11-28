@@ -309,7 +309,12 @@ function renderTranscript() {
     const timestamp = make("time", "transcript-time", duration(segment.startMs));
     const body = make("p", "transcript-text");
     appendMatched(String(segment.text), body);
-    row.append(timestamp, body);
+    const edit = make("button", "transcript-edit", "Edit");
+    edit.type = "button";
+    edit.disabled = Boolean(state.meeting?.recording) || state.busy !== null;
+    edit.setAttribute("aria-label", "Correct transcript at " + duration(segment.startMs));
+    edit.addEventListener("click", () => openTranscriptEdit(segment));
+    row.append(timestamp, body, edit);
     rows.append(row);
   }
   list.replaceChildren(rows);
@@ -326,6 +331,16 @@ function renderTranscript() {
     else showEmpty(empty, "No transcript yet", "Record this meeting or import an audio file to get started.");
   } else showEmpty(empty, "No meeting selected", "Open a meeting to view its transcript.");
   scroll.scrollTop = position;
+}
+
+function openTranscriptEdit(segment) {
+  if (!state.meeting || state.meeting.recording || state.busy) return;
+  const dialog = byId("transcript-edit-dialog");
+  dialog.dataset.meetingId = state.meeting.id;
+  dialog.dataset.segmentId = String(segment.id);
+  byId("transcript-edit-time").textContent = "Timestamp · " + duration(segment.startMs);
+  byId("transcript-edit-text").value = String(segment.text);
+  dialog.showModal();
 }
 
 function appendAnswer(line, paragraph, citations, sourceNumbers) {
@@ -557,6 +572,9 @@ function renderConversation(scrollToEnd = false) {
         const p = make("p", "answer-line");
         appendAnswer(line, p, citations, sourceNumbers);
         answer.append(p);
+      }
+      if (turn.transcriptChanged) {
+        answer.append(make("p", "answer-error", "Transcript updated after this answer. It remains tied to the original sources."));
       }
       if (citations.size) {
         const sources = make("div", "citations");
@@ -819,6 +837,23 @@ byId("new-form").addEventListener("submit", (event) => {
 });
 document.querySelectorAll("[data-close]").forEach((button) => {
   button.addEventListener("click", () => byId(button.dataset.close).close());
+});
+byId("transcript-edit-form").addEventListener("submit", (event) => {
+  event.preventDefault();
+  const dialog = byId("transcript-edit-dialog");
+  const meetingId = dialog.dataset.meetingId;
+  const segmentId = Number(dialog.dataset.segmentId);
+  const text = byId("transcript-edit-text").value.trim();
+  if (!meetingId || !Number.isSafeInteger(segmentId) || segmentId < 1 || !text) {
+    toast("Enter a transcript correction.", true);
+    return;
+  }
+  dialog.close();
+  void action("correct", async () => {
+    useDetail(await bridge("correctTranscript", { meetingId, segmentId, text }));
+    await refreshQuestions(meetingId);
+    toast("Transcript corrected. New answers use the revision; older answers remain marked with their original sources.");
+  });
 });
 byId("dismiss-toast").addEventListener("click", () => { byId("toast").hidden = true; });
 

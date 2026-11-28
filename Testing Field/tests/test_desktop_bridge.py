@@ -49,6 +49,48 @@ def test_desktop_meetings_citations_and_private_export(tmp_path):
     assert replies[-1]['result']['meeting']['title'] == 'Next meeting'
 
 
+def test_desktop_transcript_correction_appends_a_revision_and_rejects_stale_rows(tmp_path):
+    workspace = tmp_path / 'Meeting Copilot'
+    data = workspace / 'data'
+    store = Store(data / 'evidence.db')
+    store.create('local-host', 'team', 'Team meeting')
+    original = store.ingest('local-host', 'team', {
+        'event_id': 'event-1', 'segment_id': 'segment-1', 'seq': 1, 'revision': 1,
+        'start_ms': 12_000, 'end_ms': 15_000, 'text': 'SQLite is local.', 'final': True,
+    })
+    old_snapshot = store.snapshot('local-host', 'team')
+    store.close()
+
+    replies = run_bridge(workspace, [
+        ('meeting', {'meetingId': 'team'}),
+        ('correctTranscript', {'meetingId': 'team', 'segmentId': original,
+                               'text': 'SQLite is preferred for deployment simplicity.'}),
+        ('meeting', {'meetingId': 'team'}),
+        ('correctTranscript', {'meetingId': 'team', 'segmentId': original, 'text': 'stale edit'}),
+        ('correctTranscript', {'meetingId': 'team', 'segmentId': 'not-an-id', 'text': 'bad input'}),
+    ])
+    assert [reply['ok'] for reply in replies] == [True, True, True, False, False], replies
+    before, corrected, after = (replies[index]['result'] for index in range(3))
+    assert before['segments'][0]['id'] == original and before['segments'][0]['text'] == 'SQLite is local.'
+    segment = corrected['segments'][0]
+    assert segment['id'] != original and segment['text'] == 'SQLite is preferred for deployment simplicity.'
+    assert (segment['startMs'], segment['endMs']) == (12_000, 15_000)
+    assert after['segments'] == corrected['segments']
+    assert 'changed' in replies[3]['error'].lower() and 'segment' in replies[4]['error'].lower()
+
+    store = Store(data / 'evidence.db')
+    new_snapshot = store.snapshot('local-host', 'team')
+    with store.read() as db:
+        rows = db.execute("SELECT id, revision, text, start_ms, end_ms FROM evidence WHERE meeting='team' ORDER BY id").fetchall()
+    assert [(row['revision'], row['text'], row['start_ms'], row['end_ms']) for row in rows] == [
+        (1, 'SQLite is local.', 12_000, 15_000),
+        (2, 'SQLite is preferred for deployment simplicity.', 12_000, 15_000),
+    ]
+    assert original in json.loads(store.snapshot_info('local-host', old_snapshot)['refs'])
+    assert segment['id'] in json.loads(store.snapshot_info('local-host', new_snapshot)['refs'])
+    store.close()
+
+
 def test_trusted_config_and_local_sample_export(tmp_path, monkeypatch):
     workspace = tmp_path / 'workspace'
     workspace.mkdir()

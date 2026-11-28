@@ -127,7 +127,7 @@ final class DesktopApp: NSObject, NSApplicationDelegate, WKScriptMessageHandler,
     private var transfers: [String: FileTransfer] = [:]
     private let actions = Set([
         "bootstrap", "meeting", "demo", "create", "ask", "summary", "export", "importAudio",
-        "devices", "startRecording", "stopRecording", "beginQuestion", "resumeQuestion", "questionHistory",
+        "devices", "startRecording", "stopRecording", "beginQuestion", "resumeQuestion", "questionHistory", "correctTranscript",
         "skills", "feedback", "preferences", "suggest", "settings", "saveModelSettings", "testModel", "deleteApiKey",
     ])
 
