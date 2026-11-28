@@ -1,7 +1,7 @@
 #!/bin/bash
 # Meeting Copilot launcher for macOS.
 # Double-click "Start Meeting Copilot.command" in the project folder, or call a command directly:
-#   ./desktop/launch.sh [run|demo|build|doctor|set-key|config|test|help]
+#   ./desktop/launch.sh [run|demo|build|package|doctor|set-key|config|test|help]
 set -euo pipefail
 
 desktop_dir="$(cd "$(dirname "$0")" && pwd -P)"
@@ -168,12 +168,14 @@ Meeting Copilot launcher
   run       Open the app (default). Builds it first when needed.
   demo      Open the app on a separate sample workspace. No API key or configuration.
   build     Build or rebuild Meeting Copilot.app in build/desktop.
+  package   Not available on macOS yet: the app is built on each Mac. See desktop/LAUNCH.md.
   doctor    Check everything the app needs and print how to fix what is missing.
-  set-key   Save the provider API key in the macOS Keychain (hidden prompt, one time).
-  config    Create the workspace config.json from the example if needed, and open it.
+  set-key   Optional: save the API key from a terminal. Settings in the app does the same.
+  config    Optional: open the workspace config.json. Settings in the app writes the model choice there.
   test      Run the Python tests and the shared desktop UI tests.
   help      Show this text.
 
+The model, its address and the API key are set once in the app under Settings.
 No environment variables are required. These remain optional overrides:
   MEETING_COPILOT_DESKTOP_DATA_DIR, MEETING_COPILOT_DESKTOP_CONFIG,
   and the variable named by api_key_env in config.json (it wins over the saved key).
@@ -185,6 +187,11 @@ case "$action" in
     run) start 0 ;;
     demo) start 1 ;;
     build) build ;;
+    package)
+        printf 'A portable package is only built on Windows (desktop\\launch.cmd package).\n' >&2
+        printf 'On macOS the app is built on each Mac: ./desktop/launch.sh build\n' >&2
+        exit 2
+        ;;
     doctor) doctor ;;
     set-key)
         has_python || fail 'No Python environment was found.'

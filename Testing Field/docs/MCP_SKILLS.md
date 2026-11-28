@@ -125,6 +125,61 @@ What this changes and what it does not:
   answer with no meeting content, so an open question does not end in a bare
   refusal. If that request fails, the abstention text remains.
 
+### Agentic loops: the model's tool loop and the re-search cycle (added 2026-11-28)
+
+A single pass retrieves once and answers once. Two loops let the assistant judge
+its own evidence and act on that. Both are on by default with a configured model,
+both are bounded, and neither exists in the local extractive mode.
+
+**Tool loop** (`"tool_rounds": 1`, 0 to 2). After reading the retrieved evidence
+the model may call the read-only tools its skill allows (`search_evidence`,
+`read_evidence`) and then answer. The allowlist, call budget and trace are the
+ones described above; the only change is that the default went from 0 to 1.
+
+**Re-search cycle** (`"research_retries": 1`, 0 to 5). The LangGraph graph is no
+longer a line:
+
+```mermaid
+flowchart LR
+    S([start]) --> R[retrieve]
+    R -->|evidence| A[answer]
+    R -->|nothing new| E([end])
+    A -->|cites evidence, or retries used up| E
+    A -->|cites no evidence| W[rewrite]
+    W --> R
+```
+
+- `answer` is followed by a decision (`next_step`): an answer with no validated
+  quotation goes to `rewrite` while retries remain; anything else ends the run.
+- `rewrite` sends the model the question and the terms already tried, never
+  meeting content, and asks for different search terms. The model answers `NONE`
+  for general knowledge or small talk, which ends the run with the answer it has.
+- `retrieve` searches again with the new terms. If that finds nothing the model
+  has not already read, the run ends without another answer request.
+- A second answer that still has no quotation and lost the model's own answer is
+  discarded in favour of the first.
+
+The stored turn is the final answer, and it records the loop:
+`research: {attempts, found_evidence, searches}`. The desktop tags such an
+answer "searched again". Crash recovery is unchanged in kind: during a second
+pass the first answer stays the recoverable state, because a checkpoint never
+moves backwards.
+
+Measured with `deepseek-flash` on the 48-minute constructed meeting:
+
+| Question | Requests | Result | Time |
+|---|---|---|---|
+| "What is the homework?" (the word is never said) | answer, rewrite, answer | first pass found nothing; rewritten terms found the assignment; 8 quotations | 7.1 s |
+| "Which two options did the instructor give?" | tool calls, answer | answered on the first pass; the model used `search_evidence` and `read_evidence` | 3.4 s |
+| "What is a good way to evaluate a RAG system?" | tool calls, answer, rewrite (`NONE`) | labelled model answer; no second search | 4.7 s |
+
+Cost: each loop can add a request, so an answer that needs them is slower (about
+1 s for a rewrite, 2 to 4 s for a second answer). `evaluate --api` forces both
+off and still measures a single pass. Limits: "insufficient" means "cites no
+evidence", not "the answer is wrong", so a grounded but incomplete answer does not
+trigger a new search; and a rewrite is only as good as the words the model
+guesses.
+
 ### How much of the transcript a question gets (added 2026-11-27)
 
 Found on a real recording. A ten-minute seminar introduction was transcribed into

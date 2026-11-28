@@ -323,6 +323,7 @@ test('an answer shows its skill and can be rated, with a note for a negative rat
   app.responses.set('feedback', { id: 'snapshot-1', rating: 'up' });
   await app.evaluate('refreshQuestions("m")');
   assert.match(app.nodes.get('conversation').textContent, /Trace decision · auto/);
+  assert.doesNotMatch(app.nodes.get('conversation').textContent, /searched again/);
   const [up, down] = rateButtons(app);
   up.dispatch('click');
   await flush();
@@ -352,7 +353,7 @@ test('a model is set up once in Settings: provider defaults, key cleared at once
   const unset = {
     provider: 'demo', providerLabel: 'Local extractive', model: '', baseUrl: '', sendEvidence: false, preset: 'local',
     presets, keyName: 'MEETING_COPILOT_API_KEY', keyHost: '', keyInEnvironment: false, keySaved: false, keyStoreAvailable: true,
-    configFile: '/workspace/config.json', ready: false,
+    configFile: '/workspace/config.json', ready: false, researchRetries: 1, researchRetriesLimit: 5, toolRounds: 1, toolRoundsLimit: 2,
   };
   const ready = { ...unset, provider: 'openai', providerLabel: 'OpenAI-compatible', model: 'deepseek-flash',
                   baseUrl: 'https://api.deepseek.com/v1', sendEvidence: true, preset: 'deepseek', keyHost: 'api.deepseek.com',
@@ -388,12 +389,17 @@ test('a model is set up once in Settings: provider defaults, key cleared at once
   const field = app.nodes.get('api-key-input');
   field.value = '  sk-test-typed-in-the-dialog  ';
   app.nodes.get('model-consent').checked = true;
+  // The two loop settings show their saved values and are clamped to their limits when sent.
+  assert.equal(app.nodes.get('research-retries').value, '1');
+  assert.equal(app.nodes.get('tool-rounds').value, '1');
+  app.nodes.get('research-retries').value = '9';
+  app.nodes.get('tool-rounds').value = '2';
   app.nodes.get('model-form').dispatch('submit');
   assert.equal(field.value, '');
   await flush();
   assert.deepEqual(plain(app.requests.find((request) => request.action === 'saveModelSettings').payload), {
     preset: 'deepseek', model: 'deepseek-flash', baseUrl: 'https://api.deepseek.com/v1', sendEvidence: true,
-    key: 'sk-test-typed-in-the-dialog',
+    researchRetries: 5, toolRounds: 2, key: 'sk-test-typed-in-the-dialog',
   });
   assert.match(app.nodes.get('settings-provider').textContent, /Ready\. Questions use deepseek-flash/);
   assert.match(app.nodes.get('settings-key-status').textContent, /A key for api\.deepseek\.com is saved/);

@@ -746,6 +746,9 @@ class DesktopBridge:
             'sendEvidence': config.send_evidence, 'preset': preset, 'presets': [dict(row) for row in MODEL_PRESETS],
             'keyName': name, 'keyInEnvironment': in_environment, 'keySaved': saved,
             'keyHost': host or '', 'keyStoreAvailable': credentials.store_available(), 'configFile': str(self.config_path),
+            # How far the assistant may go on its own before answering.
+            'researchRetries': config.research_retries, 'researchRetriesLimit': 5,
+            'toolRounds': config.tool_rounds, 'toolRoundsLimit': 2,
             # True once questions about a real meeting will reach the model.
             'ready': not local and config.send_evidence and (in_environment or saved),
         }
@@ -799,6 +802,12 @@ class DesktopBridge:
                 raise DesktopError('Choose whether meeting excerpts may be sent to the provider.')
             values.update(provider=preset['provider'], model=model.strip(), base_url=base_url or None,
                           send_evidence=consent)
+            for field, name, limit in (('researchRetries', 'research_retries', 5), ('toolRounds', 'tool_rounds', 2)):
+                if field in payload:
+                    chosen = payload[field]
+                    if type(chosen) is not int or not 0 <= chosen <= limit:
+                        raise DesktopError(f'Choose a whole number from 0 to {limit}.')
+                    values[name] = chosen
             # The shipped defaults (20 s, 800 tokens) suit the local mode, not a hosted model.
             values['timeout_seconds'] = max(values['timeout_seconds'], 120)
             values['max_tokens'] = max(values['max_tokens'], 4096)
@@ -896,7 +905,9 @@ class DesktopBridge:
                 'quote': claim['quote'], 'meetingId': source['meeting'],
             })
         routing = answer.get('routing') or {}
+        research = answer.get('research') or {}
         return {'text': answer['text'], 'citations': citations, 'mode': answer['mode'],
+                'searchedAgain': research.get('attempts', 0),
                 'skill': answer.get('skill'), 'skillRoute': routing.get('status'), 'taskId': answer.get('task_id'),
                 'grounding': answer.get('grounding'),
                 **self._answer_mode(meeting)}
@@ -1154,6 +1165,11 @@ def main():
         config_path = args.config or (default_path if default_path.exists() else None)
         try:
             config = Config.load(config_path) if config_path else Config(_base=workspace)
+            if config_path and config.tool_rounds == 0 and 'research_retries' not in json.loads(
+                    Path(config_path).read_text(encoding='utf-8')):
+                # Written by a build from before the tool loop was on by default, which saved 0 without
+                # the user choosing it. Settings shows the value and saves whatever is chosen there.
+                config.tool_rounds = 1
         except (OSError, TypeError, ValueError):
             print('The desktop configuration could not be loaded.', file=sys.stderr)
             return 1

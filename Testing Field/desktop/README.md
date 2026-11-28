@@ -52,7 +52,12 @@ so everything in this section behaves the same on macOS and Windows.
   sends the previous provider's key there, and Settings asks for that provider's
   key instead.
   The environment variable named by `api_key_env` still works and takes
-  priority. Settings also holds up to five wording preferences. Until a model
+  priority. Two numbers set how far the assistant may go on its own: how many
+  times it searches again when an answer finds no evidence (0 to 5, default 1)
+  and how many rounds the model may look up more evidence itself (0 to 2,
+  default 1); see
+  [MCP_SKILLS.md](../docs/MCP_SKILLS.md#agentic-loops-the-models-tool-loop-and-the-re-search-cycle-added-2026-11-28).
+  Settings also holds up to five wording preferences. Until a model
   is set up, a hint under the question box links here. See
   [LAUNCH.md](LAUNCH.md#using-a-real-model).
 

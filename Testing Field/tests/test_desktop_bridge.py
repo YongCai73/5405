@@ -454,3 +454,36 @@ def test_both_hosts_allow_exactly_the_bridge_actions():
     assert len(bridge_actions) > 15
     assert set(re.findall(r'"(\w+)"', swift.group(1))) == bridge_actions
     assert set(re.findall(r'"(\w+)"', windows.group(1))) == bridge_actions
+
+
+def test_loop_settings_are_saved_validated_and_migrated(tmp_path):
+    workspace = tmp_path / 'workspace'
+    workspace.mkdir()
+    config = workspace / 'config.json'
+    custom = {'preset': 'custom', 'model': 'm', 'baseUrl': 'https://example.invalid/v1', 'sendEvidence': True}
+    replies = run_bridge(workspace, [
+        ('settings', {}),
+        ('saveModelSettings', {**custom, 'researchRetries': 3, 'toolRounds': 2}),
+        ('saveModelSettings', {**custom, 'researchRetries': 6}),
+        ('saveModelSettings', {**custom, 'toolRounds': 1.5}),
+        ('saveModelSettings', custom),
+    ])
+    assert [reply['ok'] for reply in replies] == [True, True, False, False, True]
+    # Both loops are on by default, with their ceilings reported for the window.
+    first = replies[0]['result']
+    assert (first['researchRetries'], first['researchRetriesLimit'], first['toolRounds'], first['toolRoundsLimit']) == (1, 5, 1, 2)
+    assert (replies[1]['result']['researchRetries'], replies[1]['result']['toolRounds']) == (3, 2)
+    assert 'from 0 to 5' in replies[2]['error'] and 'from 0 to 2' in replies[3]['error']
+    # Saving without the two fields keeps what was chosen.
+    written = json.loads(config.read_text(encoding='utf-8'))
+    assert (written['research_retries'], written['tool_rounds']) == (3, 2)
+
+    # A file from a build that wrote "tool_rounds": 0 by default, before the tool loop was on by default.
+    old = {key: value for key, value in written.items() if key != 'research_retries'}
+    config.write_text(json.dumps({**old, 'tool_rounds': 0}), encoding='utf-8')
+    migrated, = run_bridge(workspace, [('settings', {})])
+    assert (migrated['result']['toolRounds'], migrated['result']['researchRetries']) == (1, 1)
+    # A user who chose 0 in this version keeps it.
+    config.write_text(json.dumps({**written, 'tool_rounds': 0}), encoding='utf-8')
+    kept, = run_bridge(workspace, [('settings', {})])
+    assert kept['result']['toolRounds'] == 0

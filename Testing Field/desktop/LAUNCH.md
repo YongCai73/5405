@@ -139,6 +139,12 @@ Verified in the real app, driven over the WebView2 DevTools protocol:
   answered a question through DeepSeek with the saved key.
 - Saving and removing a dummy key in Windows Credential Manager from the app.
 
+macOS and Windows share the window, the bridge and the backend, so every feature
+in the app is the same code on both. The launchers offer the same commands, and
+both builds check for the same Python modules. What differs: there is no macOS
+portable package (`package` is Windows only), and the macOS app has to be built
+on each Mac.
+
 Not yet verified: the portable package on a PC that has never had Python or
 .NET installed; the OpenAI and Anthropic presets (only DeepSeek was called);
 and everything on macOS, where `launch.sh`, `Start Meeting Copilot.command`

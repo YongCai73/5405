@@ -159,9 +159,9 @@ touch "$runtime_bundle/.meeting-copilot-runtime"
     cd "$runtime_bundle"
     PYTHONPATH="$runtime_bundle/src" .venv/bin/python -B -c \
         'from importlib.util import find_spec
-for module in ("meeting_copilot", "langgraph", "litellm", "mcp", "faster_whisper", "sounddevice"):
+for module in ("meeting_copilot", "langgraph", "litellm", "httpx", "mcp", "faster_whisper", "sounddevice", "keyring"):
     if find_spec(module) is None:
-        raise SystemExit(f"Missing {module} in the runtime. Install the project with the audio extra.")'
+        raise SystemExit(f"Missing {module} in the runtime. Install the project with the audio and desktop extras.")'
 )
 
 if [[ -d "$runtime_root" ]]; then

@@ -19,7 +19,7 @@ OWNER = 'Qiyan owns evaluation and frozen replay questions.'
 class ScriptedProvider(Provider):
     """Replaces only the HTTP request, as in test_skill_runtime."""
     def __init__(self, replies):
-        super().__init__(Config(provider='openai', model='scripted', send_evidence=True))
+        super().__init__(Config(provider='openai', model='scripted', send_evidence=True, tool_rounds=0, research_retries=0))
         self.replies = list(replies); self.requests = []
 
     async def chat(self, messages, schemas=()):

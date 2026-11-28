@@ -18,7 +18,7 @@ from .skill_runtime import (AUTO, check_output, clean_terms, continue_session, c
     policy_for, prompt_view, response_extension, route, session_state, style_flags, validated_background, validated_challenge,
     validated_general_answer, GENERAL_ANSWER_LABEL, NO_DIRECT_EVIDENCE, PLAIN_ANSWER_PROMPT, UNUSABLE_REPLY)
 from .trace import task_trace_context
-from .language import KEYWORD_PROMPT, bridged, clean_keywords, has_cjk, labeller
+from .language import KEYWORD_PROMPT, REWRITE_PROMPT, bridged, clean_keywords, has_cjk, labeller
 
 def skill_contract(skill):
     """Validated, versioned contract (see skill_runtime); raises ValueError for an unknown skill."""
@@ -56,6 +56,13 @@ class State(TypedDict,total=False):
     contract_sha256: str
     coverage: str
     scope: str
+    # Re-search loop (answer -> rewrite -> retrieve): how often it ran, the terms it tried, the answer
+    # and evidence it started from, and whether the last search found nothing new.
+    attempt: int
+    searches: list
+    previous: dict
+    previous_evidence: list
+    exhausted: bool
 
 # Crash recovery (docs/CRASH_RECOVERY.md): progress is checkpointed after each step and
 # a re-run of the same ask resumes from the last step that was written successfully.
@@ -65,11 +72,43 @@ class Assistant:
     def __init__(self,store,user,provider,trace):
         os.environ['LANGSMITH_TRACING']='false';os.environ['LANGCHAIN_TRACING_V2']='false'
         self.store=store;self.user=user;self.provider=provider;self.trace=trace
-        graph=StateGraph(State);graph.add_node('retrieve',self.retrieve);graph.add_node('answer',self.answer)
+        graph=StateGraph(State);graph.add_node('retrieve',self.retrieve);graph.add_node('answer',self.answer);graph.add_node('rewrite',self.rewrite)
         # Resume (C1/C2): evidence restored from a 'retrieved' checkpoint skips retrieval.
         graph.add_conditional_edges(START,lambda s:'answer' if s.get('evidence') is not None else 'retrieve',['retrieve','answer'])
-        graph.add_edge('retrieve','answer');graph.add_edge('answer',END);self.graph=graph.compile()
+        # The graph has a cycle: an answer that cites no evidence goes back through `rewrite` (new search
+        # terms from the model) to `retrieve`, a bounded number of times. A search that finds nothing new
+        # ends the run with the answer it already has.
+        graph.add_conditional_edges('retrieve',lambda s:END if s.get('exhausted') else 'answer',['answer',END])
+        graph.add_conditional_edges('answer',self.next_step,['rewrite',END]);graph.add_edge('rewrite','retrieve')
+        self.graph=graph.compile()
         summary=StateGraph(State);summary.add_node('summarize',self.summarize);summary.add_edge(START,'summarize');summary.add_edge('summarize',END);self.summary_graph=summary.compile()
+
+    def research_limit(self):
+        '''How many times an insufficient answer may trigger a new search (0 in the local mode).'''
+        config=self.provider.config
+        return 0 if config.provider=='demo' else getattr(config,'research_retries',1)
+
+    def next_step(self,state):
+        '''After an answer: search again when it cites nothing and retries remain, else finish.'''
+        result=state['result']
+        if result['claims'] or result.get('session') or state.get('attempt',0)>=self.research_limit():
+            return END
+        return 'rewrite'
+
+    async def rewrite(self,state):
+        '''Ask the model for different search terms. No meeting content is sent, only the question.'''
+        started=time.perf_counter();tried=state.get('searches') or [' '.join(sorted(terms(bridged(state['question']))))]
+        words=''
+        try:
+            reply=await self.provider.chat([{'role':'system','content':REWRITE_PROMPT.replace('TRIED',json.dumps(tried))},
+                                            {'role':'user','content':state['question'][:1000]}])
+            if (reply.content or '').strip().upper().strip('.')!='NONE':words=clean_keywords(reply.content)
+        except ProviderError:
+            pass
+        attempt=state.get('attempt',0)+1
+        self.trace.emit('research',snapshot_id=state['snapshot'],step=f'attempt_{attempt}',reason=None if words else 'no_new_terms',
+                        latency_ms=round((time.perf_counter()-started)*1000,3))
+        return {'attempt':attempt,'searches':tried+[words],'previous':state['result'],'previous_evidence':state['evidence'],'exhausted':False}
 
     def validate_evidence(self,snapshot,evidence):
         for row in evidence:
@@ -86,7 +125,14 @@ class Assistant:
         # The record is English. A Chinese question is searched through its English gloss and,
         # with a model configured, through English keywords the model proposes (language.py).
         query_question=bridged(state['question'])
-        if has_cjk(state['question']) and self.provider.config.provider!='demo':
+        retry=state.get('attempt',0)>0
+        if retry:
+            # Second and later passes search with the rewritten terms as well (see rewrite).
+            query_question+=' '+' '.join(state.get('searches',[])[1:])
+            if not state['searches'][-1]:
+                # The model had no other way to ask: keep the answer already given.
+                return {'evidence':state['previous_evidence'],'exhausted':True}
+        elif has_cjk(state['question']) and self.provider.config.provider!='demo':
             query_question+=' '+await self._english_keywords(state['question'],state['snapshot'])
         if state.get('history') and re.search(r'\b(it|that|they|those|this|them|earlier|more)\b',query_question,re.I):
             query_question+=' '+state['history'][-1]['question']
@@ -149,7 +195,12 @@ class Assistant:
                 if size+len(e['text'])>24000:break
                 selected.append(excerpt(e,query_question));size+=len(e['text'])
         self.trace.emit('retrieval',snapshot_id=state['snapshot'],source_ids=[e['id'] for e in selected],policy='allow',latency_ms=round((time.perf_counter()-started)*1000,3))
-        if state.get('conversation'):self._checkpoint(state,'retrieved',selected)
+        if retry and {e['id'] for e in selected}<={e['id'] for e in state['previous_evidence']}:
+            # The new search found nothing the model has not already read: asking again would repeat the answer.
+            return {'evidence':state['previous_evidence'],'exhausted':True}
+        # Crash recovery: a checkpoint never moves backwards. During a second pass the first answer stays
+        # the recoverable state until the new one is written, so a crash here resumes with that answer.
+        if state.get('conversation') and not retry:self._checkpoint(state,'retrieved',selected)
         return {'evidence':selected,'coverage':coverage,'scope':scope} if coverage else {'evidence':selected}
 
     def _transcript(self,snapshot,meeting,cap=3000):
@@ -360,6 +411,10 @@ class Assistant:
                         skill=state['skill'],skill_version=contract['version'],tool_calls=len(tool_events),tool_denied=report['tool_calls_denied'],reason=abstain_reason,
                         step=f"round_{result['session']['round']}" if session else None,**usage)
         result['inferred_fields']={name:[i for i in inferences if i['field']==name] for name in result['contract']['output_fields']}
+        prior=state.get('previous')
+        if prior and not result['claims'] and not result.get('general_answer') and (prior.get('general_answer') or prior.get('background')):
+            # The second pass found no quotation either and lost the model's own answer: keep the first.
+            result,evidence=prior,state['previous_evidence']
         if state.get('conversation'):self._checkpoint(state,'answered',evidence,result)
         return {'result':result,'evidence':evidence}
 
@@ -460,6 +515,10 @@ class Assistant:
             if saved:start['evidence']=saved['evidence']  # C1/C2: skip retrieval, re-checked in answer
             out=await self.graph.ainvoke(start)
             result,evidence=out['result'],out['evidence']
+            if out.get('attempt'):
+                # How the re-search loop went, for the trace and the window: passes, and whether one helped.
+                result={**result,'research':{'attempts':out['attempt'],'found_evidence':bool(result['claims']),
+                                             'searches':[s for s in out.get('searches',[])[1:] if s]}}
         turn_id=self.store.private_put(self.user,snapshot,conversation,question,result)
         self._checkpoint(state,'saved',evidence,result,turn_id)
         return result

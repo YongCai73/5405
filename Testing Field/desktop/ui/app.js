@@ -965,6 +965,8 @@ byId("model-form").addEventListener("submit", (event) => {
     model: byId("model-name").value.trim(),
     baseUrl: byId("model-base-url").value.trim(),
     sendEvidence: byId("model-consent").checked,
+    researchRetries: wholeNumber("research-retries", state.settings.researchRetriesLimit ?? 5),
+    toolRounds: wholeNumber("tool-rounds", state.settings.toolRoundsLimit ?? 2),
     key,
   };
   void settingsAction(async () => {
@@ -1046,7 +1048,8 @@ function answerMeta(turn) {
   const skill = turn.answer.skill;
   const route = routeLabels[turn.answer.skillRoute];
   const grounding = groundingLabels[turn.answer.grounding];
-  meta.append(make("span", "skill-tag", (skill ? skillLabel(skill) + (route ? " · " + route : "") : "") + (grounding ? " · " + grounding : "")));
+  const again = turn.answer.searchedAgain > 0 ? " · searched again" + (turn.answer.searchedAgain > 1 ? " ×" + turn.answer.searchedAgain : "") : "";
+  meta.append(make("span", "skill-tag", (skill ? skillLabel(skill) + (route ? " · " + route : "") : "") + (grounding ? " · " + grounding : "") + again));
   const meetingId = state.meeting.id;
   for (const [rating, symbol, label] of [["up", "👍", "Helpful"], ["down", "👎", "Not helpful"]]) {
     const button = make("button", "rate-button" + (turn.rating === rating ? " selected" : ""), symbol);
@@ -1094,12 +1097,20 @@ function renderSetupHint() {
   hint.hidden = !message;
 }
 
+// A number field's value as a whole number within 0..limit; out-of-range or empty input is clamped.
+function wholeNumber(id, limit) {
+  const typed = Math.round(Number(byId(id).value));
+  return Number.isFinite(typed) ? Math.min(limit, Math.max(0, typed)) : 0;
+}
+
 function renderModelFields(presetId) {
   const local = presetId === "local";
   const settings = state.settings;
   byId("model-name").disabled = local;
   byId("model-base-url").disabled = local;
   byId("model-consent").disabled = local;
+  byId("research-retries").disabled = local;
+  byId("tool-rounds").disabled = local;
   byId("api-key-input").disabled = local || !settings.keyStoreAvailable;
   byId("remove-key").disabled = !settings.keySaved;
   // Testing uses what is saved, so it is offered for the saved provider only.
@@ -1124,6 +1135,8 @@ function renderSettings(settings) {
   byId("model-name").value = settings.model;
   byId("model-base-url").value = settings.baseUrl;
   byId("model-consent").checked = settings.sendEvidence;
+  byId("research-retries").value = String(settings.researchRetries ?? 1);
+  byId("tool-rounds").value = String(settings.toolRounds ?? 1);
   let status = settings.keySaved
     ? "A key for " + settings.keyHost + " is saved in this computer's credential store. Paste a new one only to replace it."
     : (settings.keyHost ? "No key is saved for " + settings.keyHost + " yet. " : "")

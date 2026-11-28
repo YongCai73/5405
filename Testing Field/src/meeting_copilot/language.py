@@ -102,6 +102,13 @@ KEYWORD_PROMPT = ('The user asks a question in Chinese about a meeting whose tra
                   'Do not answer the question.')
 
 
+REWRITE_PROMPT = ('A search of an English meeting transcript and project files for the user question found nothing usable. '
+                  'Search terms already tried: TRIED. Reply with 3 to 12 different English search keywords: synonyms, related '
+                  'terms and the plain words a speaker would actually say for this. Lower case, separated by spaces, nothing '
+                  'else. If the question asks for general knowledge or advice rather than for what was said, decided or '
+                  'assigned in this meeting, or is small talk, reply with the single word NONE. Do not answer the question.')
+
+
 def has_cjk(text):
     return bool(_CJK.search(text or ''))
 

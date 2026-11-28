@@ -76,7 +76,10 @@ def test_skill_control_suite_passes(tmp_path):
 class ScriptedProvider(Provider):
     """Replaces only the HTTP request; the real tool loop in Provider.complete still runs."""
     def __init__(self, replies, **config):
-        super().__init__(Config(provider='openai', model='scripted', send_evidence=True, **config))
+        # A scripted provider answers exactly the requests a test lists, so the tool loop and the re-search
+        # loop are off unless the test turns them on.
+        super().__init__(Config(provider='openai', model='scripted', send_evidence=True,
+                                **{'tool_rounds': 0, 'research_retries': 0, **config}))
         self.replies = list(replies); self.requests = []
 
     async def chat(self, messages, schemas=()):

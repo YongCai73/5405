@@ -170,6 +170,15 @@
       <input id="api-key-input" type="password" maxlength="512" autocomplete="off" spellcheck="false" placeholder="Paste the provider key">
       <p class="dialog-hint" id="settings-key-status" role="status"></p>
       <label class="consent" for="model-consent"><input id="model-consent" type="checkbox"> Send the meeting excerpts and approved files a question needs to this provider. Model answers need this.</label>
+      <div class="setting-row">
+        <label for="research-retries">Search again when an answer finds no evidence</label>
+        <input id="research-retries" type="number" min="0" max="5" step="1" inputmode="numeric" aria-describedby="loop-hint">
+      </div>
+      <div class="setting-row">
+        <label for="tool-rounds">Rounds in which the model may look up more evidence itself</label>
+        <input id="tool-rounds" type="number" min="0" max="2" step="1" inputmode="numeric" aria-describedby="loop-hint">
+      </div>
+      <p class="dialog-hint" id="loop-hint">Up to 5 and up to 2. Each one can add a request to the model, so answers may take longer; 0 turns it off.</p>
       <p class="dialog-hint" id="model-test-status" role="status"></p>
       <div class="dialog-actions"><button type="button" class="button button-outline" id="remove-key">Remove saved key</button><button type="button" class="button button-outline" id="test-model">Test connection</button><button type="submit" class="button button-primary" id="save-model">Save</button></div>
     </form>

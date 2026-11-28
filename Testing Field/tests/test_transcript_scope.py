@@ -23,7 +23,7 @@ CLOSING = ['That is it from me.', 'Questions?', 'Okay, enjoy your Thursday.']
 
 class ScriptedProvider(Provider):
     def __init__(self, replies):
-        super().__init__(Config(provider='openai', model='scripted', send_evidence=True))
+        super().__init__(Config(provider='openai', model='scripted', send_evidence=True, tool_rounds=0, research_retries=0))
         self.replies = list(replies); self.requests = []
 
     async def chat(self, messages, schemas=()):
