@@ -93,14 +93,17 @@ checks the environment variable itself and is unchanged.
 
 ## Portable package (Windows)
 
-`desktop\launch.cmd package` builds `MeetingCopilot-windows-x64.zip` in a new
+The published package for 0.3.0 is
+[MeetingCopilot_0.3.0-windows-x64.zip](https://github.com/YongCai73/5405/releases/download/v0.3.0/MeetingCopilot_0.3.0-windows-x64.zip)
+(SHA-256 `555d96465fc6ab829d50a9d2fe6b26db5bffbc79fa4c4b36ef2d01e033900323`).
+To build one yourself, `desktop\launch.cmd package` builds `MeetingCopilot-windows-x64.zip` in a new
 `build\portable-<time>` folder. Unzip it anywhere and double-click
 `Start Meeting Copilot.cmd` inside; nothing is installed, and the target PC
 needs no Python, .NET or source checkout. The package carries a copy of the
 Python the project environment was created from, only the runtime dependencies
 (no test tools), the backend, the shared UI and a self-contained .NET host.
 
-Measured on 2026-11-27: 259 MB zipped, 704 MB unpacked. Most of the size is
+Measured for 0.3.0 on 2026-11-28: 277 MB zipped, 744 MB unpacked. Most of the size is
 the speech and model libraries. `package-windows.ps1 -FrameworkDependent`
 leaves out .NET (about 130 MB unpacked) for PCs that already have the .NET 8
 Desktop Runtime.

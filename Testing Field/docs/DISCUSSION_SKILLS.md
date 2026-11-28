@@ -1,7 +1,6 @@
 # Discussion skills and meta-suggestion
 
-Owner: Jiaxuan Yan. Branch `jiaxuan/discussion-skills`, stacked on
-`jiaxuan/mcp-skills` (see [MCP_SKILLS.md](MCP_SKILLS.md) for routing, contracts, the
+Owner: Jiaxuan Yan. Released in 0.3.0 (see [MCP_SKILLS.md](MCP_SKILLS.md) for routing, contracts, the
 tool gate and trace, which this builds on). Recorded 2026-11-27. Validation:
 [results/discussion-skills-validation-2026-11-27.md](../results/discussion-skills-validation-2026-11-27.md).
 

@@ -58,10 +58,10 @@ All modules -> structured traces -> evaluation runner
 
 ## Getting started (planning stage)
 
-- Read [project scope](docs/PROJECT_SCOPE.md).
-- Agree on [interfaces](docs/INTERFACES.md) before independent implementation.
-- Use [milestones](docs/MILESTONES.md) as a draft timeline; adapt to the professor's deadline.
-- Record research and benchmark references in [research notes](docs/RESEARCH.md).
+- Read [project scope](PROJECT_SCOPE.md).
+- Agree on [interfaces](INTERFACES.md) before independent implementation.
+- Use [milestones](MILESTONES.md) as a draft timeline; adapt to the professor's deadline.
+- Record research and benchmark references in [research notes](RESEARCH.md).
 
 The `src/` directory is intentionally a lightweight placeholder. Add a prototype only after the audio feasibility test and team architecture review.
 

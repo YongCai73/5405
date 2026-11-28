@@ -3,7 +3,7 @@ requires = ["hatchling>=1.27,<2"]
 build-backend = "hatchling.build"
 [project]
 name = "meeting-copilot-prototype"
-version = "0.3.0"
+version = "0.3.1"
 description = "Local evidence snapshots and private meeting QA"
 license = "MIT"
 license-files = ["docs/UPSTREAM_LICENSE.txt"]
