@@ -2,7 +2,7 @@
 
 A local CLI for retained meeting/project evidence, private cited questions, three LangGraph task skills, background summaries and read-only MCP. No-key demo mode uses **SIMULATED transcript replay and deterministic extractive quotations**. Configured API mode adds model synthesis, explicitly separated from exact supporting quotes. Quote/reference checks do **not** prove semantic entailment.
 
-The [macOS desktop prototype](desktop/README.md) adds a window for browsing meetings, transcribing audio, and asking questions with clickable sources. The [Windows desktop developer MVP](desktop/windows/README.md) hosts the same local Python backend and shared web UI through WPF/WebView2; it is build- and demo-validated, but not yet a signed or microphone-validated release.
+The [macOS desktop prototype](desktop/README.md) adds a window for browsing meetings, transcribing audio, and asking questions with clickable sources. The [Windows desktop developer MVP](desktop/windows/README.md) hosts the same local Python backend and shared web UI through WPF/WebView2; it is build- and demo-validated, but not yet a signed or microphone-validated release. Both open with a double-click on `Start Meeting Copilot.cmd` / `Start Meeting Copilot.command`; see [desktop/LAUNCH.md](desktop/LAUNCH.md).
 
 **Start here:** [Chinese B/G/C/T/D/R handoff](handoff.md) includes the ready-to-use Windows path, full-repository clone/branch workflow, real-ID PowerShell flow, both-platform API/audio commands and cleanup. The local prepared `Testing Field` is an application copy, not a Git checkout. Develop in a separate full clone of [meeting-copilot/prototype-20261108](https://github.com/cyudaddy/5405/tree/meeting-copilot/prototype-20261108).
 
@@ -82,7 +82,7 @@ Participant consent is required. Recording/ASR and summary workers are independe
 Optional **paid** evaluation commands, only after configuring your own endpoint:
 
 ```bash
-# 88 API calls over frozen synthetic questions/ablations, tools disabled for equal retrieval context:
+# Up to 110 API calls (5 variants x 22 frozen synthetic questions; cases with no retrieved evidence make no call), tools disabled for equal retrieval context:
 .venv/bin/python -m meeting_copilot evaluate --api --output results/local-api-eval.json
 # 22 calls through unchanged upstream LiveAssistantService and repository:
 .venv/bin/python -m meeting_copilot native-baseline --output results/local-native-baseline.json

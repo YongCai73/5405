@@ -20,10 +20,23 @@ Audio import/export uses a private temporary copy. The Python backend therefore
 never receives the original user-selected path; an export is copied to the final
 path only after the backend has written its temporary JSON file.
 
+The shared window also offers the skill menu, answer ratings, the suggestion
+report and Settings, where the model and API key are set up once; see
+[the desktop README](../README.md). `desktop\launch.cmd package` builds a
+portable zip for another PC; see [LAUNCH.md](../LAUNCH.md#portable-package-windows).
+
 After a finished microphone capture, the shared **Summary** view can show its
 local Session Health card: the effective preset plus allowlisted operational
 counters and timings. Unknown fields, transcript text, questions and raw errors
 are never rendered by this view.
+
+## Open with one click
+
+Double-click **Start Meeting Copilot.cmd** in `Testing Field`. It builds the
+developer bundle when needed and opens it, with no environment variables.
+`desktop\launch.cmd doctor` reports anything missing, and
+[LAUNCH.md](../LAUNCH.md) lists every launcher command, including saving an API
+key in Windows Credential Manager. The first build needs the .NET 8 SDK.
 
 ## Run on Windows
 

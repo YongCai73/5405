@@ -48,7 +48,23 @@ const state = {
   endingMeetings: new Set(),
   summaryRequests: new Map(),
   initialError: null,
+  skills: [],
+  skill: "auto",
+  feedbackTurn: null,
+  settings: null,
 };
+
+// Used until the backend's skill list arrives, and if an older backend has none.
+const fallbackSkills = [
+  { name: "auto", label: "Auto" },
+  { name: "catch_up", label: "Catch up" },
+  { name: "trace_decision", label: "Trace decision" },
+  { name: "compare_options", label: "Compare options" },
+  { name: "direct", label: "Direct" },
+];
+// Shown beside the skill so it is clear at a glance where an answer came from.
+const groundingLabels = { meeting_and_model: "meeting + model knowledge", model_only: "model knowledge, not from the meeting" };
+const routeLabels = { manual: "chosen", matched: "auto", continued: "session continues", ambiguous: "auto, no clear match", not_applicable: "auto, no match" };
 
 const prompts = [
   { question: "Catch me up on the discussion.", label: "Catch me up", skill: "catch_up" },
@@ -557,6 +573,7 @@ function renderConversation(scrollToEnd = false) {
         }
         answer.append(sources);
       }
+      if (turn.id !== undefined) answer.append(answerMeta(turn));
     }
     section.append(answer);
     container.append(section);
@@ -574,7 +591,9 @@ function updateComposer() {
   const enabled = Boolean(state.meeting?.segments?.length)
     && !state.questionSubmissions.has(state.meeting?.id)
     && !currentTurns().some((turn) => turn.pending);
+  renderSetupHint();
   field.disabled = !enabled;
+  byId("skill-select").disabled = !enabled;
   byId("send-question").disabled = !enabled || !field.value.trim();
   byId("prompt-list").querySelectorAll("button").forEach((button) => { button.disabled = !enabled; });
 }
@@ -682,6 +701,22 @@ function refreshQuestions(meetingId) {
   return refresh;
 }
 
+// The regular refresh runs every 1.5 s. While an answer is pending, look more often so a
+// one-second answer is not shown a second and a half late.
+async function watchPending(meetingId) {
+  if (watchPending.active.has(meetingId)) return;
+  watchPending.active.add(meetingId);
+  try {
+    while (currentTurns(meetingId).some((turn) => turn.pending)) {
+      await new Promise((resolve) => window.setTimeout(resolve, 300));
+      await refreshQuestions(meetingId);
+    }
+  } finally {
+    watchPending.active.delete(meetingId);
+  }
+}
+watchPending.active = new Set();
+
 async function submitQuestion(action, payload) {
   const { meetingId } = payload;
   if (state.questionSubmissions.has(meetingId) || currentTurns(meetingId).some((turn) => turn.pending)) return;
@@ -693,6 +728,7 @@ async function submitQuestion(action, payload) {
     // Finish a poll started before submission, then fetch the newly created turn.
     await questionRefreshes.get(meetingId);
     await refreshQuestions(meetingId);
+    void watchPending(meetingId);
   } catch (error) {
     await refreshQuestions(meetingId);
     if (state.meeting?.id === meetingId) toast(error.message, true);
@@ -705,7 +741,8 @@ async function submitQuestion(action, payload) {
   }
 }
 
-async function ask(question, skill = "trace_decision") {
+// Typed questions are routed automatically; the prompt buttons name their skill.
+async function ask(question, skill = "auto") {
   const meetingId = state.meeting?.id;
   if (!question || !meetingId || !state.meeting.segments.length) return;
   await submitQuestion("beginQuestion", { meetingId, question, skill });
@@ -889,11 +926,323 @@ byId("question").addEventListener("keydown", (event) => {
 });
 byId("ask-form").addEventListener("submit", (event) => {
   event.preventDefault();
-  void ask(byId("question").value.trim());
+  void ask(byId("question").value.trim(), state.skill);
 });
+byId("skill-select").addEventListener("change", (event) => {
+  const chosen = event.target.value;
+  state.skill = (state.skills.length ? state.skills : fallbackSkills).some((skill) => skill.name === chosen) ? chosen : "auto";
+});
+byId("feedback-form").addEventListener("submit", (event) => {
+  event.preventDefault();
+  const turn = state.feedbackTurn;
+  byId("feedback-dialog").close();
+  if (turn) void rate(turn.meetingId, turn.id, "down", byId("feedback-note").value.trim());
+});
+byId("open-settings").addEventListener("click", () => { void openSettings(); });
+byId("setup-model").addEventListener("click", () => { void openSettings(); });
+byId("model-preset").addEventListener("change", (event) => {
+  const preset = (state.settings?.presets || []).find((row) => row.id === event.target.value);
+  if (!preset) return;
+  // Switching provider starts from that provider's defaults; the saved one keeps its saved values.
+  const saved = state.settings.preset === preset.id;
+  byId("model-name").value = saved ? state.settings.model : preset.model;
+  byId("model-base-url").value = saved ? state.settings.baseUrl : preset.baseUrl;
+  if (!saved) byId("model-consent").checked = false;
+  byId("model-test-status").textContent = "";
+  renderModelFields(preset.id);
+  if (!saved && preset.id !== "local") {
+    byId("settings-key-status").textContent = "Keys are kept per provider and never reused for another one. Paste this provider's key.";
+  } else if (saved) renderSettings(state.settings);
+});
+byId("model-form").addEventListener("submit", (event) => {
+  event.preventDefault();
+  const field = byId("api-key-input");
+  const key = field.value.trim();
+  // Clear the field before anything else so the key never lingers in the page.
+  field.value = "";
+  const payload = {
+    preset: byId("model-preset").value,
+    model: byId("model-name").value.trim(),
+    baseUrl: byId("model-base-url").value.trim(),
+    sendEvidence: byId("model-consent").checked,
+    researchRetries: wholeNumber("research-retries", state.settings.researchRetriesLimit ?? 5),
+    toolRounds: wholeNumber("tool-rounds", state.settings.toolRoundsLimit ?? 2),
+    key,
+  };
+  void settingsAction(async () => {
+    applySettings(await bridge("saveModelSettings", payload));
+    byId("model-test-status").textContent = "";
+    toast(state.settings.provider === "demo" ? "Using local answers." : "Model saved. It is used from the next question.");
+    if (state.meeting) useDetail(await bridge("meeting", { meetingId: state.meeting.id }));
+  });
+});
+byId("test-model").addEventListener("click", () => {
+  const status = byId("model-test-status");
+  const button = byId("test-model");
+  button.disabled = true;
+  status.textContent = "Contacting the provider…";
+  bridge("testModel").then(
+    (result) => { status.textContent = "Connected. " + result.model + " answered a test request."; },
+    (error) => { status.textContent = "Not connected. " + error.message; },
+  ).finally(() => { renderModelFields(byId("model-preset").value); });
+});
+byId("remove-key").addEventListener("click", () => {
+  void settingsAction(async () => {
+    applySettings(await bridge("deleteApiKey"));
+    toast("Saved API key removed.");
+  });
+});
+byId("preference-form").addEventListener("submit", (event) => {
+  event.preventDefault();
+  const field = byId("preference-input");
+  const value = field.value.trim();
+  if (!value) return;
+  void settingsAction(async () => {
+    renderPreferences(await bridge("preferences", { action: "add", value }));
+    field.value = "";
+  });
+});
+byId("open-suggest").addEventListener("click", () => {
+  if (!state.meeting) return;
+  byId("suggest-use-model").checked = false;
+  byId("suggest-status").textContent = "";
+  byId("suggest-results").replaceChildren();
+  byId("suggest-dialog").showModal();
+});
+byId("run-suggest").addEventListener("click", () => { void runSuggest(); });
+
+function skillLabel(name) {
+  const known = (state.skills.length ? state.skills : fallbackSkills).find((skill) => skill.name === name);
+  return known ? known.label : String(name).replace(/_/g, " ");
+}
+
+function renderSkillPicker() {
+  const select = byId("skill-select");
+  const skills = state.skills.length ? state.skills : fallbackSkills;
+  if (!skills.some((skill) => skill.name === state.skill)) state.skill = "auto";
+  select.replaceChildren(...skills.map((skill) => {
+    const option = make("option", "", skill.label);
+    option.value = skill.name;
+    option.selected = skill.name === state.skill;
+    const triggers = (skill.triggers || []).join(", ");
+    option.title = skill.name === "auto" ? "Chooses a skill from the words in your question"
+      : triggers ? "Auto picks this for: " + triggers : "";
+    return option;
+  }));
+  select.value = state.skill;
+}
+
+async function loadSkills() {
+  renderSkillPicker();
+  try {
+    const result = await bridge("skills");
+    if (Array.isArray(result?.skills) && result.skills.length) state.skills = result.skills;
+  } catch {
+    // The fallback list keeps the composer usable.
+  }
+  renderSkillPicker();
+}
+
+function answerMeta(turn) {
+  const meta = make("div", "answer-meta");
+  const skill = turn.answer.skill;
+  const route = routeLabels[turn.answer.skillRoute];
+  const grounding = groundingLabels[turn.answer.grounding];
+  const again = turn.answer.searchedAgain > 0 ? " · searched again" + (turn.answer.searchedAgain > 1 ? " ×" + turn.answer.searchedAgain : "") : "";
+  meta.append(make("span", "skill-tag", (skill ? skillLabel(skill) + (route ? " · " + route : "") : "") + (grounding ? " · " + grounding : "") + again));
+  const meetingId = state.meeting.id;
+  for (const [rating, symbol, label] of [["up", "👍", "Helpful"], ["down", "👎", "Not helpful"]]) {
+    const button = make("button", "rate-button" + (turn.rating === rating ? " selected" : ""), symbol);
+    button.type = "button";
+    button.title = label;
+    button.setAttribute("aria-label", label);
+    button.setAttribute("aria-pressed", String(turn.rating === rating));
+    button.addEventListener("click", () => {
+      if (rating === "up") {
+        void rate(meetingId, turn.id, "up", "");
+        return;
+      }
+      state.feedbackTurn = { meetingId, id: turn.id };
+      byId("feedback-note").value = "";
+      byId("feedback-dialog").showModal();
+    });
+    meta.append(button);
+  }
+  return meta;
+}
+
+async function rate(meetingId, questionId, rating, note) {
+  try {
+    await bridge("feedback", { meetingId, questionId, rating, note });
+    await refreshQuestions(meetingId);
+    toast(rating === "up" ? "Marked as helpful." : "Rating saved.");
+  } catch (error) {
+    toast(error.message, true);
+  }
+}
+
+// What still stands between the user and model answers, or "" when nothing does.
+function setupGap(settings) {
+  if (!settings) return "";
+  if (settings.provider === "demo") return "Answers use local excerpts. Set up a model for fuller answers →";
+  if (!settings.keySaved && !settings.keyInEnvironment) return "The model needs an API key. Add it in Settings →";
+  if (!settings.sendEvidence) return "The model is not used until you allow sending excerpts. Open Settings →";
+  return "";
+}
+
+function renderSetupHint() {
+  const hint = byId("setup-model");
+  const message = setupGap(state.settings);
+  hint.textContent = message;
+  hint.hidden = !message;
+}
+
+// A number field's value as a whole number within 0..limit; out-of-range or empty input is clamped.
+function wholeNumber(id, limit) {
+  const typed = Math.round(Number(byId(id).value));
+  return Number.isFinite(typed) ? Math.min(limit, Math.max(0, typed)) : 0;
+}
+
+function renderModelFields(presetId) {
+  const local = presetId === "local";
+  const settings = state.settings;
+  byId("model-name").disabled = local;
+  byId("model-base-url").disabled = local;
+  byId("model-consent").disabled = local;
+  byId("research-retries").disabled = local;
+  byId("tool-rounds").disabled = local;
+  byId("api-key-input").disabled = local || !settings.keyStoreAvailable;
+  byId("remove-key").disabled = !settings.keySaved;
+  // Testing uses what is saved, so it is offered for the saved provider only.
+  byId("test-model").disabled = settings.provider === "demo" || settings.preset !== presetId;
+}
+
+function renderSettings(settings) {
+  state.settings = settings;
+  const local = settings.provider === "demo";
+  byId("settings-provider").textContent = local
+    ? "No model is set up, so answers come from local excerpts. Choose a provider, paste its key and save. You only do this once."
+    : settings.ready ? "Ready. Questions use " + settings.model + ". Saved in " + settings.configFile + "."
+      : setupGap(settings).replace(/ (Add it in|Open) Settings →$/, "").replace(/ →$/, "");
+  const select = byId("model-preset");
+  select.replaceChildren(...settings.presets.map((preset) => {
+    const option = make("option", "", preset.label);
+    option.value = preset.id;
+    option.selected = preset.id === settings.preset;
+    return option;
+  }));
+  select.value = settings.preset;
+  byId("model-name").value = settings.model;
+  byId("model-base-url").value = settings.baseUrl;
+  byId("model-consent").checked = settings.sendEvidence;
+  byId("research-retries").value = String(settings.researchRetries ?? 1);
+  byId("tool-rounds").value = String(settings.toolRounds ?? 1);
+  let status = settings.keySaved
+    ? "A key for " + settings.keyHost + " is saved in this computer's credential store. Paste a new one only to replace it."
+    : (settings.keyHost ? "No key is saved for " + settings.keyHost + " yet. " : "")
+      + "Stored in this computer's credential store, never in a file, and not shown again.";
+  if (settings.keyInEnvironment) status = "The environment variable " + settings.keyName + " is set and takes priority." + (settings.keySaved ? " A saved key also exists." : "");
+  if (!settings.keyStoreAvailable) status += " The credential store is unavailable in this build, so a key cannot be saved here.";
+  byId("settings-key-status").textContent = status;
+  renderModelFields(settings.preset);
+}
+
+function applySettings(settings) {
+  renderSettings(settings);
+  renderSetupHint();
+}
+
+async function loadSettings() {
+  try {
+    state.settings = await bridge("settings");
+  } catch {
+    // The hint stays hidden when the backend cannot report its settings.
+  }
+  renderSetupHint();
+}
+
+function renderPreferences(result) {
+  const list = byId("preference-list");
+  const saved = result.preferences || [];
+  list.replaceChildren(...(saved.length ? saved.map((text, index) => {
+    const item = make("li");
+    item.append(make("span", "", text));
+    const remove = make("button", "close-button", "×");
+    remove.type = "button";
+    remove.setAttribute("aria-label", "Remove preference: " + text);
+    remove.addEventListener("click", () => {
+      void settingsAction(async () => { renderPreferences(await bridge("preferences", { action: "remove", index })); });
+    });
+    item.append(remove);
+    return item;
+  }) : [make("li", "empty", "No preferences saved.")]));
+  const full = saved.length >= (result.limit || 5);
+  byId("preference-input").disabled = full;
+  byId("add-preference").disabled = full;
+}
+
+async function settingsAction(work) {
+  try {
+    await work();
+  } catch (error) {
+    toast(error.message, true);
+  }
+}
+
+async function openSettings() {
+  byId("api-key-input").value = "";
+  await settingsAction(async () => {
+    const [settings, preferences] = await Promise.all([bridge("settings"), bridge("preferences", { action: "list" })]);
+    byId("model-test-status").textContent = "";
+    applySettings(settings);
+    renderPreferences(preferences);
+    byId("settings-dialog").showModal();
+  });
+}
+
+async function runSuggest() {
+  const meetingId = state.meeting?.id;
+  if (!meetingId) return;
+  const status = byId("suggest-status");
+  const results = byId("suggest-results");
+  const button = byId("run-suggest");
+  button.disabled = true;
+  status.textContent = "Analysing your questions…";
+  results.replaceChildren();
+  try {
+    const report = await bridge("suggest", { meetingId, useModel: byId("suggest-use-model").checked });
+    status.textContent = report.turnsAnalysed + " question(s) and " + report.feedbackRows + " rating(s) analysed. " + report.activation;
+    results.replaceChildren(...report.suggestions.map((suggestion) => {
+      const card = make("section", "suggestion");
+      card.append(make("p", "suggestion-kind", String(suggestion.kind).replace(/_/g, " ") + (suggestion.support ? " · seen " + suggestion.support + " times" : "")));
+      card.append(make("h3", "", suggestion.title));
+      if (suggestion.observed) card.append(make("p", "", suggestion.observed));
+      if (suggestion.action) card.append(make("p", "", suggestion.action));
+      if (suggestion.kind === "preference" && suggestion.preference) {
+        const save = make("button", "button button-outline", "Save this preference");
+        save.type = "button";
+        save.addEventListener("click", () => {
+          void settingsAction(async () => {
+            await bridge("preferences", { action: "add", value: suggestion.preference });
+            save.disabled = true;
+            save.textContent = "Saved";
+          });
+        });
+        card.append(save);
+      }
+      return card;
+    }));
+  } catch (error) {
+    status.textContent = error.message;
+  } finally {
+    button.disabled = false;
+  }
+}
 
 async function boot() {
   render();
+  void loadSkills();
+  void loadSettings();
   try {
     applyCollection(await bridge("bootstrap"));
   } catch (error) {

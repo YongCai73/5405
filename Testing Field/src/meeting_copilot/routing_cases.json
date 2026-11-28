@@ -1,0 +1,221 @@
+{
+  "description": "Author-labelled routing regression cases. status is the expected router status; skill is the skill that must run.",
+  "cases": [
+    {
+      "id": "r01",
+      "question": "Catch me up on the discussion.",
+      "skill": "catch_up",
+      "status": "matched"
+    },
+    {
+      "id": "r02",
+      "question": "Summarize the recent discussion in at most 3 sentences.",
+      "skill": "catch_up",
+      "status": "matched"
+    },
+    {
+      "id": "r03",
+      "question": "I just joined. What did I miss?",
+      "skill": "catch_up",
+      "status": "matched"
+    },
+    {
+      "id": "r04",
+      "question": "Give me a quick recap.",
+      "skill": "catch_up",
+      "status": "matched"
+    },
+    {
+      "id": "r05",
+      "question": "What happened so far?",
+      "skill": "catch_up",
+      "status": "matched"
+    },
+    {
+      "id": "r06",
+      "question": "Recap the decision for me.",
+      "skill": "catch_up",
+      "status": "matched"
+    },
+    {
+      "id": "r07",
+      "question": "Why did we choose SQLite?",
+      "skill": "trace_decision",
+      "status": "matched"
+    },
+    {
+      "id": "r08",
+      "question": "What was the rationale for rejecting Kafka?",
+      "skill": "trace_decision",
+      "status": "matched"
+    },
+    {
+      "id": "r09",
+      "question": "What did we decide about the timeout?",
+      "skill": "trace_decision",
+      "status": "matched"
+    },
+    {
+      "id": "r10",
+      "question": "How come the broker was rejected?",
+      "skill": "trace_decision",
+      "status": "matched"
+    },
+    {
+      "id": "r11",
+      "question": "Summarize why we rejected Kafka.",
+      "skill": "trace_decision",
+      "status": "matched"
+    },
+    {
+      "id": "r12",
+      "question": "Why did we choose SQLite versus Kafka?",
+      "skill": "trace_decision",
+      "status": "matched"
+    },
+    {
+      "id": "r13",
+      "question": "Compare SQLite and Kafka deployment.",
+      "skill": "compare_options",
+      "status": "matched"
+    },
+    {
+      "id": "r14",
+      "question": "SQLite vs Kafka: which has lower complexity?",
+      "skill": "compare_options",
+      "status": "matched"
+    },
+    {
+      "id": "r15",
+      "question": "What are the tradeoffs between the two stores?",
+      "skill": "compare_options",
+      "status": "matched"
+    },
+    {
+      "id": "r16",
+      "question": "What options did we compare?",
+      "skill": "compare_options",
+      "status": "matched"
+    },
+    {
+      "id": "r17",
+      "question": "Pros and cons of adding embeddings now?",
+      "skill": "compare_options",
+      "status": "matched"
+    },
+    {
+      "id": "r18",
+      "question": "Compare the options and tell me why we rejected Kafka.",
+      "skill": "compare_options",
+      "status": "matched"
+    },
+    {
+      "id": "r19",
+      "question": "Who owns microphone capture?",
+      "skill": "direct",
+      "status": "not_applicable"
+    },
+    {
+      "id": "r20",
+      "question": "What is the launch budget?",
+      "skill": "direct",
+      "status": "not_applicable"
+    },
+    {
+      "id": "r21",
+      "question": "What queue capacity is configured in worker.py?",
+      "skill": "direct",
+      "status": "not_applicable"
+    },
+    {
+      "id": "r22",
+      "question": "Whyte asked about vsync settings.",
+      "skill": "direct",
+      "status": "not_applicable"
+    },
+    {
+      "id": "r23",
+      "question": "Why, and what are the options?",
+      "skill": "direct",
+      "status": "ambiguous"
+    },
+    {
+      "id": "r24",
+      "question": "Summarize why.",
+      "skill": "direct",
+      "status": "ambiguous"
+    },
+    {
+      "id": "r25",
+      "question": "Can you clarify what the watermark means?",
+      "skill": "clarify",
+      "status": "matched"
+    },
+    {
+      "id": "r26",
+      "question": "Explain FTS5 in plain language.",
+      "skill": "clarify",
+      "status": "matched"
+    },
+    {
+      "id": "r27",
+      "question": "I'm confused about immutable snapshots.",
+      "skill": "clarify",
+      "status": "matched"
+    },
+    {
+      "id": "r28",
+      "question": "Grill me on the SQLite decision.",
+      "skill": "grill_me",
+      "status": "matched"
+    },
+    {
+      "id": "r29",
+      "question": "Play devil's advocate on rejecting Kafka.",
+      "skill": "grill_me",
+      "status": "matched"
+    },
+    {
+      "id": "r30",
+      "question": "Poke holes in our bounded queue plan.",
+      "skill": "grill_me",
+      "status": "matched"
+    },
+    {
+      "id": "r31",
+      "question": "What could go wrong with the snapshot design?",
+      "skill": "design_review",
+      "status": "matched"
+    },
+    {
+      "id": "r32",
+      "question": "Do a design review of the evidence store.",
+      "skill": "design_review",
+      "status": "matched"
+    },
+    {
+      "id": "r33",
+      "question": "What are the key assumptions and failure modes here?",
+      "skill": "design_review",
+      "status": "matched"
+    },
+    {
+      "id": "r34",
+      "question": "Explain why we rejected Kafka.",
+      "skill": "trace_decision",
+      "status": "matched"
+    },
+    {
+      "id": "r35",
+      "question": "What is the meaning of the launch budget, and why?",
+      "skill": "direct",
+      "status": "ambiguous"
+    },
+    {
+      "id": "r36",
+      "question": "Suggest new skills for me.",
+      "skill": "direct",
+      "status": "not_applicable"
+    }
+  ]
+}

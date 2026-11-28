@@ -18,7 +18,16 @@ def test_frozen_runner_controls_and_synthetic_ablations(tmp_path):
         'skills_fixture_correctness', 'skills_citation_membership', 'skills_no_future_evidence',
         'case_isolation', 'policy_guard_and_ablation_sensitivity', 'security_suite', 'recovery_suite',
         'temporal_ablation_sensitivity', 'folder_ablation_sensitivity',
+        'auto_routing_fixture', 'routing_suite', 'skill_controls',
     }
+    assert summary['auto_correct'] == 22 and r['routing']['passed'] == r['routing']['total'] == 36
+    assert r['skill_controls']['passed'] == r['skill_controls']['total'] == 17
+    auto = r['configurations']['auto']
+    assert auto['routing']['status_counts'] == {'matched': 6, 'not_applicable': 16}
+    assert {c['skill'] for c in auto['cases']} == {'catch_up', 'compare_options', 'direct', 'trace_decision'}
+    comparison = r['skill_comparison']
+    assert set(comparison['variants']) == {'skills', 'direct', 'auto'} and 'SIMULATED' in comparison['interpretation']
+    assert all(v['provider_calls'] == 0 and v['estimated_cost_usd'] == 0.0 for v in comparison['variants'].values())
     assert 'not a live-meeting' in r['release_gate']['scope']
     assert {case['id'] for case in r['recovery']['cases']} == {'C0','C1','C2','C3','C4'}
     assert all(case['turns'] == 1 for case in r['recovery']['cases'])
@@ -57,7 +66,7 @@ def test_frozen_runner_controls_and_synthetic_ablations(tmp_path):
         expected_variants = (
             {"direct"}
             if filename == "direct-traces.jsonl"
-            else {"skills", "no_snapshots", "no_folder"}
+            else {"skills", "auto", "no_snapshots", "no_folder"}
         )
 
         for row in correlated:
@@ -66,7 +75,7 @@ def test_frozen_runner_controls_and_synthetic_ablations(tmp_path):
             assert row["variant"] in expected_variants
 
     # Verify diagnosis is included in actual evaluation reports.
-    for variant in ("skills", "direct", "no_snapshots", "no_folder"):
+    for variant in ("skills", "direct", "auto", "no_snapshots", "no_folder"):
         run = r["configurations"][variant]
 
         assert "diagnosis_summary" in run

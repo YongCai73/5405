@@ -20,6 +20,8 @@
       <nav class="meeting-list" id="meeting-list" aria-label="Meeting list"></nav>
       <div class="sidebar-footer">
         <button type="button" class="sample-button" id="load-sample"><span class="icon icon-note" aria-hidden="true"></span> Open sample meeting</button>
+        <button type="button" class="sample-button" id="open-suggest"><span class="footer-symbol" aria-hidden="true">✦</span> Suggest improvements</button>
+        <button type="button" class="sample-button" id="open-settings"><span class="footer-symbol" aria-hidden="true">⚙</span> Settings</button>
         <div class="local-state"><span></span> Local workspace</div>
       </div>
     </aside>
@@ -96,8 +98,9 @@
       <form id="ask-form" class="ask-form">
         <div class="composer">
           <textarea id="question" rows="2" maxlength="4000" placeholder="Ask a question…" aria-label="Ask a question" disabled></textarea>
-          <div class="composer-footer"><span class="composer-mode" id="composer-mode" hidden><i aria-hidden="true"></i><span id="composer-mode-label"></span></span><button type="submit" id="send-question" class="send-button" aria-label="Send question" disabled>↑</button></div>
+          <div class="composer-footer"><select id="skill-select" class="skill-select" aria-label="Question type" title="Question type"></select><span class="composer-mode" id="composer-mode" hidden><i aria-hidden="true"></i><span id="composer-mode-label"></span></span><button type="submit" id="send-question" class="send-button" aria-label="Send question" disabled>↑</button></div>
         </div>
+        <button type="button" class="setup-model" id="setup-model" hidden></button>
         <p class="composer-help">Select a citation to see its source.</p>
       </form>
     </aside>
@@ -130,6 +133,63 @@
     <p class="source-label" id="source-label"></p>
     <blockquote id="source-quote"></blockquote>
     <div class="dialog-actions"><button type="button" class="button button-outline" data-close="source-dialog">Done</button></div>
+  </dialog>
+
+  <dialog id="feedback-dialog" aria-labelledby="feedback-title">
+    <form id="feedback-form">
+      <div class="dialog-header"><h2 id="feedback-title">Rate this answer</h2><button type="button" class="close-button" data-close="feedback-dialog" aria-label="Close">×</button></div>
+      <label for="feedback-note">What was wrong? (optional)</label>
+      <input id="feedback-note" maxlength="500" autocomplete="off" placeholder="e.g. too long, missed the decision">
+      <p class="dialog-hint">Ratings stay on this computer and are only read when you ask for suggestions.</p>
+      <div class="dialog-actions"><button type="button" class="button button-outline" data-close="feedback-dialog">Cancel</button><button type="submit" class="button button-primary" id="save-feedback">Save rating</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="suggest-dialog" aria-labelledby="suggest-title">
+    <div class="dialog-header"><h2 id="suggest-title">Suggest improvements</h2><button type="button" class="close-button" data-close="suggest-dialog" aria-label="Close">×</button></div>
+    <p class="dialog-hint">Looks for repeated patterns in your own questions and ratings for this meeting, then suggests a wording preference, a skill to use or adjust, or a new skill. Nothing is changed unless you save a preference.</p>
+    <label class="consent" for="suggest-use-model"><input id="suggest-use-model" type="checkbox"> Also send my question texts to the configured model for more suggestions (may incur cost).</label>
+    <div class="dialog-actions dialog-actions-start"><button type="button" class="button button-outline" id="run-suggest">Analyse my questions</button></div>
+    <p class="dialog-hint" id="suggest-status" role="status"></p>
+    <div class="suggest-results" id="suggest-results"></div>
+    <div class="dialog-actions"><button type="button" class="button button-outline" data-close="suggest-dialog">Done</button></div>
+  </dialog>
+
+  <dialog id="settings-dialog" aria-labelledby="settings-title">
+    <div class="dialog-header"><h2 id="settings-title">Settings</h2><button type="button" class="close-button" data-close="settings-dialog" aria-label="Close">×</button></div>
+    <h3 class="settings-heading">Model</h3>
+    <p class="dialog-hint" id="settings-provider" role="status"></p>
+    <form id="model-form">
+      <label for="model-preset">Provider</label>
+      <select id="model-preset"></select>
+      <label for="model-name">Model</label>
+      <input id="model-name" maxlength="200" autocomplete="off" spellcheck="false" placeholder="Model name the provider expects">
+      <label for="model-base-url">Base URL</label>
+      <input id="model-base-url" maxlength="500" autocomplete="off" spellcheck="false" placeholder="Leave empty for the provider's default address">
+      <label for="api-key-input">API key</label>
+      <input id="api-key-input" type="password" maxlength="512" autocomplete="off" spellcheck="false" placeholder="Paste the provider key">
+      <p class="dialog-hint" id="settings-key-status" role="status"></p>
+      <label class="consent" for="model-consent"><input id="model-consent" type="checkbox"> Send the meeting excerpts and approved files a question needs to this provider. Model answers need this.</label>
+      <div class="setting-row">
+        <label for="research-retries">Search again when an answer finds no evidence</label>
+        <input id="research-retries" type="number" min="0" max="5" step="1" inputmode="numeric" aria-describedby="loop-hint">
+      </div>
+      <div class="setting-row">
+        <label for="tool-rounds">Rounds in which the model may look up more evidence itself</label>
+        <input id="tool-rounds" type="number" min="0" max="2" step="1" inputmode="numeric" aria-describedby="loop-hint">
+      </div>
+      <p class="dialog-hint" id="loop-hint">Up to 5 and up to 2. Each one can add a request to the model, so answers may take longer; 0 turns it off.</p>
+      <p class="dialog-hint" id="model-test-status" role="status"></p>
+      <div class="dialog-actions"><button type="button" class="button button-outline" id="remove-key">Remove saved key</button><button type="button" class="button button-outline" id="test-model">Test connection</button><button type="submit" class="button button-primary" id="save-model">Save</button></div>
+    </form>
+    <h3 class="settings-heading">Wording preferences</h3>
+    <p class="dialog-hint" id="preference-hint">Short style rules sent with questions to a configured model. They change wording only, never scope or permissions.</p>
+    <ul class="preference-list" id="preference-list"></ul>
+    <form id="preference-form" class="preference-form">
+      <input id="preference-input" maxlength="200" autocomplete="off" aria-label="New wording preference" placeholder="e.g. Keep answers brief.">
+      <button type="submit" class="button button-outline" id="add-preference">Add</button>
+    </form>
+    <div class="dialog-actions"><button type="button" class="button button-outline" data-close="settings-dialog">Done</button></div>
   </dialog>
 
   <div id="toast" class="toast" role="status" hidden><span id="toast-text"></span><button type="button" id="dismiss-toast" class="close-button" aria-label="Dismiss message">×</button></div>

@@ -1,0 +1,79 @@
+{
+  "name": "clarify",
+  "version": "1.0.0",
+  "trigger": [
+    "clarify",
+    "explain",
+    "what does it mean"
+  ],
+  "routing": {
+    "phrases": {
+      "clarify": 3,
+      "explain": 3,
+      "define": 3,
+      "definition": 3,
+      "plain language": 3,
+      "in plain": 3,
+      "don't understand": 3,
+      "do not understand": 3,
+      "eli5": 3,
+      "mean": 2,
+      "means": 2,
+      "meaning": 2,
+      "confused": 2,
+      "confusing": 2,
+      "unclear": 2
+    }
+  },
+  "retrieval": "keyword evidence for the point in question from the pinned meeting and approved files",
+  "retrieval_plan": {
+    "strategy": "keyword",
+    "limit": 8
+  },
+  "allowed_tools": {
+    "model": [
+      "search_evidence",
+      "read_evidence"
+    ],
+    "mcp": [
+      "meet2notes_status",
+      "list_meetings",
+      "get_meeting",
+      "get_transcript",
+      "find_in_transcripts",
+      "get_summary",
+      "read_evidence",
+      "search_project",
+      "read_project_file"
+    ]
+  },
+  "output_fields": [
+    "explanation",
+    "related_evidence"
+  ],
+  "citation": "Exact supporting quotations retain source ID/version/hash/time or original file lines. Model synthesis is separately labelled inference with IDs of validated quotations; structural validation is not semantic proof.",
+  "abstention": "If neither the evidence nor general background explains the point, say so; never present background as a meeting fact",
+  "general_knowledge": "labelled",
+  "memory": "explained_terms",
+  "style": [
+    "Answer in the first sentence. No greeting, no praise of the question, no restating the question.",
+    "No closing offer, summary line or disclaimer. Stop when the point is made.",
+    "Plain words and short sentences. Prefer one small concrete example over an abstract description.",
+    "Write prose, not headings or bullet lists, unless the user asks for a list.",
+    "A term listed as already explained is not defined again; refer to it in at most one short clause unless the user asks to expand."
+  ],
+  "inference_label": "Explanation (model wording; check against the quotations)",
+  "termination": {
+    "max_tool_rounds": 1,
+    "max_tool_calls": 3,
+    "max_claims": 6,
+    "max_inferences": 4,
+    "mcp_session_calls": 200,
+    "on_limit": "further tool calls are denied; answer from evidence already retrieved or abstain"
+  },
+  "task_steps": [
+    "Explain the specific point the user is unsure about, in the context of this discussion.",
+    "Tie the explanation to what was actually said or written when evidence exists.",
+    "Use general background only for terms the evidence does not define, and keep it separate."
+  ]
+}

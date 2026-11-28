@@ -1,4 +1,4 @@
-# Meeting Copilot — Secure, Memory-Augmented Multi-Agent Meeting Assistant
+# Meeting Copilot — Secure, Memory-Augmented Agentic Meeting Assistant
 
 **ENMGT 5405 Final Project | Team planning repository**
 

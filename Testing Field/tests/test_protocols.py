@@ -232,8 +232,16 @@ def test_opt_in_api_evaluator_runs_same_fixture_variants(fake_http,monkeypatch,t
     # Each benchmark case has its own private conversation. q17/q18 intentionally
     # repeat a question under the no_snapshots ablation, but they remain separate
     # trials rather than being treated as a crash-recovery retry.
-    assert len(fake_http['requests'])==88
-    assert result['api_usage']=={'input_tokens':88*17,'output_tokens':88*11,'estimated_cost_usd':pytest.approx(88*39/1e6)}
+    # Five variants x 22 questions. A case whose retrieval found nothing abstains
+    # without a provider request, so the request count is the number of cases that
+    # actually had evidence to send, not a fixed 110.
+    cases=[c for v in ('skills','direct','auto','no_snapshots','no_folder') for c in result['configurations'][v]['cases']]
+    called=sum(c['provider_called'] for c in cases)
+    assert len(cases)==110 and 88<=called<110 and len(fake_http['requests'])==called
+    assert all(c['abstain_reason']=='no_evidence_retrieved' and c['usage']['input_tokens']==0 for c in cases if not c['provider_called'])
+    assert result['api_usage']=={'input_tokens':called*17,'output_tokens':called*11,'estimated_cost_usd':pytest.approx(called*39/1e6)}
+    assert result['skill_comparison']['variants']['skills']['provider_calls']==sum(c['provider_called'] for c in result['configurations']['skills']['cases'])
+    assert 'not by semantic review' in result['skill_comparison']['interpretation']
     assert result['mode'].startswith('API evaluation')
     assert result['configurations']['no_policy']['unauthorized_disclosures']==3
     assert result['native_meet2notes_baseline']['status']=='not measured'

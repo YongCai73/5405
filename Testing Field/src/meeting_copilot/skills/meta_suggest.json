@@ -1,0 +1,39 @@
+{
+  "name": "meta_suggest",
+  "version": "1.0.0",
+  "trigger": [],
+  "routing": {
+    "phrases": {}
+  },
+  "retrieval": "the requesting user's own private question history and feedback for the opted-in meetings; never another user's",
+  "retrieval_plan": {
+    "strategy": "keyword",
+    "limit": 1
+  },
+  "allowed_tools": {
+    "model": [],
+    "mcp": [
+      "meet2notes_status",
+      "list_private_turns",
+      "list_feedback"
+    ]
+  },
+  "output_fields": [
+    "suggestions"
+  ],
+  "citation": "Every suggestion lists the IDs of the private turns it is based on.",
+  "abstention": "With too few turns to show a repeated pattern, recommend no change",
+  "termination": {
+    "max_tool_rounds": 0,
+    "max_tool_calls": 0,
+    "max_claims": 1,
+    "max_inferences": 0,
+    "mcp_session_calls": 50,
+    "on_limit": "further tool calls are denied; answer from evidence already retrieved or abstain"
+  },
+  "task_steps": [
+    "Find needs that repeat across turns, not single unsatisfying answers.",
+    "Decide per need: save a wording preference, adjust an existing skill, or propose a new skill.",
+    "For a new skill, write a specification and test cases a developer can implement. Change nothing."
+  ]
+}

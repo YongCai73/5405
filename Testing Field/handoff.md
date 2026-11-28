@@ -2,7 +2,12 @@
 
 ## B｜交付
 
-本地应用位于 `D:\Yan\Cornell\Semester 1\ENMGT 5405 Applied AI for Teams\Final Project\Testing Field`，运行时版本 **0.2.0**。这份指南使用 **DeepSeek V4.1-Flash-1017**，启动步骤按平台完整分开：
+这台电脑上有两份代码，请先分清：
+
+- **开发仓库（本指南使用）**：`D:\Yan\Cornell\Semester 1\ENMGT 5405 Applied AI for Teams\Final Project\5405\Testing Field`，是 Git 仓库 `5405` 里的应用目录，分支 `jiaxuan/discussion-skills`（叠在 `jiaxuan/mcp-skills` 之上），包含技能自动选择、受控工具调用、关联 trace，以及 `clarify` / `grill_me` / `design_review` 三个技术讨论技能和用户主动触发的 meta-suggestion。
+- **旧的独立运行副本**：`D:\Yan\Cornell\Semester 1\ENMGT 5405 Applied AI for Teams\Final Project\Testing Field`，没有 `.git`，代码较早、没有上述功能。它的 `config.json`、数据库和 `.venv` 都保持原样，本次没有改动；不要把它当开发仓库，也不要用新代码覆盖它。
+
+运行时版本 **0.3.0**。这份指南使用 **DeepSeek V4.1-Flash-1017**，启动步骤按平台完整分开：
 
 - [Windows：从这里开始](#windows)
 - [macOS：从这里开始](#macos)
@@ -20,9 +25,9 @@
 | `provider` | `openai` | 当前程序通过 OpenAI-compatible 接口连接 DeepSeek；不接受 `deepseek` 作为配置值 |
 | `model` | `deepseek-flash` | 官方当前将此 API 名称路由到 V4.1-Flash-1017 |
 | `timeout_seconds` | `120` | 当前程序允许的最大值为 120，不接受 240 |
-| `tool_rounds` | `0` | 程序上限为 2；DeepSeek 默认 thinking 的工具续接还需回传 `reasoning_content`，现有适配器尚未处理，先使用无额外工具轮次的路径 |
+| `tool_rounds` | `0` | 程序上限为 2。2026-11-27 已在真实 DeepSeek 端点上实测：`tool_rounds` 设为 1 或 2、thinking 默认开启或加一行 `"thinking": "disabled"`，8 次提问全部成功，模型调用工具后正常作答（见[真实端点记录](results/live-deepseek-validation-2026-11-27.md)）。想让模型在回答时自己再查证据，可以把它改成 1；保持 0 更省 tokens。模型没有用到连续两轮工具，这一点仍未测到 |
 
-`tool_rounds=0` **仍会检索会议与批准的项目资料，并执行三种技能、生成引用**；只关闭模型在回答中追加的工具调用。`base.en`、4096 输出上限、流式响应和 `API_KEY` 环境变量均可保留。
+`tool_rounds=0` **仍会检索会议与批准的项目资料，并执行三种技能（可自动选择）、生成引用**；只关闭模型在回答中追加的工具调用。`base.en`、4096 输出上限、流式响应和 `API_KEY` 环境变量均可保留。
 
 模型名称核对自 [DeepSeek 官方模型说明](https://api-docs.deepseek.com/quick_start/pricing/)；`/v1/chat/completions` 用法见[官方接入示例](https://api-docs.deepseek.com/quick_start/agent_integrations/workbuddy/)。当前模型别名对应 1017，日后官方可能更新其路由。工具续接要求见[官方 thinking 文档](https://api-docs.deepseek.com/guides/thinking_mode/)。
 
@@ -39,20 +44,24 @@
 打开 PowerShell，运行：
 
 ```powershell
-Set-Location 'D:\Yan\Cornell\Semester 1\ENMGT 5405 Applied AI for Teams\Final Project\Testing Field'
+Set-Location 'D:\Yan\Cornell\Semester 1\ENMGT 5405 Applied AI for Teams\Final Project\5405\Testing Field'
+git status --short --branch
 $env:PYTHONUTF8 = '1'
 $appDir = (Get-Location).Path
 $py = (Resolve-Path '.\.venv\Scripts\python.exe').Path
+if (-not (Test-Path config.json)) { & $py -m meeting_copilot init }
 ```
 
-**接 W2，不需要重新安装或执行 `init`。**
+预期第二行显示 `## jiaxuan/discussion-skills...`。**接 W2，不需要重新安装。**
+
+*这个 `.venv` 是 2026-11-27 用 `uv` 建的 Python 3.12 环境，已装 `.[dev,audio]`。仓库副本里原本没有 `config.json`（它被 `.gitignore` 排除），上面最后一行会在缺失时生成默认配置。旧运行副本里的配置不会被读取或改动；如果想沿用，自己把那份 `config.json` 复制过来即可，其中只有环境变量名、没有 key。*
 
 **1B．第一次 clean clone**
 
 在准备存放项目的目录打开 PowerShell，运行：
 
 ```powershell
-git clone --branch meeting-copilot/prototype-20261108 --single-branch https://github.com/cyudaddy/5405.git meeting-copilot-dev
+git clone --branch jiaxuan/discussion-skills --single-branch https://github.com/cyudaddy/5405.git meeting-copilot-dev
 Set-Location 'meeting-copilot-dev\Testing Field'
 $env:PYTHONUTF8 = '1'
 py -3.12 -m venv .venv
@@ -62,7 +71,7 @@ $py = (Resolve-Path '.\.venv\Scripts\python.exe').Path
 & $py -m meeting_copilot init
 ```
 
-**接 W2。**
+**接 W2。** *两个任务分支合并进 `main` 之后，把上面的分支名换成 `main`。只想要不含新讨论技能的版本时用 `jiaxuan/mcp-skills`。*
 
 <details>
 <summary>备用：没有 py / Python 3.12，但已安装 uv</summary>
@@ -137,6 +146,57 @@ $answer.text
 
 *每次自动生成新会议 ID，重跑时不用先清库。当前流式响应会在收齐并检查引用后显示，等待期间可能暂时没有文字。*
 
+#### W4b｜自动选技能、查看 trace、演示非法调用被拒
+
+*这一步不需要 key，也不改 `config.json` 和 `data/`。*
+
+```powershell
+& $py -m meeting_copilot route 'Why was Kafka rejected?'
+& $py -m meeting_copilot skills
+& $py scripts/skills_demo.py
+```
+
+第一条只解释路由：给出每个技能的得分、命中的触发词和最终选择，不读证据也不调用模型。第二条列出各技能的版本、允许的工具和上限。第三条在临时目录里用本地抽取模式跑完整演示：自动选技能 → 受控取证 → 带引用回答 → 按 `task_id` 查看关联 trace，以及三种非法调用（绑定 `catch_up` 的 MCP 会话调用检索工具、模型侧调用未知工具、伪造身份参数）被拒绝并留痕。
+
+在自己的会议里也一样：`ask` 省略 `--skill` 即为自动选择，回答 JSON 里的 `skill`、`routing`、`task_id` 说明选了什么、为什么；stderr 会打印一行 `skill_selected`。
+
+```powershell
+$auto = & $py -m meeting_copilot ask $sampleMeeting 'Why was Kafka rejected?' --folder $folderId --conversation auto-notes | Out-String | ConvertFrom-Json
+$auto.skill; $auto.routing.status; $auto.text
+& $py -m meeting_copilot trace-show --task $auto.task_id
+```
+
+*路由状态：`matched` 用命中的技能；`ambiguous`（并列）和 `not_applicable`（没有触发词）都退回 `direct` 关键词检索；`manual` 是你用 `--skill` 指定的。同一会话里同一个问题换技能再问，会返回第一次的回答并附带 `skill_conflict` 说明，换一个 `--conversation` 即可重新回答。细节见 [docs/MCP_SKILLS.md](docs/MCP_SKILLS.md)。*
+
+#### W4c｜技术讨论技能、反馈偏好与 meta-suggestion
+
+*同样不需要 key。本地抽取模式只能演示流程和状态；解释、追问质量、假设与失败场景都需要配置真实模型后才有内容。`scripts/skills_demo.py` 的 Demo 3、Demo 4 会把下面这些自动跑一遍。*
+
+三个新技能都能自动选中，也可以用 `--skill clarify|grill_me|design_review` 指定：
+
+```powershell
+& $py -m meeting_copilot ask $sampleMeeting 'Explain the bounded queue' --conversation learn | Out-String | ConvertFrom-Json | % text
+& $py -m meeting_copilot ask $sampleMeeting 'Grill me on the SQLite decision' --conversation grill | Out-String | ConvertFrom-Json | % text
+& $py -m meeting_copilot ask $sampleMeeting 'Because there is no broker to operate' --conversation grill | Out-String | ConvertFrom-Json | % text
+& $py -m meeting_copilot ask $sampleMeeting 'stop' --conversation grill | Out-String | ConvertFrom-Json | % text
+& $py -m meeting_copilot ask $sampleMeeting 'What could go wrong with the bounded queue design?' --folder $folderId --conversation review | Out-String | ConvertFrom-Json | % text
+```
+
+- `clarify`：直白解释当前疑点。同一个 `--conversation` 里解释过的术语会被记住，之后只简短带过；换一个 conversation 就是全新的记忆。会议里没定义的术语可以用通用知识补充，但会单独列在“General background … NOT from the meeting”标题下。
+- `grill_me`：每次只问一个问题，然后等你回答；你的下一条消息会被当作回答并继续追问，最多 5 轮。**追问期间保持同一个 `--conversation`**，说 `stop` / `wrap up` 结束，或显式指定别的 `--skill` 离开。
+- `design_review`：引文是会议事实，放在 `proposal_evidence`；关键假设、失败场景、最该先验证什么是模型建议，标题会写明“not meeting facts”。
+
+给回答打分、保存表达偏好，然后在想看的时候主动触发建议：
+
+```powershell
+& $py -m meeting_copilot feedback $auto.snapshot_id 'Why was Kafka rejected?' --rating down --note 'too long' --conversation auto-notes
+& $py -m meeting_copilot prefs add 'Skip basic definitions unless I ask.'
+& $py -m meeting_copilot prefs list
+& $py -m meeting_copilot suggest $sampleMeeting
+```
+
+`suggest` 只读你自己在这场会议里的提问和打分，输出“观察到的重复需求 → 依据的提问编号 → 该保存偏好、改用或调整现有技能，还是新增技能”。新增技能只给出草稿契约和测试案例，供开发者或编码 agent 实现，**不会自动启用任何东西**。加 `--use-model` 会把你的提问文本（不含回答和证据）发给已配置的模型来补充建议，会产生费用。至少要有几条重复的提问才会有建议，样例会议里刚问一两句时会得到 `no_change`。细节见 [docs/DISCUSSION_SKILLS.md](docs/DISCUSSION_SKILLS.md)。
+
 #### W5｜真实会议：终端 A 录音，终端 B 私问
 
 *安装和配置不用每场重做；每场新会议只需新建会议 ID、启动一次录音。同一录音可反复提问或开多个 B 窗口，共用会议 ID。新终端要各自准备目录、Python 路径和 API key。*
@@ -178,7 +238,7 @@ $result = $resultJson | Out-String | ConvertFrom-Json
 $result.text
 ```
 
-*目前不自动选择技能：省略 `--skill` 就固定使用 `trace_decision`，通用总结问题可能检索不到证据，即使全英文也会发生。`catch_up` 读取提交时最近 8 段已入库转写，概括近期内容。*
+*省略 `--skill` 时现在会自动选择技能：问题里有 summarize、recap、catch up 等触发词会走 `catch_up`；一个触发词都没命中时退回 `direct` 关键词检索，这时通用总结问题仍可能检索不到证据，即使全英文也会发生。所以概括近期内容时，建议像上面这样显式写 `--skill catch_up`。`catch_up` 读取提交时最近 8 段已入库转写，概括近期内容。*
 
 *先看 `$result.text`；仅看 `$result.inferences.text` 可能是空的。若正文仍为 `Insufficient evidence...`，表示没有形成可用引文，需继续排查转写质量、模型输出或校验，不能只凭它断定原因。若出现 `missing_api_key` 等错误，先在当前终端设置 key、重跑 `ask`，成功后再导出。*
 
@@ -217,7 +277,29 @@ $liveAnswer.text
 & $py -m pytest --basetemp data/test-temp -q
 ```
 
-*现有 Windows 基线为 84 通过、1 项权限跳过；完整测试约七分钟。*
+*`jiaxuan/discussion-skills` 在这台 Windows 电脑上 2026-11-27 接电源时的结果：308 通过、10 项平台相关跳过、0 失败，约三分钟；严格评测门禁 12 项全部通过（`jiaxuan/mcp-skills` 单独是 275 通过）。用电池供电时电脑会降频，同一套测试跑了 50 分钟并有 1 项因超时失败，所以跑测试请接电源。较早的 84 通过、1 项跳过是旧提交的历史记录。个别桌面问答测试对机器负载敏感，与其他重任务同时跑时可能超时，单独重跑即可。*
+
+</details>
+
+<details>
+<summary>可选（会产生少量 DeepSeek 费用）：实测工具轮次是否被真实端点接受</summary>
+
+*2026-11-27 已按这个步骤在真实端点上跑通（thinking 开、关各 4 次提问，全部成功，见[真实端点记录](results/live-deepseek-validation-2026-11-27.md)）。供应商接口以后变化时，可以用它重新确认。*
+
+先把 `config.json` 另存一份备份，再把其中两项改为 `"tool_rounds": 1`，并新增一行 `"thinking": null`（保持 DeepSeek 默认的 thinking 模式）。在已设置 `$env:API_KEY` 的终端运行：
+
+```powershell
+$probe = & $py -m meeting_copilot ask $sampleMeeting 'Why was Kafka rejected?' --folder $folderId --conversation probe-thinking | Out-String | ConvertFrom-Json
+$probe.tool_events; $probe.abstained; $probe.usage
+& $py -m meeting_copilot trace-show --task $probe.task_id
+```
+
+- 正常返回且 `abstained` 为 `False`：thinking 模式下的工具回传可用。`tool_events` 为空只说明模型这次没有调用工具，换一个需要查文件的问题再试。
+- 报 `badrequest`：把 `"thinking"` 改成 `"disabled"`，换一个 `--conversation` 名称重跑。若这样可以，说明 non-thinking 路径可用、thinking 回传仍有问题。
+- 两种都失败：恢复备份（`tool_rounds: 0`），把 `trace-show` 输出交给 Jiaxuan Yan。
+
+无论结果如何，请把结论补进本文件的 D 表，并注明日期和模型名。
+
 
 </details>
 
@@ -257,7 +339,7 @@ py="$app_dir/.venv/bin/python"
 在准备存放项目的目录打开 Terminal，运行：
 
 ```bash
-git clone --branch meeting-copilot/prototype-20261108 --single-branch https://github.com/cyudaddy/5405.git meeting-copilot-dev
+git clone --branch jiaxuan/discussion-skills --single-branch https://github.com/cyudaddy/5405.git meeting-copilot-dev
 cd 'meeting-copilot-dev/Testing Field'
 export PYTHONUTF8=1
 python3.12 -m venv .venv
@@ -267,7 +349,7 @@ py="$app_dir/.venv/bin/python"
 "$py" -m meeting_copilot init
 ```
 
-**接 M2。**
+**接 M2。** *两个任务分支合并进 `main` 之后，把上面的分支名换成 `main`。只想要不含新讨论技能的版本时用 `jiaxuan/mcp-skills`。*
 
 <details>
 <summary>备用：没有 python3.12，但已安装 uv</summary>
@@ -343,6 +425,59 @@ printf '%s' "$answer" | "$py" -c 'import json,sys; print(json.load(sys.stdin)["t
 
 *流式响应收齐并检查引用后才显示，不是逐字打印；新会议 ID 自动生成，可重跑。*
 
+#### M4b｜自动选技能、查看 trace、演示非法调用被拒
+
+*这一步不需要 key，也不改 `config.json` 和 `data/`。*
+
+```bash
+"$py" -m meeting_copilot route 'Why was Kafka rejected?'
+"$py" -m meeting_copilot skills
+"$py" scripts/skills_demo.py
+```
+
+第一条只解释路由：给出每个技能的得分、命中的触发词和最终选择，不读证据也不调用模型。第二条列出各技能的版本、允许的工具和上限。第三条在临时目录里用本地抽取模式跑完整演示：自动选技能 → 受控取证 → 带引用回答 → 按 `task_id` 查看关联 trace，以及三种非法调用（绑定 `catch_up` 的 MCP 会话调用检索工具、模型侧调用未知工具、伪造身份参数）被拒绝并留痕。
+
+在自己的会议里也一样：`ask` 省略 `--skill` 即为自动选择，回答 JSON 里的 `skill`、`routing`、`task_id` 说明选了什么、为什么；stderr 会打印一行 `skill_selected`。
+
+```bash
+auto=$("$py" -m meeting_copilot ask "$sample_meeting" 'Why was Kafka rejected?' --folder "$folder_id" --conversation auto-notes)
+task_id=$(printf '%s' "$auto" | "$py" -c 'import json,sys; r=json.load(sys.stdin); print(r["skill"], r["routing"]["status"], file=sys.stderr); print(r["task_id"])')
+"$py" -m meeting_copilot trace-show --task "$task_id"
+```
+
+*路由状态：`matched` 用命中的技能；`ambiguous`（并列）和 `not_applicable`（没有触发词）都退回 `direct` 关键词检索；`manual` 是你用 `--skill` 指定的。同一会话里同一个问题换技能再问，会返回第一次的回答并附带 `skill_conflict` 说明，换一个 `--conversation` 即可重新回答。细节见 [docs/MCP_SKILLS.md](docs/MCP_SKILLS.md)。*
+
+#### M4c｜技术讨论技能、反馈偏好与 meta-suggestion
+
+*同样不需要 key。本地抽取模式只能演示流程和状态；解释、追问质量、假设与失败场景都需要配置真实模型后才有内容。`scripts/skills_demo.py` 的 Demo 3、Demo 4 会把下面这些自动跑一遍。*
+
+三个新技能都能自动选中，也可以用 `--skill clarify|grill_me|design_review` 指定：
+
+```bash
+show() { "$py" -c 'import json,sys; print(json.load(sys.stdin)["text"])'; }
+"$py" -m meeting_copilot ask "$sample_meeting" 'Explain the bounded queue' --conversation learn | show
+"$py" -m meeting_copilot ask "$sample_meeting" 'Grill me on the SQLite decision' --conversation grill | show
+"$py" -m meeting_copilot ask "$sample_meeting" 'Because there is no broker to operate' --conversation grill | show
+"$py" -m meeting_copilot ask "$sample_meeting" 'stop' --conversation grill | show
+"$py" -m meeting_copilot ask "$sample_meeting" 'What could go wrong with the bounded queue design?' --folder "$folder_id" --conversation review | show
+```
+
+- `clarify`：直白解释当前疑点。同一个 `--conversation` 里解释过的术语会被记住，之后只简短带过；换一个 conversation 就是全新的记忆。会议里没定义的术语可以用通用知识补充，但会单独列在“General background … NOT from the meeting”标题下。
+- `grill_me`：每次只问一个问题，然后等你回答；你的下一条消息会被当作回答并继续追问，最多 5 轮。**追问期间保持同一个 `--conversation`**，说 `stop` / `wrap up` 结束，或显式指定别的 `--skill` 离开。
+- `design_review`：引文是会议事实，放在 `proposal_evidence`；关键假设、失败场景、最该先验证什么是模型建议，标题会写明“not meeting facts”。
+
+给回答打分、保存表达偏好，然后在想看的时候主动触发建议：
+
+```bash
+snapshot_id=$(printf '%s' "$auto" | "$py" -c 'import json,sys; print(json.load(sys.stdin)["snapshot_id"])')
+"$py" -m meeting_copilot feedback "$snapshot_id" 'Why was Kafka rejected?' --rating down --note 'too long' --conversation auto-notes
+"$py" -m meeting_copilot prefs add 'Skip basic definitions unless I ask.'
+"$py" -m meeting_copilot prefs list
+"$py" -m meeting_copilot suggest "$sample_meeting"
+```
+
+`suggest` 只读你自己在这场会议里的提问和打分，输出“观察到的重复需求 → 依据的提问编号 → 该保存偏好、改用或调整现有技能，还是新增技能”。新增技能只给出草稿契约和测试案例，供开发者或编码 agent 实现，**不会自动启用任何东西**。加 `--use-model` 会把你的提问文本（不含回答和证据）发给已配置的模型来补充建议，会产生费用。至少要有几条重复的提问才会有建议，样例会议里刚问一两句时会得到 `no_change`。细节见 [docs/DISCUSSION_SKILLS.md](docs/DISCUSSION_SKILLS.md)。
+
 #### M5｜真实会议：终端 A 录音，终端 B 私问
 
 *安装和配置不用每场重做；每场新会议只需新建会议 ID、启动一次录音。同一录音可反复提问或开多个 B 窗口，共用会议 ID。新终端要各自准备目录、Python 路径和 API key。*
@@ -384,7 +519,7 @@ result=$("$py" -m meeting_copilot ask "$live_meeting" 'Summarize the recent disc
 printf '%s' "$result" | "$py" -c 'import json,sys; print(json.load(sys.stdin)["text"])'
 ```
 
-*目前不自动选择技能：省略 `--skill` 就固定使用 `trace_decision`，通用总结问题可能检索不到证据，即使全英文也会发生。`catch_up` 读取提交时最近 8 段已入库转写，概括近期内容。*
+*省略 `--skill` 时现在会自动选择技能：问题里有 summarize、recap、catch up 等触发词会走 `catch_up`；一个触发词都没命中时退回 `direct` 关键词检索，这时通用总结问题仍可能检索不到证据，即使全英文也会发生。所以概括近期内容时，建议像上面这样显式写 `--skill catch_up`。`catch_up` 读取提交时最近 8 段已入库转写，概括近期内容。*
 
 *先看 JSON 的 `text`；只看 `inferences` 可能是空的。若正文仍为 `Insufficient evidence...`，表示没有形成可用引文，需继续排查转写质量、模型输出或校验，不能只凭它断定原因。若出现 `missing_api_key` 等错误，先在当前终端设置 key、重跑 `ask`，成功后再导出。*
 
@@ -430,6 +565,28 @@ printf '%s' "$live_answer" | "$py" -c 'import json,sys; print(json.load(sys.stdi
 </details>
 
 <details>
+<summary>可选（会产生少量 DeepSeek 费用）：实测工具轮次是否被真实端点接受</summary>
+
+*2026-11-27 已按这个步骤在真实端点上跑通（thinking 开、关各 4 次提问，全部成功，见[真实端点记录](results/live-deepseek-validation-2026-11-27.md)）。供应商接口以后变化时，可以用它重新确认。*
+
+先把 `config.json` 另存一份备份，再把其中两项改为 `"tool_rounds": 1`，并新增一行 `"thinking": null`（保持 DeepSeek 默认的 thinking 模式）。在已 `export API_KEY` 的终端运行：
+
+```bash
+probe=$("$py" -m meeting_copilot ask "$sample_meeting" 'Why was Kafka rejected?' --folder "$folder_id" --conversation probe-thinking)
+printf '%s' "$probe" | "$py" -c 'import json,sys; r=json.load(sys.stdin); print(r["tool_events"], r["abstained"], r["usage"]); print(r["task_id"])'
+"$py" -m meeting_copilot trace-show --task 上一行输出的task_id
+```
+
+- 正常返回且 `abstained` 为 `False`：thinking 模式下的工具回传可用。`tool_events` 为空只说明模型这次没有调用工具，换一个需要查文件的问题再试。
+- 报 `badrequest`：把 `"thinking"` 改成 `"disabled"`，换一个 `--conversation` 名称重跑。若这样可以，说明 non-thinking 路径可用、thinking 回传仍有问题。
+- 两种都失败：恢复备份（`tool_rounds: 0`），把 `trace-show` 输出交给 Jiaxuan Yan。
+
+无论结果如何，请把结论补进本文件的 D 表，并注明日期和模型名。
+
+
+</details>
+
+<details>
 <summary>可选：删除刚创建的测试会议</summary>
 
 只在不再需要时，分别在保存对应变量的终端执行：
@@ -447,21 +604,31 @@ printf '%s' "$live_answer" | "$py" -c 'import json,sys; print(json.load(sys.stdi
 
 | 项目 | 结果 / 记录 |
 |---|---|
-| Windows | 84 通过、1 项 symlink 权限跳过；[完整记录](results/windows-validation.json)；另有[原生 junction 检查](results/windows-junction.json) |
+| MCP＋Skills（本分支，Windows，2026-11-27） | 275 通过、10 项平台相关跳过、0 失败；严格评测门禁 12/12；路由回归 24/24、技能控制 13/13，均为本地确定性结果。DeepSeek 工具轮次**仅模拟协议测试**，真实端点未测。[报告](results/mcp-skills-validation-2026-11-27.md)、[设计说明](docs/MCP_SKILLS.md) |
+| 讨论技能＋meta-suggestion（`jiaxuan/discussion-skills`，Windows，2026-11-27） | 308 通过、10 项平台跳过；严格门禁 12/12；路由回归 36/36、技能控制 17/17。自动化测试用本地抽取模式或脚本化的假模型回复；真实模型的试跑另见下一行。[报告](results/discussion-skills-validation-2026-11-27.md)、[设计说明](docs/DISCUSSION_SKILLS.md) |
+| 真实 DeepSeek 端点（`deepseek-flash`，2026-11-27，样例数据） | 工具轮次在 thinking 开、关两种模式下 8/8 成功；三个新技能和 `suggest --use-model` 跑通，并据真实输出修了三处；有无技能对照：固定技能、`direct`、`auto` 都是 22/22，**没有测出技能带来准确率提升**，固定技能多用约 52% 费用。合计约 0.09 美元。[真实端点记录](results/live-deepseek-validation-2026-11-27.md) |
+| Windows（历史，旧提交） | 84 通过、1 项 symlink 权限跳过；[完整记录](results/windows-validation.json)；另有[原生 junction 检查](results/windows-junction.json) |
 | Linux | 85 项通过；[验证记录](results/windows-repair3-validation.json) |
 | 本地 ASR | Windows 公开音频使用 `tiny.en` 得到 2 段；[记录](results/windows-prepared.json)。本指南改用的 `base.en` 尚未单独实测 |
 | 20 分钟稳定性 | Linux 预录音频实际 ASR 399 段、79 次摘要、119 次模拟慢问答，零丢弃/错误；[记录](results/audit-soak-final.json) |
 | Meet2Notes 复用 | 固定提交 `b75077e588f5`，24 个实现/SQL 文件逐字节核验；[来源与许可](docs/UPSTREAM_SOURCE.json) |
-| 交付 | [代码分支](https://github.com/cyudaddy/5405/tree/meeting-copilot/prototype-20261108)、[历史交付标签](https://github.com/cyudaddy/5405/tree/v0.2.0-handoff)、[交付索引](results/final-delivery.json)、[服务器已清理回执](results/server-cleanup.json) |
+| 交付 | [MCP＋Skills 分支](https://github.com/cyudaddy/5405/tree/jiaxuan/mcp-skills)（待审查，未合并 main）、[早期代码分支](https://github.com/cyudaddy/5405/tree/meeting-copilot/prototype-20261108)、[历史交付标签](https://github.com/cyudaddy/5405/tree/v0.2.0-handoff)、[交付索引](results/final-delivery.json)、[服务器已清理回执](results/server-cleanup.json) |
 
-本次更新是指南和配置检查，未使用真实 DeepSeek key 发起付费请求，也未修改当前本地 `config.json`。默认配置、示例语法和命令参数已核对；macOS、真实麦克风和 DeepSeek 付费端点仍需实机验证。
+2026-11-27 的更新分两部分验证。自动化部分是本地确定性测试和模拟协议测试，说明路由、工具限制、恢复和 trace 的代码按约定执行。真实部分经 Tony 批准，用工作区 key 文件里的 key 在真实 DeepSeek 端点上跑了样例数据（key 只进入测试进程的环境变量，没有打印、写入配置或提交；没有修改任何现有 `config.json`）。真实结果说明端点接受工具轮次、新技能能跑通；**不说明**技能让回答更好：对照评测三种方式都是 22/22，题目太简单、只按关键词计分，还需要更难的问题和人工判断。macOS、真实麦克风、真实会议内容仍需实机验证。
+
+另外核实了一点：`ask` 的回答并不经过 MCP。MCP 是给外部客户端用的 stdio 只读入口；模型的工具调用是进程内的函数调用循环。两者现在共用同一道授权、参数和技能白名单检查，但不能把内部调用说成 MCP 端到端验证。
 
 ## R｜开发 TODO
 
 | 优先级 | 后续工作 | 建议负责人 |
 |---|---|---|
 | P0 | 各平台真实麦克风、拔插、20 分钟技术会议，以及 `base.en` CPU 吞吐/术语识别 | Zimo Li / Qiyan Zhai |
-| P0 | DeepSeek 实际端点与人工答案质量；补 `reasoning_content` 工具回传或可配置的 non-thinking，再启用额外工具轮次 | Zimo Li / Jiaxuan Yan |
+| P1 | DeepSeek 工具轮次已在真实端点跑通（单轮内多次调用）；连续两轮工具、`deepseek-v4-pro` 和非流式 `ask` 还没测到 | Zimo Li / Jiaxuan Yan |
+| P1 | 真实模型的 `evaluate --api` 已跑：三种方式都是 22/22，固定技能更贵。现有 22 题是简单事实题，分不出高下；需要补更难的题目（多来源、要取舍、要追溯原因）并做人工语义复核，才能判断技能有无收益 | Jiaxuan Yan / Qiyan Zhai |
+| P0 | `clarify` / `grill_me` / `design_review` 和 `suggest --use-model` 已用真实模型在样例会议上跑通；还需要提问者本人在自己的真实会议和问题上判断是否更好用，这是这批功能的完成标准 | Jiaxuan Yan |
+| P1 | 桌面端：给三个新技能加按钮，并在窗口里试一次 `grill_me` 多轮会话（现在只能靠输入触发，应用未重新构建） | Cai Yong / Jiaxuan Yan |
+| P2 | `suggest` 的规则只匹配英文短语，用“开头两个词相同”粗略聚类；按真实提问历史校准，并考虑把确认后的草稿契约半自动落到 `skills/` | Jiaxuan Yan |
+| P2 | 路由只认英文触发词，并列时退回 `direct` 而不是询问用户；按真实提问补触发词或加交互式消歧。若需要模型工具也真正经过 MCP 客户端，需另做设计 | Jiaxuan Yan |
 | P1 | 真实模型与 native baseline 的同数据 A/B、延迟、tokens 和成本 | Qiyan Zhai |
 | P1 | graph 中间节点崩溃恢复、重放与幂等 | Xiaolong Lin / Zimo Li |
 | P1 | revisions/录音/导出/trace 的保留期、磁盘配额、隐私生命周期 | Cai Yong / Xiaolong Lin |

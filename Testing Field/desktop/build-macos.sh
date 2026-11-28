@@ -108,7 +108,7 @@ cat > "$contents/Info.plist" <<'PLIST'
     <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
     <key>CFBundleName</key><string>Meeting Copilot</string>
     <key>CFBundlePackageType</key><string>APPL</string>
-    <key>CFBundleShortVersionString</key><string>0.2.0</string>
+    <key>CFBundleShortVersionString</key><string>0.3.0</string>
     <key>CFBundleVersion</key><string>1</string>
     <key>LSApplicationCategoryType</key><string>public.app-category.productivity</string>
     <key>LSMinimumSystemVersion</key><string>12.0</string>
@@ -159,9 +159,9 @@ touch "$runtime_bundle/.meeting-copilot-runtime"
     cd "$runtime_bundle"
     PYTHONPATH="$runtime_bundle/src" .venv/bin/python -B -c \
         'from importlib.util import find_spec
-for module in ("meeting_copilot", "langgraph", "litellm", "mcp", "faster_whisper", "sounddevice"):
+for module in ("meeting_copilot", "langgraph", "litellm", "httpx", "mcp", "faster_whisper", "sounddevice", "keyring"):
     if find_spec(module) is None:
-        raise SystemExit(f"Missing {module} in the runtime. Install the project with the audio extra.")'
+        raise SystemExit(f"Missing {module} in the runtime. Install the project with the audio and desktop extras.")'
 )
 
 if [[ -d "$runtime_root" ]]; then

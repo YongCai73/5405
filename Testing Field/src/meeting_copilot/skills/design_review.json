@@ -1,0 +1,76 @@
+{
+  "name": "design_review",
+  "version": "1.0.0",
+  "trigger": [
+    "design review",
+    "what could go wrong",
+    "critique"
+  ],
+  "routing": {
+    "phrases": {
+      "design review": 4,
+      "review the design": 4,
+      "review this design": 4,
+      "review our design": 4,
+      "what could go wrong": 4,
+      "review my": 3,
+      "review our": 3,
+      "critique": 3,
+      "failure modes": 3,
+      "failure scenarios": 3,
+      "sanity check": 3,
+      "risks": 2,
+      "assumptions": 2,
+      "weaknesses": 2
+    }
+  },
+  "retrieval": "keyword evidence describing the current proposal from the pinned meeting and approved files",
+  "retrieval_plan": {
+    "strategy": "keyword",
+    "limit": 12
+  },
+  "allowed_tools": {
+    "model": [
+      "search_evidence",
+      "read_evidence"
+    ],
+    "mcp": [
+      "meet2notes_status",
+      "list_meetings",
+      "get_meeting",
+      "get_transcript",
+      "find_in_transcripts",
+      "get_summary",
+      "read_evidence",
+      "list_project_files",
+      "search_project",
+      "read_project_file"
+    ]
+  },
+  "output_fields": [
+    "proposal_evidence",
+    "key_assumptions",
+    "failure_scenarios",
+    "validate_first"
+  ],
+  "citation": "Exact supporting quotations retain source ID/version/hash/time or original file lines. Model synthesis is separately labelled inference with IDs of validated quotations; structural validation is not semantic proof.",
+  "abstention": "If the proposal is not described in the evidence, say so; do not review an imagined design",
+  "style": [
+    "State each assumption, failure scenario and validation step in one or two plain sentences.",
+    "Rank: put the item most worth checking first. Do not pad the list."
+  ],
+  "inference_label": "Model suggestions (not meeting facts; check against the quotations)",
+  "termination": {
+    "max_tool_rounds": 2,
+    "max_tool_calls": 6,
+    "max_claims": 8,
+    "max_inferences": 8,
+    "mcp_session_calls": 200,
+    "on_limit": "further tool calls are denied; answer from evidence already retrieved or abstain"
+  },
+  "task_steps": [
+    "Quote what the current proposal actually is; those quotations are the only meeting facts.",
+    "List the key assumptions the proposal depends on, and concrete scenarios in which it fails.",
+    "Name the one or two things most worth validating first, and why. Do not claim the team decided any of this."
+  ]
+}

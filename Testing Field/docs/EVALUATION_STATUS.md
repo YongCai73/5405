@@ -59,6 +59,25 @@ not a prerequisite for this evaluation gate. Add it only after the team has a
 shared-dashboard need and has agreed explicit opt-in, redaction, retention,
 access control and credential handling for meeting-derived data.
 
+## MCP + Skills additions (2026-11-27, branch `jiaxuan/mcp-skills`)
+
+The strict gate now has twelve checks. The three new ones are `auto_routing_fixture`
+(the 22 fixture questions answered with `--skill auto`), `routing_suite` (24
+author-labelled routing cases) and `skill_controls` (13 executed checks of tool
+allowlists, budgets, argument validation, trace correlation and recovery pinning).
+The report also carries a `skill_comparison` table for `skills`, `direct` and `auto`.
+In the default simulated mode that table cannot show whether skills help, because
+the local provider ignores the skill contract. See [MCP_SKILLS.md](MCP_SKILLS.md)
+and the [validation record](../results/mcp-skills-validation-2026-11-27.md).
+
+On `jiaxuan/discussion-skills` the same gate covers 36 routing cases and 17
+skill-control checks, including multi-turn session state, per-conversation term
+memory and private-history isolation; see [DISCUSSION_SKILLS.md](DISCUSSION_SKILLS.md).
+
+The opt-in API evaluation now issues at most 110 requests instead of 88: one more
+variant (`auto`), minus every case whose retrieval found no evidence, which now
+abstains without a provider call.
+
 ## Still required before a delivery claim
 
 - Run the full suite from the exact integration commit in the target delivery

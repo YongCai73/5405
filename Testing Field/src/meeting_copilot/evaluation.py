@@ -18,6 +18,29 @@ from .service import EvidenceService
 from .store import Store,Denied
 from .trace import Trace, evaluation_trace_context
 from .diagnostics import diagnose_case
+from .skill_checks import routing_suite, skill_control_suite
+
+COMPARED=('skills','direct','auto')
+
+
+def skill_comparison(runs,simulated):
+    """Side-by-side numbers for fixed skill, no skill and auto-routed skill."""
+    rows={}
+    for variant in COMPARED:
+        cases=runs[variant]['cases'];usage=[c['usage'] for c in cases]
+        total=lambda key:sum(u[key] for u in usage) if all(u[key] is not None for u in usage) else None
+        rows[variant]={'total':len(cases),'correct':runs[variant]['correct'],'citation_supported':runs[variant]['supported_answer_cases'],
+            'abstained':sum(c['abstained'] for c in cases),'validated_inferences':sum(c['inferences'] for c in cases),
+            'provider_calls':sum(c['provider_called'] for c in cases),'p50_ms':runs[variant]['p50_ms'],'p95_ms':runs[variant]['p95_ms'],
+            'mean_total_graph_latency_ms':round(statistics.mean(c['total_graph_latency_ms'] for c in cases),3),
+            'input_tokens':total('input_tokens'),'output_tokens':total('output_tokens'),'estimated_cost_usd':total('estimated_cost_usd')}
+    return {'variants':rows,
+        'controls':('skills and direct answer from the same frozen retrieval rows with the same provider, model, max_tokens and tool_rounds=0. '
+                    'auto routes each question itself and retrieves under the routed skill, so its evidence can differ.'),
+        'interpretation':('SIMULATED provider: answers are deterministic sentence extraction that ignores the skill contract except for catch_up ordering. '
+                          'Equal scores here say nothing about whether skills help a real model; no tokens or cost were incurred.' if simulated else
+                          'API run on 22 synthetic questions scored by expected substrings and exact-quote membership, not by semantic review. '
+                          'The sample is small: a difference of one or two cases is not evidence of an effect. Latency includes network variance from a single run.')}
 
 def percentile(values,p):return sorted(values)[max(0,math.ceil(len(values)*p)-1)] if values else None
 
@@ -54,6 +77,16 @@ def release_gate(report):
         }),
         ('recovery_suite', recovery['passed'] == recovery['total'], {
             'passed': recovery['passed'], 'total': recovery['total'],
+        }),
+        ('auto_routing_fixture', configurations['auto']['correct'] == configurations['auto']['total']
+         and configurations['auto']['future_leakage_cases'] == 0, {
+            'correct': configurations['auto']['correct'], 'total': configurations['auto']['total'],
+        }),
+        ('routing_suite', report['routing']['passed'] == report['routing']['total'], {
+            'passed': report['routing']['passed'], 'total': report['routing']['total'],
+        }),
+        ('skill_controls', report['skill_controls']['passed'] == report['skill_controls']['total'], {
+            'passed': report['skill_controls']['passed'], 'total': report['skill_controls']['total'],
         }),
         ('temporal_ablation_sensitivity', configurations['no_snapshots']['future_leakage_cases'] > 0, {
             'future_leakage_cases': configurations['no_snapshots']['future_leakage_cases'],
@@ -284,13 +317,16 @@ def evaluate(output,work,stress=False,config=None):
     api=config is not None
     if api and (config.provider=='demo' or not config.send_evidence):
         store.close();raise ValueError('API evaluation requires real provider configuration and send_evidence=true')
-    selected_config=replace(config,tool_rounds=0) if api else Config()
+    # The API evaluation measures the grounded contract (abstention, citation, request count) on the
+    # per-skill evidence limits in a single pass, so open answers, the wider transcript context, the
+    # tool loop and the re-search loop are switched off here regardless of the user's configuration.
+    selected_config=replace(config,tool_rounds=0,general_answers=False,transcript_context=False,research_retries=0) if api else Config()
     assistant=Assistant(store,user,Provider(selected_config),Trace(work/'traces.jsonl'));runs={};same_evidence={}
     class SameEvidenceDirect(Assistant):
         async def retrieve(self,state):return {'evidence':same_evidence[state['snapshot']]}
     direct=SameEvidenceDirect(store,user,Provider(selected_config),Trace(work/'direct-traces.jsonl'))
     try:
-        for variant in ('skills','direct','no_snapshots','no_folder'):
+        for variant in ('skills','direct','auto','no_snapshots','no_folder'):
             cases=[]
             for q in questions:
                 sid=snapshots[q['id']]
@@ -301,7 +337,7 @@ def evaluate(output,work,stress=False,config=None):
                         old=store._snapshot(user,sid);new=uuid.uuid4().hex
                         refs=[i for i in json.loads(old['refs']) if store.raw(user,sid,i)['kind']!='file']
                         db.execute('INSERT INTO snapshots VALUES(?,?,?,?,?,?,?,?)',(new,user,meeting,old['watermark'],old['meetings'],'[]',json.dumps(refs),time.time()));sid=new
-                skill = 'direct' if variant == 'direct' else q['skill']
+                skill = 'direct' if variant == 'direct' else 'auto' if variant == 'auto' else q['skill']
                 runner = direct if variant == 'direct' else assistant
                 # A benchmark case is an independent trial, not a retry of a
                 # previous case that happens to reuse a snapshot and question.
@@ -342,7 +378,9 @@ def evaluate(output,work,stress=False,config=None):
                 correct=result['abstained']==q.get('abstain',False) and all(term.lower() in result['text'].lower() for term in q['expected'])
                 supported=all(c['quote'] in store.raw(user,sid,c['source_id'])['text'] for c in result['claims'])
                 leakage=any(store.raw(user,sid,c['source_id'])['id']>watermarks[q['id']] for c in result['claims'])
-                cases.append({'id':q['id'],'at_event':q['at'],'asked_at_ms':question_times[q['id']],'total_graph_latency_ms':round(total_graph_latency,3),'correct':correct,'citation_supported':supported,'abstained':result['abstained'],'future_evidence_leakage':leakage,'latency_ms':round(latency,3),'source_ids':[c['source_id'] for c in result['claims']],'usage':result['usage'],'case_isolated':True})
+                cases.append({'id':q['id'],'at_event':q['at'],'asked_at_ms':question_times[q['id']],'total_graph_latency_ms':round(total_graph_latency,3),'correct':correct,'citation_supported':supported,'abstained':result['abstained'],'future_evidence_leakage':leakage,'latency_ms':round(latency,3),'source_ids':[c['source_id'] for c in result['claims']],'usage':result['usage'],'case_isolated':True,
+                    'skill':result['skill'],'skill_version':result['skill_version'],'route_status':result['routing']['status'],'fixture_skill':q['skill'],'task_id':result['task_id'],
+                    'abstain_reason':result['abstain_reason'],'inferences':len(result['inferences']),'provider_called':api and 'provider not called' not in result['mode']})
                 cases[-1]['diagnosis'] = diagnose_case(
                     q,
                     result,
@@ -364,6 +402,11 @@ def evaluate(output,work,stress=False,config=None):
                 ),
                 'failure_counts': dict(sorted(failure_counts.items())),
             }
+        auto_cases=runs['auto']['cases']
+        runs['auto']['routing']={'status_counts':dict(sorted(Counter(c['route_status'] for c in auto_cases).items())),
+            'skill_counts':dict(sorted(Counter(c['skill'] for c in auto_cases).items())),
+            'same_skill_as_fixture_label':sum(c['skill']==c['fixture_skill'] for c in auto_cases),
+            'note':'Fixture skill labels predate the router and assign trace_decision to plain factual questions, so disagreement with them is expected and is not a routing error rate.'}
         # Executed ablation on the same isolated synthetic store, never a production option.
         store.create('synthetic-other-user','private-fixture','Synthetic private meeting')
         secret_event={'event_id':'secret','seq':1,'segment_id':'secret','revision':1,'start_ms':0,'end_ms':1,'text':'The secret codename is SYNTHETIC-PRIVATE-CANARY.'}
@@ -404,11 +447,11 @@ def evaluate(output,work,stress=False,config=None):
             'evidence':'Canaries are read from evaluator-owned meeting evidence, unselected retained folder, and another private thread; final checkpoint is not bypassed or used.'}
         security=security_suite(work/'security')
         recovery=recovery_suite(work/'recovery')
-        usages=[case['usage'] for variant in ('skills','direct','no_snapshots','no_folder') for case in runs[variant]['cases']]
+        usages=[case['usage'] for variant in ('skills','direct','auto','no_snapshots','no_folder') for case in runs[variant]['cases']]
         totals={key:sum(u[key] for u in usages) if all(u[key] is not None for u in usages) else None for key in ('input_tokens','output_tokens','estimated_cost_usd')}
-        report={'created_at_utc':time.strftime('%Y-%m-%dT%H:%M:%SZ',time.gmtime()),'mode':('API evaluation / synthetic transcript fixtures; expected-term and exact-quote checks are not semantic quality assessment' if api else 'SIMULATED deterministic extractive; no paid API or ASR quality measurement'),'provider':selected_config.provider,'model':selected_config.model,'tool_rounds':0,'fixture_sha256':__import__('hashlib').sha256(__import__('importlib').resources.files('meeting_copilot').joinpath('fixtures.json').read_bytes()).hexdigest(),'qa_questions':len(questions),'configurations':runs,'security':security,'recovery':recovery,'native_meet2notes_baseline':{'status':'not measured','reason':'run native-baseline separately with the same provider/model; fake HTTP harness tests are not live native quality measurement'},'api_usage':totals,'stress':stress_capture() if stress else {'status':'not requested'},'scoring_limits':'Correct means expected substring checks plus abstention match. citation_supported means exact quotation membership only. Neither establishes semantic entailment of model inferences. All ablations use isolated synthetic data; unsafe policy ablation always uses demo generation.'}
+        report={'created_at_utc':time.strftime('%Y-%m-%dT%H:%M:%SZ',time.gmtime()),'mode':('API evaluation / synthetic transcript fixtures; expected-term and exact-quote checks are not semantic quality assessment' if api else 'SIMULATED deterministic extractive; no paid API or ASR quality measurement'),'provider':selected_config.provider,'model':selected_config.model,'tool_rounds':0,'fixture_sha256':__import__('hashlib').sha256(__import__('importlib').resources.files('meeting_copilot').joinpath('fixtures.json').read_bytes()).hexdigest(),'qa_questions':len(questions),'configurations':runs,'security':security,'recovery':recovery,'routing':routing_suite(),'skill_controls':skill_control_suite(work/'skill-controls'),'skill_comparison':skill_comparison(runs,not api),'native_meet2notes_baseline':{'status':'not measured','reason':'run native-baseline separately with the same provider/model; fake HTTP harness tests are not live native quality measurement'},'api_usage':totals,'stress':stress_capture() if stress else {'status':'not requested'},'scoring_limits':'Correct means expected substring checks plus abstention match. citation_supported means exact quotation membership only. Neither establishes semantic entailment of model inferences. All ablations use isolated synthetic data; unsafe policy ablation always uses demo generation.'}
         report['release_gate'] = release_gate(report)
         report['run_id'] = work.name
     finally:store.close()
     output=Path(output);output.parent.mkdir(parents=True,exist_ok=True);output.write_text(json.dumps(report,indent=2),encoding='utf-8')
-    return {'report':str(output),'qa_questions':report['qa_questions'],'skills_correct':runs['skills']['correct'],'future_leakage':runs['skills']['future_leakage_cases'],'security_passed':security['passed'],'security_total':security['total'],'release_gate_passed':report['release_gate']['passed'],'mode':report['mode']}
+    return {'report':str(output),'qa_questions':report['qa_questions'],'skills_correct':runs['skills']['correct'],'auto_correct':runs['auto']['correct'],'routing_passed':report['routing']['passed'],'skill_controls_passed':report['skill_controls']['passed'],'future_leakage':runs['skills']['future_leakage_cases'],'security_passed':security['passed'],'security_total':security['total'],'release_gate_passed':report['release_gate']['passed'],'mode':report['mode']}

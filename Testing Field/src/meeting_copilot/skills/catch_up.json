@@ -1,17 +1,64 @@
 {
   "name": "catch_up",
+  "version": "1.1.0",
   "trigger": [
     "catch up",
     "missed",
     "status"
   ],
+  "routing": {
+    "phrases": {
+      "catch up": 3,
+      "catch me up": 3,
+      "caught up": 3,
+      "recap": 3,
+      "missed": 2,
+      "summarize": 2,
+      "summarise": 2,
+      "summary": 2,
+      "so far": 2,
+      "what happened": 2,
+      "what changed": 2,
+      "what's new": 2,
+      "recent": 1,
+      "recently": 1,
+      "latest": 1,
+      "status": 1,
+      "update": 1,
+      "miss": 2
+    }
+  },
   "retrieval": "chronological current-meeting segments; relevant project excerpts only when matched",
+  "retrieval_plan": {
+    "strategy": "recent_segments",
+    "limit": 8
+  },
+  "allowed_tools": {
+    "model": [
+      "read_evidence"
+    ],
+    "mcp": [
+      "meet2notes_status",
+      "get_meeting",
+      "get_transcript",
+      "get_summary",
+      "read_evidence"
+    ]
+  },
   "output_fields": [
     "recent_evidence",
     "open_questions"
   ],
   "citation": "Exact supporting quotations retain source ID/version/hash/time or original file lines. Model synthesis is separately labelled inference with IDs of validated quotations; structural validation is not semantic proof.",
   "abstention": "State insufficient evidence when no supported excerpt; do not invent tasks or owners",
+  "termination": {
+    "max_tool_rounds": 1,
+    "max_tool_calls": 2,
+    "max_claims": 8,
+    "max_inferences": 8,
+    "mcp_session_calls": 200,
+    "on_limit": "further tool calls are denied; answer from evidence already retrieved or abstain"
+  },
   "task_steps": [
     "Describe what changed in the current meeting using recent evidence.",
     "Separate agreed decisions from proposals and unresolved questions.",

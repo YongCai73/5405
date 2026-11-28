@@ -87,7 +87,8 @@ async def test_conversation_across_snapshots_scope_revoke_and_future(store,event
 
 
 class Synthesis(Provider):
-    def __init__(self):super().__init__(Config(provider='openai'));self.contracts=[]
+    # One pass, no tool loop: this provider replaces complete() and takes no tool context.
+    def __init__(self):super().__init__(Config(provider='openai',tool_rounds=0,research_retries=0));self.contracts=[]
     async def complete(self,q,e,c):
         self.contracts.append(c)
         if not e:return Completion('{"claims":[],"inferences":[]}')

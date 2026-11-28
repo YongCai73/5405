@@ -1,17 +1,68 @@
 {
   "name": "trace_decision",
+  "version": "1.1.0",
   "trigger": [
     "why",
     "decision",
     "rejected"
   ],
+  "routing": {
+    "phrases": {
+      "why": 2,
+      "how come": 2,
+      "decision": 2,
+      "decisions": 2,
+      "decide": 2,
+      "decided": 2,
+      "rejected": 2,
+      "reject": 2,
+      "chose": 2,
+      "choose": 2,
+      "chosen": 2,
+      "reason": 2,
+      "reasons": 2,
+      "rationale": 3,
+      "agreed": 1,
+      "adopted": 1,
+      "rejecting": 2
+    }
+  },
   "retrieval": "keyword FTS in pinned current and explicitly opted-in prior meetings, plus matching pinned files",
+  "retrieval_plan": {
+    "strategy": "keyword",
+    "limit": 16
+  },
+  "allowed_tools": {
+    "model": [
+      "search_evidence",
+      "read_evidence"
+    ],
+    "mcp": [
+      "meet2notes_status",
+      "list_meetings",
+      "get_meeting",
+      "get_transcript",
+      "find_in_transcripts",
+      "get_summary",
+      "read_evidence",
+      "search_project",
+      "read_project_file"
+    ]
+  },
   "output_fields": [
     "decision_evidence",
     "rationale_evidence"
   ],
   "citation": "Exact supporting quotations retain source ID/version/hash/time or original file lines. Model synthesis is separately labelled inference with IDs of validated quotations; structural validation is not semantic proof.",
   "abstention": "Absent rationale is unknown; private answers are never meeting evidence",
+  "termination": {
+    "max_tool_rounds": 2,
+    "max_tool_calls": 4,
+    "max_claims": 8,
+    "max_inferences": 8,
+    "mcp_session_calls": 200,
+    "on_limit": "further tool calls are denied; answer from evidence already retrieved or abstain"
+  },
   "task_steps": [
     "Identify the decision and distinguish adopted, rejected and merely proposed options.",
     "Separate explicitly stated reasons from your interpretation; say when rationale was not stated.",

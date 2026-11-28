@@ -15,7 +15,22 @@ class Config:
     timeout_seconds: float = 20
     max_tokens: int = 800
     streaming: bool = False
-    tool_rounds: int = 0
+    # Tool loop: after reading the retrieved evidence the model may search or read more within the
+    # skill's tool allowlist and budget, this many times (0 turns it off).
+    tool_rounds: int = 1
+    # Re-search loop: when an answer cites no evidence, the question is rewritten into new search
+    # terms and retrieval runs again, at most this many times (0 turns it off, 5 is the ceiling).
+    research_retries: int = 1
+    # OpenAI-compatible endpoints with a thinking switch (DeepSeek): null leaves the
+    # provider default, 'enabled'/'disabled' sends {"thinking": {"type": ...}}.
+    thinking: str | None = None
+    # With a model configured, a question the meeting record cannot answer still gets a reply from the
+    # model, shown apart from quotations and labelled as not from the meeting. False restores abstention.
+    general_answers: bool = True
+    # Retrieval measured in content rather than in segments: the part of the transcript a question is
+    # about (whole meeting, opening, end, recent), a short meeting handed over whole, and the speech
+    # around a keyword hit. False restores the per-skill segment limits exactly.
+    transcript_context: bool = True
     input_cost_per_million: float | None = None
     output_cost_per_million: float | None = None
     asr_model: str = 'tiny.en'
@@ -31,6 +46,10 @@ class Config:
         if c.provider not in ('demo','openai','anthropic'):raise ValueError('unknown provider')
         if type(c.timeout_seconds) not in (int,float) or not 0<c.timeout_seconds<=120 or type(c.max_tokens) is not int or not 1<=c.max_tokens<=4096:raise ValueError('provider resource limit')
         if type(c.streaming) is not bool or type(c.tool_rounds) is not int or not 0<=c.tool_rounds<=2:raise ValueError('streaming/tool resource limit')
+        if c.thinking not in (None,'enabled','disabled'):raise ValueError('thinking must be null, "enabled" or "disabled"')
+        if type(c.general_answers) is not bool:raise ValueError('general_answers must be a JSON boolean')
+        if type(c.research_retries) is not int or not 0<=c.research_retries<=5:raise ValueError('research_retries must be an integer from 0 to 5')
+        if type(c.transcript_context) is not bool:raise ValueError('transcript_context must be a JSON boolean')
         for price in (c.input_cost_per_million,c.output_cost_per_million):
             if price is not None and (type(price) not in (int,float) or not math.isfinite(price) or price<0):raise ValueError('cost rates must be nonnegative finite numbers or null')
         return c

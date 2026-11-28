@@ -86,6 +86,8 @@ async function application() {
     ['bootstrap', { meetings: [], meeting: null }],
     ['devices', { devices: [{ id: 'mic', name: 'Test microphone', isDefault: true }] }],
     ['questionHistory', { turns: [] }],
+    ['skills', { skills: [] }],
+    ['settings', null],
   ]);
   let timerWrites = 0;
   const window = {
@@ -275,4 +277,170 @@ test('an already active capture cannot submit a second recording from the dialog
   app.nodes.get('record-form').dispatch('submit');
   await flush();
   assert.equal(app.requests.some((item) => item.action === 'startRecording'), false);
+});
+
+// Objects created inside the isolated context have a different Object prototype.
+const plain = (value) => JSON.parse(JSON.stringify(value));
+const answered = (extra = {}) => ({ turns: [{
+  id: 'snapshot-1', question: 'Why SQLite?',
+  answer: { text: 'SQLite is local.', citations: [], skill: 'trace_decision', skillRoute: 'matched' }, ...extra,
+}] });
+const withSegments = () => detail(false, null, { segments: [{ id: 1, text: 'SQLite is local.', startMs: 0, endMs: 1000 }] });
+const rateButtons = (app) => app.nodes.get('conversation').querySelectorAll('button')
+  .filter((button) => String(button.className).startsWith('rate-button'));
+
+test('the question type menu is filled from the backend and sent with a typed question', async () => {
+  const app = await application();
+  app.install(withSegments());
+  app.responses.set('skills', { skills: [
+    { name: 'auto', label: 'Auto', triggers: [] },
+    { name: 'grill_me', label: 'Grill me', triggers: ['grill me'], rounds: 5 },
+    { name: 'future_skill', label: 'Future skill', triggers: [] },
+  ] });
+  await app.evaluate('loadSkills()');
+  const select = app.nodes.get('skill-select');
+  assert.deepEqual(select.children.map((option) => option.value), ['auto', 'grill_me', 'future_skill']);
+  assert.equal(select.value, 'auto');
+
+  app.responses.set('beginQuestion', { id: 'snapshot-1' });
+  select.value = 'future_skill';
+  select.dispatch('change');
+  app.nodes.get('question').value = 'Challenge the SQLite decision';
+  app.nodes.get('ask-form').dispatch('submit');
+  await flush();
+  assert.equal(app.requests.find((request) => request.action === 'beginQuestion').payload.skill, 'future_skill');
+
+  // A value the backend did not offer falls back to automatic routing.
+  select.value = 'made_up';
+  select.dispatch('change');
+  assert.equal(app.evaluate('state.skill'), 'auto');
+});
+
+test('an answer shows its skill and can be rated, with a note for a negative rating', async () => {
+  const app = await application();
+  app.install(withSegments());
+  app.responses.set('questionHistory', answered());
+  app.responses.set('feedback', { id: 'snapshot-1', rating: 'up' });
+  await app.evaluate('refreshQuestions("m")');
+  assert.match(app.nodes.get('conversation').textContent, /Trace decision · auto/);
+  assert.doesNotMatch(app.nodes.get('conversation').textContent, /searched again/);
+  const [up, down] = rateButtons(app);
+  up.dispatch('click');
+  await flush();
+  assert.deepEqual(plain(app.requests.find((request) => request.action === 'feedback').payload),
+    { meetingId: 'm', questionId: 'snapshot-1', rating: 'up', note: '' });
+
+  down.dispatch('click');
+  assert.equal(app.nodes.get('feedback-dialog').open, true);
+  app.nodes.get('feedback-note').value = ' too long ';
+  app.responses.set('questionHistory', answered({ rating: 'down' }));
+  app.nodes.get('feedback-form').dispatch('submit');
+  await flush();
+  assert.deepEqual(plain(app.requests.filter((request) => request.action === 'feedback').at(-1).payload),
+    { meetingId: 'm', questionId: 'snapshot-1', rating: 'down', note: 'too long' });
+  assert.equal(app.nodes.get('feedback-dialog').open, false);
+  await flush();
+  assert.equal(rateButtons(app)[1].attributes['aria-pressed'], 'true');
+});
+
+test('a model is set up once in Settings: provider defaults, key cleared at once, hint goes away', async () => {
+  const app = await application();
+  const presets = [
+    { id: 'local', label: 'Local only (no model)', provider: 'demo', model: '', baseUrl: '' },
+    { id: 'deepseek', label: 'DeepSeek', provider: 'openai', model: 'deepseek-flash', baseUrl: 'https://api.deepseek.com/v1' },
+    { id: 'custom', label: 'Other OpenAI-compatible', provider: 'openai', model: '', baseUrl: '' },
+  ];
+  const unset = {
+    provider: 'demo', providerLabel: 'Local extractive', model: '', baseUrl: '', sendEvidence: false, preset: 'local',
+    presets, keyName: 'MEETING_COPILOT_API_KEY', keyHost: '', keyInEnvironment: false, keySaved: false, keyStoreAvailable: true,
+    configFile: '/workspace/config.json', ready: false, researchRetries: 1, researchRetriesLimit: 5, toolRounds: 1, toolRoundsLimit: 2,
+  };
+  const ready = { ...unset, provider: 'openai', providerLabel: 'OpenAI-compatible', model: 'deepseek-flash',
+                  baseUrl: 'https://api.deepseek.com/v1', sendEvidence: true, preset: 'deepseek', keyHost: 'api.deepseek.com',
+                  keySaved: true, ready: true };
+  app.install(withSegments());
+  app.responses.set('settings', unset);
+  app.responses.set('preferences', { preferences: ['Keep answers brief.'], limit: 5 });
+  await app.evaluate('loadSettings()');
+  const hint = app.nodes.get('setup-model');
+  assert.equal(hint.hidden, false);
+  assert.match(hint.textContent, /Set up a model/);
+
+  hint.dispatch('click');
+  await flush();
+  assert.equal(app.nodes.get('settings-dialog').open, true);
+  assert.match(app.nodes.get('settings-provider').textContent, /You only do this once/);
+  assert.match(app.nodes.get('preference-list').textContent, /Keep answers brief\./);
+  assert.equal(app.nodes.get('model-name').disabled, true);
+  assert.equal(app.nodes.get('test-model').disabled, true);
+
+  // Choosing a provider fills in its model and address and enables the fields.
+  const select = app.nodes.get('model-preset');
+  select.value = 'deepseek';
+  select.dispatch('change');
+  assert.equal(app.nodes.get('model-name').value, 'deepseek-flash');
+  assert.equal(app.nodes.get('model-base-url').value, 'https://api.deepseek.com/v1');
+  assert.equal(app.nodes.get('model-name').disabled, false);
+  assert.equal(app.nodes.get('model-consent').checked, false);
+  assert.match(app.nodes.get('settings-key-status').textContent, /kept per provider and never reused/);
+
+  app.responses.set('saveModelSettings', ready);
+  app.responses.set('meeting', withSegments());
+  const field = app.nodes.get('api-key-input');
+  field.value = '  sk-test-typed-in-the-dialog  ';
+  app.nodes.get('model-consent').checked = true;
+  // The two loop settings show their saved values and are clamped to their limits when sent.
+  assert.equal(app.nodes.get('research-retries').value, '1');
+  assert.equal(app.nodes.get('tool-rounds').value, '1');
+  app.nodes.get('research-retries').value = '9';
+  app.nodes.get('tool-rounds').value = '2';
+  app.nodes.get('model-form').dispatch('submit');
+  assert.equal(field.value, '');
+  await flush();
+  assert.deepEqual(plain(app.requests.find((request) => request.action === 'saveModelSettings').payload), {
+    preset: 'deepseek', model: 'deepseek-flash', baseUrl: 'https://api.deepseek.com/v1', sendEvidence: true,
+    researchRetries: 5, toolRounds: 2, key: 'sk-test-typed-in-the-dialog',
+  });
+  assert.match(app.nodes.get('settings-provider').textContent, /Ready\. Questions use deepseek-flash/);
+  assert.match(app.nodes.get('settings-key-status').textContent, /A key for api\.deepseek\.com is saved/);
+  assert.equal(app.nodes.get('remove-key').disabled, false);
+  assert.equal(app.nodes.get('test-model').disabled, false);
+  assert.equal(hint.hidden, true);
+
+  app.responses.set('testModel', { ok: true, model: 'deepseek-flash' });
+  app.nodes.get('test-model').dispatch('click');
+  await flush();
+  assert.match(app.nodes.get('model-test-status').textContent, /Connected\. deepseek-flash answered/);
+
+  // Each remaining gap has its own hint; an environment variable counts as a key.
+  assert.match(app.evaluate('setupGap')({ ...ready, keySaved: false }), /needs an API key/);
+  assert.equal(app.evaluate('setupGap')({ ...ready, keySaved: false, keyInEnvironment: true }), '');
+  assert.match(app.evaluate('setupGap')({ ...ready, sendEvidence: false }), /allow sending excerpts/);
+  // Without a credential store the key cannot be typed here.
+  app.evaluate('renderSettings')({ ...ready, keyStoreAvailable: false });
+  assert.equal(field.disabled, true);
+});
+
+test('suggestions are requested on demand and a suggested preference can be saved', async () => {
+  const app = await application();
+  app.install(withSegments());
+  app.nodes.get('open-suggest').dispatch('click');
+  assert.equal(app.nodes.get('suggest-dialog').open, true);
+  assert.equal(app.requests.some((request) => request.action === 'suggest'), false);
+  app.responses.set('suggest', {
+    mode: 'rules only; no model call', turnsAnalysed: 3, feedbackRows: 1, activation: 'Nothing was changed.',
+    suggestions: [{ kind: 'preference', title: 'Save a wording preference', observed: '2 questions ask for this',
+                    action: 'Save it as a wording preference.', support: 2, preference: 'Keep answers brief.' }],
+  });
+  app.responses.set('preferences', { preferences: ['Keep answers brief.'], limit: 5 });
+  app.nodes.get('run-suggest').dispatch('click');
+  await flush();
+  assert.deepEqual(plain(app.requests.find((request) => request.action === 'suggest').payload), { meetingId: 'm', useModel: false });
+  assert.match(app.nodes.get('suggest-status').textContent, /3 question\(s\) and 1 rating\(s\) analysed/);
+  const [save] = app.nodes.get('suggest-results').querySelectorAll('button');
+  save.dispatch('click');
+  await flush();
+  assert.deepEqual(plain(app.requests.find((request) => request.action === 'preferences').payload),
+    { action: 'add', value: 'Keep answers brief.' });
+  assert.equal(save.disabled, true);
 });

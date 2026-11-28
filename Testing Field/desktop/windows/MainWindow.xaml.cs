@@ -12,7 +12,8 @@ public partial class MainWindow : Window
     private static readonly HashSet<string> Actions = new(StringComparer.Ordinal)
     {
         "bootstrap", "meeting", "demo", "create", "ask", "summary", "export", "importAudio",
-        "devices", "startRecording", "stopRecording",
+        "devices", "startRecording", "stopRecording", "beginQuestion", "resumeQuestion", "questionHistory",
+        "skills", "feedback", "preferences", "suggest", "settings", "saveModelSettings", "testModel", "deleteApiKey",
     };
     private readonly BackendClient backend = new();
     private readonly ConcurrentDictionary<string, FileTransfer> transfers = new();
