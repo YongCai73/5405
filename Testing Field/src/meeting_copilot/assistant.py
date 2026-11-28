@@ -12,7 +12,8 @@ from typing import TypedDict
 from langgraph.graph import StateGraph, START, END
 from .provider import Provider, ProviderError, payload, validated_claims, validated_inferences
 from .store import tokens, Denied
-from .retrieval import (terms, excerpt, time_scope, scoped_rows, older_rows, context_rows, RECENT_FLOOR, SCOPE_BUDGET)
+from .retrieval import (terms, excerpt, time_scope, scoped_rows, older_rows, context_rows, window_rows, passages, to_segments,
+    RECENT_FLOOR, SCOPE_BUDGET)
 from .skill_runtime import (AUTO, check_output, clean_terms, continue_session, contract_digest, explained_terms, load_contract, open_session,
     policy_for, prompt_view, response_extension, route, session_state, style_flags, validated_background, validated_challenge,
     validated_general_answer, GENERAL_ANSWER_LABEL, NO_DIRECT_EVIDENCE, PLAIN_ANSWER_PROMPT, UNUSABLE_REPLY)
@@ -135,9 +136,15 @@ class Assistant:
                 # hit are usually what the answer needs.
                 extra=[e for e in transcript if e['id'] not in have];coverage='the whole meeting'
             else:
-                for origin in dict.fromkeys(e['meeting'] for e in selected if e['kind']=='segment' and len(e['text'])<200):
+                # Too long to read whole: match the question against overlapping time windows, so the answer
+                # does not depend on where transcription cut a sentence, and add the best windows.
+                extra=[e for e in window_rows(transcript,query_question) if e['id'] not in have]
+                if extra:coverage='the stretches of the meeting that match the question, with gaps between them'
+                seen=have|{e['id'] for e in extra}
+                # Hits in an earlier meeting that the user opted in keep their immediate neighbours.
+                for origin in dict.fromkeys(e['meeting'] for e in selected if e['kind']=='segment' and e['meeting']!=meeting and len(e['text'])<200):
                     hits=[e for e in selected if e['kind']=='segment' and e['meeting']==origin]
-                    extra+=context_rows(hits,transcript if origin==meeting else self._transcript(state['snapshot'],origin),have)
+                    extra+=context_rows(hits,self._transcript(state['snapshot'],origin),seen)
             for e in extra:
                 if size+len(e['text'])>24000:break
                 selected.append(excerpt(e,query_question));size+=len(e['text'])
@@ -244,23 +251,23 @@ class Assistant:
                 from .model_tools import EvidenceTools
                 kwargs['tool_context']=EvidenceTools(self.store,self.user,state['snapshot'],evidence,policy=policy,trace=self.trace)
             extension=response_extension(contract,session,known,self.preferences(),open_answer,state.get('coverage'))
-            supplied=evidence
-            if state.get('coverage'):
-                # The model reads the transcript in the order it was spoken; the stored order keeps the
-                # originally selected rows first (see retrieve).
-                supplied=sorted(evidence,key=lambda e:(e['kind']!='segment',e.get('start_ms') or 0,e['id']))
-            reply=await self.provider.complete(state['question'],[{'id':e['id'],'text':e['text'],'kind':e['kind']} for e in supplied],
+            # The model reads passages: consecutive transcript fragments joined in spoken order. The stored
+            # evidence stays one row per retained segment, and the reply is mapped back onto those rows
+            # before it is validated, so every quotation is still checked against a retained segment.
+            wide=getattr(self.provider.config,'transcript_context',True)
+            blocks=passages(evidence) if wide else [{'id':e['id'],'kind':e['kind'],'text':e['text'],'rows':[(e,0,len(e['text']))]} for e in evidence]
+            reply=await self.provider.complete(state['question'],[{'id':b['id'],'text':b['text'],'kind':b['kind']} for b in blocks],
                 {**prompt_view(contract),'private_conversation':context,'response_extension':extension},**kwargs)
             if reply.evidence:evidence=reply.evidence
-            raw=payload(reply.content)
-            # A model given many transcript fragments tends to return more quotations than the contract
-            # keeps. Keep the ones its inferences cite first, so fewer inferences lose their support.
-            claims=validated_claims(reply.content,evidence,limit=40)
+            raw=to_segments(payload(reply.content),blocks);content=json.dumps(raw)
+            # A model given a long transcript tends to return more quotations than the contract keeps.
+            # Keep the ones its inferences cite first, so fewer inferences lose their support.
+            claims=validated_claims(content,evidence,limit=40)
             cited=[rid for row in (raw.get('inferences') if isinstance(raw.get('inferences'),list) else []) if isinstance(row,dict)
                    for rid in (row.get('source_ids') if isinstance(row.get('source_ids'),list) else []) if type(rid) is int]
             order={rid:n for n,rid in reversed(list(enumerate(cited)))}
             claims=sorted(claims,key=lambda c:order.get(c['source_id'],len(order)))[:limits['max_claims']]
-            inferences=validated_inferences(reply.content,claims,contract)[:limits['max_inferences']]
+            inferences=validated_inferences(content,claims,contract)[:limits['max_inferences']]
             for key,kept in (('claims',claims),('inferences',inferences)):
                 rejected[key]=max(0,len(raw[key])-len(kept)) if isinstance(raw.get(key),list) else 0
             background=validated_background(raw,contract)

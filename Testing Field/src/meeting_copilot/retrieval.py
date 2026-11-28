@@ -6,7 +6,9 @@ so a limit counted in segments can hand the model a few lines of a meeting. Limi
 therefore measured in characters, and a question about the whole meeting, its opening or its
 end gets that part of the transcript instead of keyword hits or the last few fragments.
 """
+import math
 import re
+from collections import Counter
 
 from .store import tokens
 
@@ -16,7 +18,19 @@ SCOPE_BUDGET = 14000
 # (about a minute each at the density of the recording above). A meeting short enough to fit
 # SCOPE_BUDGET is handed over whole: someone catching up on ten minutes needs all ten.
 RECENT_FLOOR = 800
-# A keyword hit on a fragment brings along neighbours spoken within this gap, for context.
+# Time windows: retrieval does not depend on where transcription happened to cut a sentence.
+# Fragments are grouped into windows of WINDOW_MS that start every WINDOW_STEP_MS (so neighbours
+# overlap by a third), a question is matched against whole windows, and the model is given
+# passages of consecutive fragments. A quotation is mapped back to the fragment or fragments it
+# came from, so every citation still points at a retained segment.
+WINDOW_MS = 45000
+WINDOW_STEP_MS = 30000
+# Characters of matching windows added for a keyword question on a meeting too long to read whole.
+WINDOW_BUDGET = 6000
+# A passage handed to the model: consecutive fragments, at most this long.
+PASSAGE_MS = 45000
+PASSAGE_CHARS = 1200
+# Fragments further apart than this are not joined into one passage (and not treated as neighbours).
 CONTEXT_GAP_MS = 3000
 CONTEXT_EACH_SIDE = 2
 SHORT_SEGMENT = 200
@@ -145,3 +159,146 @@ def excerpt(row, question, budget=2400):
         start=original_start;end=min(len(text),start+budget)
     return {**row, 'text': text[start:end], 'text_offset': start,
             'line_offset': text[:start].count('\n'), 'source_length': len(text)}
+
+
+def windows(transcript, span_ms=WINDOW_MS, step_ms=WINDOW_STEP_MS):
+    """Overlapping time windows over chronological segment rows; each window is a list of rows."""
+    if not transcript:
+        return []
+    starts = [row.get('start_ms') or 0 for row in transcript]
+    result = []; clock = starts[0]; first = 0
+    while clock <= starts[-1]:
+        while first < len(transcript) and starts[first] < clock:
+            first += 1
+        last = first
+        while last < len(transcript) and starts[last] < clock + span_ms:
+            last += 1
+        if last > first:
+            result.append(transcript[first:last])
+        clock += step_ms
+    return result
+
+
+def _stem(term):
+    for suffix in ('ing', 'ed', 's'):
+        if term.endswith(suffix) and len(term) - len(suffix) >= 3 and not term.endswith('ss'):
+            term = term[:-len(suffix)]
+            break
+    # "note" and "notes", "use" and "using" meet at the same stem.
+    return term[:-1] if term.endswith('e') and len(term) > 3 else term
+
+
+def same_word(one, other):
+    """A loose match for window scoring: "submit" finds "submission", "students" finds "student".
+
+    Exact matching would need the question to use the speakers' word forms. Short words must
+    match exactly after a plural or tense ending is removed; longer ones may share a long prefix.
+    """
+    one, other = _stem(one), _stem(other)
+    if one == other:
+        return True
+    shorter = min(len(one), len(other))
+    if shorter < 5:
+        return False
+    common = next((n for n, (a, b) in enumerate(zip(one, other)) if a != b), shorter)
+    return common >= max(5, shorter - 2)
+
+
+def window_rows(transcript, question, budget=WINDOW_BUDGET):
+    """Rows of the windows that best match the question, in spoken order.
+
+    A window scores by the question terms it contains, rarer terms counting more, so terms that
+    transcription spread over several fragments are found together. Overlapping winners merge.
+    """
+    wanted = terms(question)
+    candidates = windows(transcript)
+    if not wanted or not candidates:
+        return []
+    spoken = [terms(' '.join(row['text'] for row in window)) for window in candidates]
+    found = [{term for term in wanted if any(same_word(term, word) for word in words)} for words in spoken]
+    spread = Counter(term for hit in found for term in hit)
+    score = {n: sum(math.log(1 + len(candidates) / spread[term]) for term in hit) for n, hit in enumerate(found) if hit}
+    ranked = sorted(score, key=lambda n: (-score[n], n))
+    chosen = {}; size = 0
+    for n in ranked:
+        # A window that matches far less of the question than the best one is noise, not context.
+        if score[n] < 0.5 * score[ranked[0]]:
+            break
+        fresh = [row for row in candidates[n] if row['id'] not in chosen]
+        cost = sum(len(row['text']) for row in fresh)
+        if chosen and size + cost > budget:
+            continue
+        for row in fresh:
+            chosen[row['id']] = row
+        size += cost
+    return [row for row in transcript if row['id'] in chosen]
+
+
+def passages(rows):
+    """Group evidence rows into what the model reads.
+
+    Consecutive transcript fragments of one meeting become one passage, identified by the ID of
+    its first fragment. Each passage remembers where every fragment sits in its text, so a
+    quotation can be mapped back. Other rows (project files, isolated segments) pass through.
+    """
+    others = [row for row in rows if row['kind'] != 'segment']
+    segments = sorted((row for row in rows if row['kind'] == 'segment'),
+                      key=lambda row: (str(row.get('meeting')), row.get('start_ms') or 0, row['id']))
+    blocks = [{'id': row['id'], 'kind': row['kind'], 'text': row['text'], 'rows': [(row, 0, len(row['text']))]} for row in others]
+    current = None
+    for row in segments:
+        previous = current['rows'][-1][0] if current else None
+        joins = (previous is not None and previous.get('meeting') == row.get('meeting')
+                 and 0 <= (row.get('start_ms') or 0) - (previous.get('end_ms') or 0) <= CONTEXT_GAP_MS
+                 and (row.get('end_ms') or 0) - (current['rows'][0][0].get('start_ms') or 0) <= PASSAGE_MS
+                 and len(current['text']) + 1 + len(row['text']) <= PASSAGE_CHARS)
+        if joins:
+            start = len(current['text']) + 1
+            current['text'] += ' ' + row['text']
+            current['rows'].append((row, start, start + len(row['text'])))
+        else:
+            current = {'id': row['id'], 'kind': 'segment', 'text': row['text'], 'rows': [(row, 0, len(row['text']))]}
+            blocks.append(current)
+    return blocks
+
+
+def split_quote(block, quote):
+    """The quotation as exact pieces of the fragments it runs through, or [] if it is not in the passage."""
+    at = block['text'].find(quote)
+    if at < 0:
+        return []
+    end = at + len(quote); pieces = []
+    for row, start, stop in block['rows']:
+        piece = block['text'][max(at, start):min(end, stop)].strip()
+        if min(end, stop) > max(at, start) and len(piece) >= 3:
+            pieces.append({'source_id': row['id'], 'quote': piece})
+    return pieces
+
+
+def to_segments(reply, blocks):
+    """Rewrite a model reply that cites passages so that it cites the original segments.
+
+    Claims become one claim per fragment the quotation runs through. An inference that cited a
+    passage cites the fragments its quotations came from. Anything else is left for the usual
+    validation to accept or reject.
+    """
+    joined = {block['id']: block for block in blocks if len(block['rows']) > 1}
+    if not joined or not isinstance(reply, dict):
+        return reply
+    claims = []; quoted = {}
+    for claim in reply.get('claims') if isinstance(reply.get('claims'), list) else []:
+        block = joined.get(claim.get('source_id')) if isinstance(claim, dict) else None
+        pieces = split_quote(block, claim['quote']) if block and isinstance(claim.get('quote'), str) else []
+        if pieces:
+            claims += pieces
+            quoted.setdefault(block['id'], []).extend(piece['source_id'] for piece in pieces)
+        else:
+            claims.append(claim)
+    inferences = []
+    for inference in reply.get('inferences') if isinstance(reply.get('inferences'), list) else []:
+        refs = inference.get('source_ids') if isinstance(inference, dict) else None
+        if isinstance(refs, list):
+            mapped = [rid for ref in refs for rid in (quoted.get(ref, [ref]) if isinstance(ref, int) else [ref])]
+            inference = {**inference, 'source_ids': list(dict.fromkeys(mapped))[:8]}
+        inferences.append(inference)
+    return {**reply, 'claims': claims, 'inferences': inferences}

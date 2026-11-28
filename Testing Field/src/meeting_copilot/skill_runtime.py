@@ -400,11 +400,11 @@ def response_extension(contract, state=None, known_terms=(), preferences=(), ope
     """Skill-specific additions to the fixed JSON reply format."""
     parts = []
     if coverage:
-        parts.append('Transcript coverage: the meeting segments supplied are in the order they were spoken and cover ' + coverage
-                     + '. Automatic transcription split them into short fragments and may have misheard words; read '
-                     'neighbouring fragments together. For a summary or a question about one part of the meeting, answer '
-                     'from that part. Each fragment is its own source: copy a quotation from inside one fragment, and choose '
-                     'the few fragments that carry the answer rather than quoting every one.')
+        parts.append('Transcript coverage: the meeting passages supplied are in the order they were spoken and cover ' + coverage
+                     + '. Each passage joins consecutive pieces of automatic transcription, which may have misheard words '
+                     'and has little punctuation. For a summary or a question about one part of the meeting, answer from '
+                     'that part. Copy each quotation exactly from inside one passage and give that passage as its '
+                     'source_id; choose the few quotations that carry the answer rather than quoting everything.')
     if open_answer:
         parts.append('Open answer: the user still needs a useful reply when the supplied sources do not answer the question or cover '
                      'only part of it. In that case, in addition to claims and inferences (which may then be empty), return '

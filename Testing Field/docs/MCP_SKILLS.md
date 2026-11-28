@@ -151,17 +151,43 @@ What retrieval does now (`retrieval.py`, `"transcript_context": true`, the defau
 | About the opening or the end ("at the beginning", "开头", "at the end") | the whole transcript if it fits, else the first or last 7,000 characters |
 | `catch_up` with no such cue | the contract's recent segments, extended backwards to about 800 characters per contract segment; the whole transcript if the meeting fits |
 | Keyword question, meeting fits | the keyword hits plus the rest of the transcript, read in spoken order |
-| Keyword question, longer meeting | each short hit plus up to two neighbours on either side spoken within 3 seconds |
+| Keyword question, longer meeting | the keyword hits plus the best-matching time windows (below), up to 6,000 characters |
 | No keyword matched, a model is configured, meeting fits | the whole transcript, because the question may only use other words than the speakers did |
 
-The model is told what the supplied segments cover and that they are fragments in
-spoken order. Skill contracts are unchanged. The originally selected rows stay
+**Time windows.** Retrieval and the model's context no longer depend on where
+transcription cut a sentence:
+
+- *Matching.* The transcript is grouped into 45-second windows that start every
+  30 seconds, so neighbours overlap by a third. A question is scored against whole
+  windows: each question term found in a window counts, rarer terms more, and word
+  forms match loosely ("submit" finds "submission"). Terms that transcription
+  spread over several fragments are therefore found together. Windows scoring
+  under half of the best one are dropped, and overlapping winners merge.
+- *Reading.* The model is given passages: consecutive fragments joined in spoken
+  order, at most 45 seconds or 1,200 characters each, split where the speaker
+  paused for more than 3 seconds. The real recording went to the model as 17
+  passages instead of 134 fragments.
+- *Citing.* Stored evidence is still one row per retained segment. A quotation
+  the model copies from a passage is mapped back before validation: one exact
+  piece per segment it runs through, each checked against that segment as before.
+  A sentence cut into three fragments yields three citations. A quotation that is
+  not word for word in the passage is rejected, as before.
+
+The model is told what the supplied passages cover and that they are automatic
+transcription in spoken order. Skill contracts are unchanged. The originally selected rows stay
 first in the stored evidence, so the local extractive mode quotes the same rows
 as before and the deterministic gate is unchanged. When a reply holds more valid
 quotations than a contract keeps, the ones its inferences cite are kept first.
 
 `evaluate --api` forces `transcript_context` off, as it does `general_answers`,
 so its numbers still describe the per-skill limits.
+
+A longer case was built to exercise the windows: that recording placed in the
+middle of 48 minutes of unrelated, stuttered filler (774 fragments, 28,422
+characters). "Which two options did the instructor give", "学生需要交什么",
+"what was said about the Manhattan project" and a question about the oil and gas
+investment figure each found the right stretch (2 to 6 passages, about 1,000
+characters) and were answered correctly in 1.6 to 3.0 s.
 
 On that recording with `deepseek-flash`, after the change: "what was said at the
 beginning", "summarize the meeting", "which two options were given" and "what
@@ -170,7 +196,10 @@ do students hand in" were each answered correctly with the right quotations in
 transcript as context it took 17 to 29 s and once spent the entire output budget
 before answering.
 
-Limits: scope is recognised from a fixed list of English phrases (Chinese through
+Limits: matching is still by words, so a question that shares no word, in any
+form, with what was said finds nothing in a long meeting (semantic search is not
+implemented); the windows are built at question time and are not an index;
+scope is recognised from a fixed list of English phrases (Chinese through
 the glossary); a meeting longer than the budget is sampled, not read in full, so
 an overview of a long meeting can miss things; transcription errors stay in the
 quotations ("endeavor" for a name, for example); nothing here improves the
